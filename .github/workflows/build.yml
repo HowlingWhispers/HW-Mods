@@ -67,6 +67,9 @@ jobs:
       contents: write
 
     steps:
+      - name: Check out HW-Mods
+        uses: actions/checkout@v4
+
       - name: Download mod artifact
         uses: actions/download-artifact@v4
         with:
