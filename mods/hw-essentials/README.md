@@ -1,6 +1,8 @@
 # HW Essentials 0.1.0
 
-A CML-native utility mod for **Minecraft Java 26.4 Snapshot 3**. Ships as `hw-essentials.jar` with its own `coda.mod.json`; uses CodaLoader's command API, without Fabric or Forge.
+A CML-native utility mod for **Minecraft Java 26.4 Snapshot 3**. Ships as `hw-essentials-0.1.0.jar` with its own `coda.mod.json`; uses CodaLoader's command API, without Fabric or Forge.
+
+This mod is now part of the **HW-Mods** repository and is published independently to GitHub Releases. CodaLoader 0.0.18+ fetches it automatically and installs it into the active game profile (including CodaLauncher-managed profiles).
 
 | Command | Result |
 | --- | --- |
@@ -18,6 +20,30 @@ Version 0.1 supports singleplayer's integrated server and homes in the player's 
 
 The server-thread adapter refuses positions outside the world border, collisions, fluid at the destination or missing support underfoot. It loads the destination chunk before checking. This is a conservative landing check, not a complete environmental hazard detector.
 
-The packaged CodaLoader installs the bundled mod into the active game profile automatically, including profiles managed by CodaLauncher. It updates only its known bundled JAR; a manually modified conflicting `hw-essentials.jar` is preserved and reported.
+CodaLoader installs the bundled mod into the active game profile automatically, including profiles managed by CodaLauncher. It updates only its known bundled JAR; a manually modified conflicting `hw-essentials.jar` is preserved and reported.
 
 The bridge is pinned to Snapshot 3's named APIs. CI checks compilation, loading, storage, command behavior and the reflection adapter against fixtures. Actual registration and teleportation in a live Snapshot 3 world still require in-game verification.
+
+## Building
+
+```bash
+# Requires HW-CodaLoader checked out alongside HW-Mods (for API sources)
+export HW_CODALOADER_API_DIR=../HW-CodaLoader/src/main/java
+./scripts/build-hw-essentials.sh
+```
+
+Output: `dist/hw-essentials-0.1.0.jar` + `.sha256`
+
+## Testing
+
+```bash
+./scripts/test-hw-essentials.sh
+```
+
+## Distribution
+
+Mod JARs are published to GitHub Releases at `https://github.com/HowlingWhispers/HW-Mods/releases`. CodaLoader fetches the latest release and verifies SHA-256 before embedding and installing.
+
+The shared command API (`CodaMod`, `CodaContext`, `CodaCommand`, `CodaCommandContext`, `CodaPosition`, `CodaCommands`) and Minecraft hooks remain in **HW-CodaLoader**.
+
+Target: **Minecraft Java 26.4 Snapshot 3**.
