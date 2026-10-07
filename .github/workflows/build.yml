@@ -110,6 +110,6 @@ jobs:
           This mod JAR is installed automatically by CodaLoader into the active game profile, including CodaLauncher-managed profiles.
           Existing homes, settings, and manually modified conflicting mod files are preserved.
           EOF
-          gh release create "$TAG" "$MOD_JAR" \
+          gh release create "$TAG" "$MOD_JAR" "dist/hw-essentials-0.1.0.jar.sha256" \
             --target "$GITHUB_SHA" --title "HW Essentials 0.1.0" \
             --notes-file release-notes.md --prerelease
