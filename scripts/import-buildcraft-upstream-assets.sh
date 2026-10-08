@@ -55,11 +55,11 @@ BIN="buildcraft-all-$RELEASE.jar"
 SRC="buildcraft-all-$RELEASE-sources.jar"
 fetch_release "$BIN"
 fetch_release "$SRC"
-printf '%s  %s\\n' "$BIN_SHA256" "$CACHE_DIR/$BIN" | sha256sum --check --status || {
+printf '%s  %s\n' "$BIN_SHA256" "$CACHE_DIR/$BIN" | sha256sum --check --status || {
   echo "Refusing unexpected BuildCraft 8.0.0 binary: pinned SHA256 failed" >&2
   exit 1
 }
-printf '%s  %s\\n' "$SRC_SHA256" "$CACHE_DIR/$SRC" | sha256sum --check --status || {
+printf '%s  %s\n' "$SRC_SHA256" "$CACHE_DIR/$SRC" | sha256sum --check --status || {
   echo "Refusing unexpected BuildCraft 8.0.0 source: pinned SHA256 failed" >&2
   exit 1
 }
