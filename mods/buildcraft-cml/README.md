@@ -13,6 +13,42 @@ Original BuildCraft copyright belongs to SpaceToad and BuildCraft contributors. 
 
 BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older code can be MMPL 1.0.1 (`LICENSE`). Check individual file notices and history before importing any source, assets, models or textures. Preserve notices, publish modified MPL files under MPL 2.0, and provide full corresponding source code for distributed binaries. Use old-MMPL material only under its actual licensing terms and after verifying file provenance. **Unmodified original BuildCraft 8.0.0 resource assets are imported into the Nightly JAR directly from its published binary; the published 8.0.0 source JAR is also fetched and checksum-verified at build time.** The current transport prototype is newly written and not yet a one-to-one port of the original gameplay code.
 
+## First native BuildCraft 8.0 transport preview (Nightly)
+
+The native Minecraft 26.4 Snapshot 3 block/item registry bridge now adds a
+**BuildCraft** Creative inventory tab containing:
+
+- **Wooden Transport Pipe**: actual placeable BlockItem with original upstream art
+- **Cobblestone Transport Pipe**: actual placeable BlockItem with original upstream art
+- **Redstone Engine**: actual placeable BlockItem, powered by neighboring redstone
+- **BuildCraft Wrench**: actual item with original upstream texture; interaction still pending
+
+Original 8.0.0 assets are imported unchanged from the official binary and
+adapted to Snapshot 3 JSON item/model definitions, not redrawn.
+
+**Native transport smoke**: source single chest at `(0,64,0)`, wooden pipe
+at `(1,64,0)`, cobblestone pipes at `(2,64,0)` and `(3,64,0)`,
+destination empty chest at `(4,64,0)`. Place redstone engine at
+`(1,65,0)`, adjacent to the wooden pipe. Power the engine with redstone.
+The current server-thread integration attempts to transfer up to 16
+original Minecraft ItemStack objects per 20 ticks, subject to capacity.
+It verifies block IDs and loaded chunks before mutating real chests.
+Optional diagnostic command:
+`/buildcraft pulse 0 64 0 4 64 0`
+
+**Important limitations:** This is the *first transport slice*, not BuildCraft
+8.0 feature parity. The engine's original MJ temperature stages are not ported
+yet; items do not animate through pipes; the wrench currently has no in-game
+right-click behavior; powered engine placements are not yet restored after a
+restart (place a fresh engine in the test world). Real chest-to-chest game
+operation and Creative UI rendering still require a user playtest.
+Use a throwaway Nightly world. Existing worlds are never migrated.
+
+The old headless `PipeNetwork` tests remain as regression coverage, but no
+longer define the target: the original BuildCraft 8.0.0 source is canonical.
+Do not advertise parity until all original recipes, GUIs, pipe variants,
+quarry, fluids and machinery have actually been ported.
+
 ## What exists now
 
 - A valid `coda.mod.json` manifest and small native CodaLoader entrypoint.
