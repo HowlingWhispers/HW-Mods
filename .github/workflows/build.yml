@@ -58,6 +58,53 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+  validate-in-development:
+    name: Validate BuildCraft + Quiet Underground prototypes
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out HW-Mods
+        uses: actions/checkout@v4
+      - name: Check out matching H.O.W.L. API
+        uses: actions/checkout@v4
+        with:
+          repository: HowlingWhispers/HW-CodaLoader
+          path: HW-CodaLoader
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Test BuildCraft transport and persistence
+        run: bash scripts/test-buildcraft-cml.sh
+      - name: Compile BuildCraft development mod against H.O.W.L. API
+        env:
+          HW_CODALOADER_API_DIR: ${{ github.workspace }}/HW-CodaLoader/src/main/java
+        run: |
+          bash scripts/build-buildcraft-cml.sh
+          jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'PipeNetworkStore.class'
+          unzip -p dist/buildcraft-cml-0.1.0-dev.jar coda.mod.json | jq -e '.id == "buildcraft_cml"'
+      - name: Validate and package Quiet Underground worldgen
+        run: |
+          python3 scripts/build-hw-quiet-underground.py
+          python3 tests/test-provision-quiet-underground.py
+          unzip -p dist/hw-quiet-underground-1.0.0.zip pack.mcmeta | python3 -c 'import json,sys; assert json.load(sys.stdin)["pack"]["min_format"] == 123'
+      - name: Keep prototypes outside player releases
+        run: |
+          mkdir -p dist
+          printf '%s\\n' 'DEVELOPMENT ONLY: not a playable BuildCraft release or automatically enabled H.O.W.L. worldgen.' > dist/DEVELOPMENT-ONLY.txt
+      - name: Upload developer test artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: HW-Mods-development-${{ github.sha }}
+          path: |
+            dist/DEVELOPMENT-ONLY.txt
+            dist/buildcraft-cml-0.1.0-dev.jar
+            dist/buildcraft-cml-0.1.0-dev.jar.sha256
+            dist/hw-quiet-underground-1.0.0.zip
+            dist/hw-quiet-underground-1.0.0.zip.sha256
+          if-no-files-found: error
+          retention-days: 14
+
   publish-hw-essentials:
     name: Publish HW Essentials release
     needs: build-hw-essentials
@@ -85,8 +132,8 @@ jobs:
           SHA256="$(cat dist/hw-essentials-0.2.0.jar.sha256 | awk '{print $1}')"
           TAG="v0.2.0"
           if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "Release already exists; bump the version for a new build." >&2
-            exit 1
+            echo "Immutable HW Essentials release exists; skipping publish for source-only changes."
+            exit 0
           fi
           cat > release-notes.md <<'EOF'
           # HW Essentials 0.2.0
