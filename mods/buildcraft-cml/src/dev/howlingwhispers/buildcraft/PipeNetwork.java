@@ -146,6 +146,83 @@ public final class PipeNetwork {
         node.packets.addLast(packet);
     }
 
+    /**
+     * Populate a VIRTUAL inventory for simulation fixtures. This is not a
+     * vanilla chest adapter: Minecraft inventories must never be copied into
+     * this model while simultaneously remaining available in the real chest.
+     */
+    public void stockVirtualInventory(Pos inventory, String itemId, int amount) {
+        Packet packet = new Packet(itemId, amount, null);
+        Node source = require(inventory, Kind.INVENTORY);
+        long filled = source.packets.stream().mapToLong(p -> p.amount).sum();
+        if (filled + amount > source.capacity)
+            throw new IllegalStateException("Virtual inventory is full: " + inventory);
+        source.packets.addLast(packet);
+    }
+
+    /**
+     * An engine-pulse prototype for the ORIGINAL wooden extraction behavior.
+     * This call models an explicitly powered event; it does not tick itself.
+     * Both positions must be loaded, face-adjacent and registered. No item may
+     * move until a destination packet slot is free.
+     *
+     * In-game vanilla inventory transactions and energy accounting will be
+     * provided by a separate server-thread adapter in a future milestone.
+     */
+    public int extractVirtualOnPulse(Pos inventory, Pos pipe, int maximum,
+                                     Predicate<Pos> isLoaded) {
+        if (maximum < 1 || maximum > 64)
+            throw new IllegalArgumentException("Extraction pulse limit must be 1..64");
+        Objects.requireNonNull(isLoaded, "isLoaded");
+        Node from = require(inventory, Kind.INVENTORY);
+        Node destination = require(pipe, Kind.PIPE);
+        Direction travel = null;
+        for (Direction direction : DIRECTIONS) {
+            if (inventory.offset(direction).equals(pipe)) {
+                travel = direction;
+                break;
+            }
+        }
+        if (travel == null)
+            throw new IllegalArgumentException("Wooden pipe must be adjacent to its inventory");
+        if (!isLoaded.test(inventory) || !isLoaded.test(pipe)
+                || destination.packets.size() >= destination.capacity)
+            return 0;
+
+        Packet candidate = null;
+        for (Packet packet : from.packets) {
+            if (destination.settings.itemFilter() == null
+                    || destination.settings.itemFilter().equals(packet.itemId)) {
+                candidate = packet;
+                break;
+            }
+        }
+        if (candidate == null) return 0;
+
+        int moved = Math.min(candidate.amount, maximum);
+        // Create a packet before removing inventory contents, then publish
+        // it without touching any other world or network state.
+        Packet traveling = new Packet(candidate.itemId, moved, travel);
+        Deque<Packet> remainder = new ArrayDeque<>();
+        boolean removed = false;
+        for (Packet packet : from.packets) {
+            if (!removed && packet == candidate) {
+                if (packet.amount > moved)
+                    remainder.addLast(new Packet(packet.itemId, packet.amount - moved,
+                            packet.enteredBy));
+                removed = true;
+            } else {
+                remainder.addLast(packet);
+            }
+        }
+        if (!removed) throw new IllegalStateException("Virtual inventory changed during extraction");
+        // Destination capacity was checked before any mutation.
+        destination.packets.addLast(traveling);
+        from.packets.clear();
+        from.packets.addAll(remainder);
+        return moved;
+    }
+
     /** Remove only an EMPTY pipe/inventory, so breaking a block cannot void items. */
     public void removeEmpty(Pos pos) {
         Node node = Objects.requireNonNull(nodes.get(pos), "Unknown position");
