@@ -1,18 +1,19 @@
 # BuildCraft CML port: source references
 
-## Modern reference (prefer for Minecraft-facing behavior)
+## Canonical original BuildCraft reference (start here)
+
+- **BuildCraft/BuildCraft**: https://github.com/BuildCraft/BuildCraft
+- This is the user-selected source repository for gameplay design, classic item pipes, engines, quarry, recipes, assets and provenance. Review the target branch and file-level licensing before porting code.
+- Use `8.0.x-1.12.2` as a reference for the original behavior; confirm individual features against their actual source files.
+- Older upstream code may carry MMPL requirements; later code may carry MPL-2.0 notices. Preserve attribution and make the corresponding source available when redistribution requires it.
+
+## Secondary modern implementation reference
 
 - **BuildCraft Refabricated**: https://github.com/fromdisposition/BuildCraftRefabricated
 - Mainline: **Minecraft Java 26.3**, Java 25, Fabric Loader 0.19.5+, Fabric API 0.160.5+26.3.
 - Includes modern implementations of transport, MJ energy, engines, quarry, oil, pumps, gates, builders, silicon machinery and robotics.
 - Repository declares **MPL-2.0**. Verify every file and third-party dependency before copying source or assets.
 - This is an *architecture/implementation reference*, **not** a binary dependency. Do not import Fabric API, Fabric Transfer API, or Team Reborn Energy directly into CodaLoader.
-
-## Historical reference (behavioral authority)
-
-- Original BuildCraft: https://github.com/BuildCraft/BuildCraft
-- Use `8.0.x-1.12.2` as the reference for historic behavior.
-- Upstream code distinguishes MPL-2.0 (`LICENSE-NEW`) and older MMPL (`LICENSE`). Avoid mixing code with incompatible redistribution requirements. Preserve contributor notices.
 
 ## Proposed adaptation
 
