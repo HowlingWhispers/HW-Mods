@@ -12,9 +12,9 @@ Unreleased prototypes are **development-only**, not optional player mods. World-
 
 ## Mods
 
-- `mods/hw-quiet-underground/` — HW Quiet Underground 1.0.0 — **development-only** Snapshot 3 world-generation prototype; rare mega caves and five-times-rarer ravines. Not included in player releases until automatic required-world integration is tested.
+- `mods/hw-quiet-underground/` — HW Quiet Underground 1.0.0 — **development-only** Snapshot 3 world generation. A guarded pre-generation provisioner exists, but the Minecraft new-world hook remains to be implemented and tested.
 - `mods/hw-essentials/` — HW Essentials 0.2.0 — `/sethome`, `/home`, `/back`, `/homes`, `/delhome`, `/hwessentials`
-- `mods/buildcraft-cml/` — BuildCraft CML 0.1.0-dev — **experimental source-only port foundation** (item transport engine and tests, no in-game blocks or launcher installation yet). See its README for attribution and roadmap.
+- `mods/buildcraft-cml/` — BuildCraft CML 0.1.0-dev — **development-only** transport core with chunk-load checks and checksummed, atomic item persistence. Block/item registry, recipes and a server tick/inventory bridge remain to be implemented.
 
 ## Building
 
@@ -31,11 +31,13 @@ Output: `dist/hw-essentials-0.2.0.jar` + `.sha256`
 ```bash
 ./scripts/test-hw-essentials.sh
 ./scripts/test-buildcraft-cml.sh
+python3 scripts/build-hw-quiet-underground.py
+python3 tests/test-provision-quiet-underground.py
 ```
 
 ## Distribution
 
-Existing released mod JARs are published to GitHub Releases. CodaLoader installs **released, bundled** mods into the active game profile (including CodaLauncher-managed profiles). BuildCraft CML is not published or bundled.
+Official mod JAR releases are installed as **required, automatically managed** first-party content. BuildCraft CML and Quiet Underground remain development-only and are tested by CI but are not yet published in the player bundle.
 
 The shared command API (`CodaMod`, `CodaContext`, `CodaCommand`, `CodaCommandContext`, `CodaPosition`, `CodaCommands`) and Minecraft hooks remain in **HW-CodaLoader**.
 
