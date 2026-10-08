@@ -27,7 +27,8 @@ public final class BuildCraftGlassPipeDemoTest {
     @FunctionalInterface interface Action { void run() throws Exception; }
 
     static final class World implements CodaSingleplayerWorld {
-        final Set<CodaBlockPos> glass = new HashSet<>();
+        final Set<CodaBlockPos> wooden = new HashSet<>();
+        final Set<CodaBlockPos> cobble = new HashSet<>();
         boolean loaded = true;
         int transfers;
         int available = 19;
@@ -36,7 +37,8 @@ public final class BuildCraftGlassPipeDemoTest {
             return loaded;
         }
         @Override public boolean isBlock(CodaBlockPos pos, String blockId) {
-            return blockId.equals("minecraft:glass") && glass.contains(pos);
+            return (blockId.equals("buildcrafttransport:wood_item") && wooden.contains(pos))
+                    || (blockId.equals("buildcrafttransport:cobblestone_item") && cobble.contains(pos);
         }
         @Override public int transfer(CodaBlockPos from, CodaBlockPos to, int maximum) {
             transfers++;
@@ -63,14 +65,15 @@ public final class BuildCraftGlassPipeDemoTest {
 
     public static void main(String[] args) throws Exception {
         Player user = new Player();
-        for(int x=1;x<=3;x++) user.world.glass.add(new CodaBlockPos(x,64,0));
+        user.world.wooden.add(new CodaBlockPos(1,64,0));
+        for(int x=2;x<=3;x++) user.world.cobble.add(new CodaBlockPos(x,64,0));
         List<String> command = List.of("pulse","0","64","0","4","64","0");
         BuildCraftGlassPipeDemo.execute(user, List.of());
-        check(user.lastReply.contains("GLASS"), "Command gives player setup instructions");
+        check(user.lastReply.contains("WOODEN PIPE"), "Command gives player setup instructions");
         check(user.world.transfers == 0, "Help cannot mutate world");
 
         BuildCraftGlassPipeDemo.execute(user, command);
-        check(user.world.transfers == 1, "Verified glass path triggers exactly one chest transaction");
+        check(user.world.transfers == 1, "Native BuildCraft blocks trigger exactly one chest transaction");
         check(user.world.output == 16 && user.world.available == 3,
                 "Pulse respects 16 item cap and item conservation");
         check(user.lastReply.contains("16 real items"), "Readable successful player feedback");
@@ -82,9 +85,9 @@ public final class BuildCraftGlassPipeDemoTest {
         check(user.lastReply.contains("Nothing moved."), "Empty chest gives safe feedback");
 
         Player incomplete = new Player();
-        incomplete.world.glass.add(new CodaBlockPos(1,64,0));
+        incomplete.world.wooden.add(new CodaBlockPos(1,64,0));
         rejected(() -> BuildCraftGlassPipeDemo.execute(incomplete, command),
-                "Missing glass marker must prevent transfer");
+                "Missing original BuildCraft pipe must prevent transfer");
         check(incomplete.world.transfers == 0, "Invalid route cannot mutate chests");
         incomplete.world.loaded = false;
         rejected(() -> BuildCraftGlassPipeDemo.execute(incomplete, command),
@@ -107,6 +110,6 @@ public final class BuildCraftGlassPipeDemoTest {
                 "Invalid numeric coordinates refused");
         check(bent.world.transfers == 0, "No invalid pulse changes items");
 
-        System.out.println("PASS: " + checks + " playable glass pipe command fixture checks");
+        System.out.println("PASS: " + checks + " authentic native BuildCraft block transfer checks");
     }
 }
