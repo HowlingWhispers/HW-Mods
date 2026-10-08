@@ -83,13 +83,18 @@ public final class WoodenExtractionTest {
                 "Congestion does not void inventory contents");
 
         // Reject invalid or hazardous extraction requests.
-        invalid(() -> resumed.extractVirtualOnPulse(input, output, 1, pos -> true),
+        Pos remote = new Pos(7, 60, 0);
+        resumed.addPipe(remote);
+        invalid(() -> resumed.extractVirtualOnPulse(input, remote, 1, pos -> true),
                 "Distant inventory and pipe must not connect");
         invalid(() -> resumed.extractVirtualOnPulse(input, wooden, 0, pos -> true),
                 "Zero-sized pulse must be refused");
         invalid(() -> resumed.extractVirtualOnPulse(input, wooden, 65, pos -> true),
                 "Oversized pulse must be refused");
-        invalid(() -> resumed.stockVirtualInventory(input, "minecraft:stone", 64),
+        PipeNetwork tiny = new PipeNetwork();
+        tiny.addInventory(input, 10);
+        tiny.stockVirtualInventory(input, "minecraft:stone", 8);
+        invalid(() -> tiny.stockVirtualInventory(input, "minecraft:stone", 3),
                 "Inventory capacity must be enforced");
         invalid(() -> resumed.stockVirtualInventory(wooden, "minecraft:stone", 1),
                 "Pipe must not masquerade as a virtual inventory");
