@@ -25,7 +25,36 @@ BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older
 - **First wrench/upgrade prototype:** every simulated pipe can store a specific output direction or return to automatic routing, and optionally whitelist one item ID. Backpressure and filters retain cargo rather than dropping or rerouting it. These settings persist in **version 2** of the pipe save, while pre-upgrade version 1 saves remain readable with default settings. The wrench is a headless simulation operation only: no Minecraft item, UI, right-click hook or world block has been added.
 - **Wooden-pipe pulse simulation:** virtual inventories can hold bounded stacks, and a deliberate `extractVirtualOnPulse` operation pulls up to 64 items from a face-adjacent inventory into a pipe. It rejects unloaded positions and full pipes, honors item whitelists, marks entry direction to prevent immediate bounce-back, splits stacks without duplication and survives v2 save/reload. **This is not a Minecraft chest/engine integration**: real inventories and MJ power must be handled through a future authoritative, transactional block adapter.
 
-**Still a development-only build:** nothing currently places a BuildCraft block in Minecraft. No player distribution or launcher install is enabled until the pipes are playable and tested in Snapshot 3.
+## First executable single-player chest test (EXPERIMENTAL)
+
+H.O.W.L. can now build a manual **one-ZIP, standalone Windows playtest** with
+a current loader JAR and this mod's development JAR. The in-game
+`/buildcraft pulse <x1> <y1> <z1> <x2> <y2> <z2>` command verifies a straight
+row of **1-16 vanilla glass blocks between two real loaded single chests or
+barrels**, then uses the loader's integrated-server inventory API to move up to
+16 complete Minecraft ItemStack objects into the destination.
+
+- Place the chests and glass in a fresh throwaway world; read
+  [PLAYTEST-README.txt](PLAYTEST-README.txt) for precise coordinates and
+  [Start-BuildCraft-Playtest.bat](Start-BuildCraft-Playtest.bat) for isolated
+  local single-player launch.
+- This is **real in-game chest mutation**, not our virtual PipeNetwork test.
+  Every moved ItemStack retains its Minecraft components. It refuses unloaded
+  chunks, missing glass, incompatible storage, full outputs, and wrong-thread use.
+- The command itself stands in for an engine pulse. The glass blocks stand in
+  for future wooden/transport pipes. No custom BuildCraft block, wrench,
+  graphics, animations, or engine power item is included.
+- Package: `bash scripts/build-buildcraft-playtest.sh` after
+  `bash scripts/build-buildcraft-cml.sh` against a sibling updated H.O.W.L.
+  checkout. CI creates a **development-only artifact**, not a player release.
+- **Live Snapshot 3 verification is still required**. Failing named mappings
+  must refuse the command instead of guessing another API or touching saves.
+  Do not use this experiment in an existing world.
+
+**Still a development-only build:** no original BuildCraft block is placed
+in Minecraft yet. No official player distribution or CodaLauncher automatic
+install is enabled until real BuildCraft pipe blocks and in-game gameplay
+have been tested in Snapshot 3.
 
 ## Planned wooden-pipe gameplay
 
