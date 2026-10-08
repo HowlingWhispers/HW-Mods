@@ -4,6 +4,7 @@ import dev.howlingwhispers.buildcraft.PipeNetwork.Direction;
 import dev.howlingwhispers.buildcraft.PipeNetwork.NodeState;
 import dev.howlingwhispers.buildcraft.PipeNetwork.PacketState;
 import dev.howlingwhispers.buildcraft.PipeNetwork.Pos;
+import dev.howlingwhispers.buildcraft.PipeNetwork.PipeSettings;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -25,7 +26,8 @@ import java.util.List;
  */
 public final class PipeNetworkStore {
     private static final int MAGIC = 0x42434d4c; // BCML
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
+    private static final int LEGACY_VERSION = 1;
     private static final int DIGEST_BYTES = 32;
     private static final int MAX_SAVE_BYTES = 8 * 1024 * 1024;
     private static final int MAX_NODES = 100_000;
@@ -77,6 +79,11 @@ public final class PipeNetworkStore {
                     out.writeByte(packet.amount());
                     out.writeByte(packet.enteredBy() == null ? -1 : packet.enteredBy().ordinal());
                 }
+                // V2 adds immutable pipe controls after the packet list.
+                out.writeByte(node.settings().output() == null ? -1
+                        : node.settings().output().ordinal());
+                out.writeBoolean(node.settings().itemFilter() != null);
+                if (node.settings().itemFilter() != null) out.writeUTF(node.settings().itemFilter());
                 if (payload.size() > MAX_SAVE_BYTES - DIGEST_BYTES)
                     throw new IOException("Transport save exceeds the size limit");
             }
@@ -101,7 +108,9 @@ public final class PipeNetworkStore {
             throw new IOException("Transport save checksum mismatch");
         try (DataInputStream in = new DataInputStream(new ByteArrayInputStream(body))) {
             if (in.readInt() != MAGIC) throw new IOException("Invalid transport save header");
-            if (in.readInt() != VERSION) throw new IOException("Unsupported transport save version");
+            int version = in.readInt();
+            if (version != VERSION && version != LEGACY_VERSION)
+                throw new IOException("Unsupported transport save version");
             int count = in.readInt();
             if (count < 0 || count > MAX_NODES) throw new IOException("Invalid node count");
             List<NodeState> states = new ArrayList<>();
@@ -123,7 +132,20 @@ public final class PipeNetworkStore {
                     packets.add(new PacketState(item, amount,
                             ordinal == -1 ? null : Direction.values()[ordinal]));
                 }
-                states.add(new NodeState(pos, inventory, capacity, cursor, packets));
+                PipeSettings settings = PipeSettings.DEFAULT;
+                if (version >= 2) {
+                    int outputOrdinal = in.readByte();
+                    if (outputOrdinal < -1 || outputOrdinal >= Direction.values().length)
+                        throw new IOException("Invalid pipe output direction");
+                    Direction output = outputOrdinal == -1 ? null : Direction.values()[outputOrdinal];
+                    String filter = in.readBoolean() ? in.readUTF() : null;
+                    try {
+                        settings = new PipeSettings(output, filter);
+                    } catch (IllegalArgumentException ex) {
+                        throw new IOException("Invalid pipe filter at " + pos, ex);
+                    }
+                }
+                states.add(new NodeState(pos, inventory, capacity, cursor, packets, settings));
             }
             if (in.available() != 0) throw new IOException("Trailing bytes in transport save");
             try {
