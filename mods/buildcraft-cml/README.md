@@ -21,6 +21,7 @@ BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older
 - Chunk-load-aware ticking: refuses to move packets from or into unloaded positions. The Minecraft adapter must supply a server-thread loaded-chunk predicate.
 - Lossless transport snapshot/restore with bounded packet and capacity validation, SHA-256 protected versioned saves, atomic file replacement, and corrupt-save rejection. Saving and loading never silently clears in-flight stacks.
 - JVM tests cover routing, conservation, chunk-load boundaries, snapshots, checksum corruption, overflow rejection and atomic restart recovery.
+- A development-only `BuildCraftTransportRuntime` now hooks H.O.W.L.'s native server-tick callback. A future Minecraft block adapter must explicitly attach the per-server pipe network and real loaded-chunk predicate. Integration tests cover server session isolation, tick/replay guards, off-thread rejection, and save snapshots on detach. **No playable pipe blocks or chests exist yet.**
 
 **Still a development-only build:** nothing currently places a BuildCraft block in Minecraft. No player distribution or launcher install is enabled until the pipes are playable and tested in Snapshot 3.
 
@@ -40,4 +41,4 @@ BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older
 - One packet travels at most one connection per simulation tick; preserve item counts.
 - CodaLoader supplies generic APIs. This mod supplies gameplay.
 
-Run `./scripts/test-buildcraft-cml.sh` to test transport, unload safety and persistent state. After adding block APIs, run `./scripts/build-buildcraft-cml.sh` with `HW_CODALOADER_API_DIR` set and verify live Snapshot 3 behavior.
+Run `./scripts/test-buildcraft-cml.sh` to test transport, unload safety and persistent state. Run `bash scripts/test-buildcraft-integration.sh` with `HW_CODALOADER_API_DIR` pointed at current H.O.W.L. API sources to test native tick integration. After adding block APIs, run `./scripts/build-buildcraft-cml.sh` with `HW_CODALOADER_API_DIR` set and verify live Snapshot 3 behavior.
