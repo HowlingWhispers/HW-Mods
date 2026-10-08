@@ -6,6 +6,9 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+  schedule:
+    # Daily experimental artifact refresh. Builds are also published after main changes.
+    - cron: "0 3 * * *"
 
 permissions:
   contents: read
@@ -171,3 +174,54 @@ jobs:
           gh release create "$TAG" "$MOD_JAR" "dist/hw-essentials-0.2.0.jar.sha256" \
             --target "$GITHUB_SHA" --title "HW Essentials 0.2.0" \
             --notes-file release-notes.md --prerelease
+  publish-buildcraft-nightly:
+    name: Publish verified opt-in BuildCraft Nightly
+    needs: validate-in-development
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download tested BuildCraft playtest ZIP
+        uses: actions/download-artifact@v4
+        with:
+          name: HW-Mods-development-${{ github.sha }}
+          path: dist
+      - name: Publish public checksum-pinned prerelease
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP=dist/HOWL-BuildCraft-Singleplayer-Playtest.zip
+          HASH=dist/HOWL-BuildCraft-Singleplayer-Playtest.zip.sha256
+          test -s "$ZIP"
+          test -s "$HASH"
+          sha256sum -c "$HASH"
+          TAG="nightly-buildcraft-$(date -u +%Y%m%d)-${GITHUB_SHA:0:10}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "This verified nightly already exists."
+            exit 0
+          fi
+          cat > nightly-notes.md <<'EOF'
+          # H.O.W.L. BuildCraft Nightly (EXPERIMENTAL)
+
+          Opt-in **single-player-only** test. Does not replace Stable.
+          Use a NEW disposable world in a separate CodaLauncher Nightly profile.
+
+          This first preview uses a straight line of vanilla glass blocks as
+          temporary pipe markers. Put vanilla chests at each end and run:
+          `/buildcraft pulse 0 64 0 4 64 0`
+          after placing glass at x=1,2,3 and chests at x=0,4 (y=64,z=0).
+          Up to 16 items move per manual command if native Snapshot 3 methods match.
+
+          Not yet verified with a human in the actual game. This is an early
+          implementation test, NOT a fully featured BuildCraft port.
+          No custom blocks/wrench, networking, engine, animations or shared play.
+          EOF
+          gh release create "$TAG" "$ZIP" "$HASH" --prerelease \
+            --target "$GITHUB_SHA" \
+            --title "BuildCraft Nightly $TAG" \
+            --notes-file nightly-notes.md
+          echo "Nightly published: $TAG"
