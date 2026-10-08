@@ -86,7 +86,10 @@ jobs:
           Default: defensive. Respawns after successful bed sleep when death is
           detected. Owner/world identity is persisted.
 
-          Manifest version is now 0.1.1-dev. The legacy managed JAR filename\n          stays unchanged during this compatibility transition.\n\n          This release is NOT gameplay verified. Wolf spawning, death events,
+          Manifest version is now 0.1.1-dev. The legacy managed JAR filename
+          stays unchanged during this compatibility transition.
+
+          This release is NOT gameplay verified. Wolf spawning, death events,
           and native entity mappings still need a live Snapshot 3 playtest.
           Use a disposable singleplayer world. AI vision and voice are not
           implemented yet.
