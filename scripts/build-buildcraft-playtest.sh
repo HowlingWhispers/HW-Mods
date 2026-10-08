@@ -17,8 +17,17 @@ LOADER_ROOT="$(cd "$LOADER_ROOT" && pwd)"
 [[ -f "$LOADER_ROOT/dist/CodaLoader.jar" ]] || {
   echo "CodaLoader developer JAR missing" >&2; exit 1;
 }
+# Test the generated Snapshot 3 resource pack against the ACTUAL ORIGINAL
+# BuildCraft 8.0.0 JAR's entire resource tree, not a hand-written mock ZIP.
+TEST_DIR="$(mktemp -d)"
+trap 'rm -rf "$TEST_DIR"' EXIT
+javac --release 21 -cp "$LOADER_ROOT/dist/CodaLoader.jar" -d "$TEST_DIR" \
+  "$LOADER_ROOT/tests/src/dev/howlingwhispers/codaloader/bootstrap/BuildCraftResourceInstallerTest.java"
+java -cp "$TEST_DIR:$LOADER_ROOT/dist/CodaLoader.jar" \
+  dev.howlingwhispers.codaloader.bootstrap.BuildCraftResourceInstallerTest \
+  "$(pwd)/dist/buildcraft-cml-0.1.0-dev.jar"
 OUTPUT_DIR="$(mktemp -d)"
-trap 'rm -rf "$OUTPUT_DIR"' EXIT
+trap 'rm -rf "$OUTPUT_DIR" "$TEST_DIR"' EXIT
 mkdir -p "$OUTPUT_DIR/payload"
 cp "$LOADER_ROOT/dist/CodaLoader.jar" "$OUTPUT_DIR/CodaLoader.jar"
 cp dist/buildcraft-cml-0.1.0-dev.jar "$OUTPUT_DIR/payload/"
