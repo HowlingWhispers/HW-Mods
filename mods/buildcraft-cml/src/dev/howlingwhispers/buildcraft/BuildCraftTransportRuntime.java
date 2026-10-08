@@ -46,9 +46,12 @@ public final class BuildCraftTransportRuntime {
      * A detached world is never allowed to silently lose the network.
      */
     public synchronized java.util.List<PipeNetwork.NodeState> unbind(String sessionId) {
-        Binding binding = worlds.remove(sessionId);
+        Binding binding = worlds.get(sessionId);
         if (binding == null) throw new IllegalStateException("Unknown BuildCraft world session");
-        return binding.network.snapshot();
+        // Take the snapshot successfully BEFORE dropping the authoritative network.
+        var preserved = binding.network.snapshot();
+        worlds.remove(sessionId);
+        return preserved;
     }
 
     /** Called from CodaContext.registerServerTick, once per native server tick. */
