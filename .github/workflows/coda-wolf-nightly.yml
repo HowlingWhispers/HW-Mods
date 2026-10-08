@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: HowlingWhispers/HW-CodaLoader
-          ref: 2d66cb03fd804d07b1e23856c8f72887713311ab
+          ref: e86ca92e105cd06f2bfd6c9591cb9dc4ba4c2384
           path: HW-CodaLoader
       - uses: actions/setup-java@v4
         with:
@@ -53,7 +53,7 @@ jobs:
               m = json.loads(z.read('coda.mod.json'))
               assert m['schema'] == 1
               assert m['id'] == 'coda_wolf'
-              assert m['version'] == '0.1.0-dev'
+              assert m['version'] == '0.1.1-dev'
               assert m['minecraft'] == '26.4-snapshot-3'
               assert m['entrypoint'] == 'dev.howlingwhispers.codawolf.CodaWolfMod'
               assert 'dev/howlingwhispers/codawolf/CodaWolfMod.class' in z.namelist()
@@ -80,13 +80,13 @@ jobs:
             exit 0
           fi
           cat > out/codawolf-release-notes.md <<'EOF'
-          # H.O.W.L. Coda Wolf 0.1.0-dev (EXPERIMENTAL)
+          # H.O.W.L. Coda Wolf 0.1.1-dev (EXPERIMENTAL)
 
           A mortal, already-tamed Coda wolf for Minecraft Java 26.4 Snapshot 3.
           Default: defensive. Respawns after successful bed sleep when death is
           detected. Owner/world identity is persisted.
 
-          This release is NOT gameplay verified. Wolf spawning, death events,
+          Manifest version is now 0.1.1-dev. The legacy managed JAR filename\n          stays unchanged during this compatibility transition.\n\n          This release is NOT gameplay verified. Wolf spawning, death events,
           and native entity mappings still need a live Snapshot 3 playtest.
           Use a disposable singleplayer world. AI vision and voice are not
           implemented yet.
