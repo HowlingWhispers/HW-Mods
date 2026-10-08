@@ -24,9 +24,7 @@ cp "$LOADER_ROOT/dist/CodaLoader.jar" "$OUTPUT_DIR/CodaLoader.jar"
 cp dist/buildcraft-cml-0.1.0-dev.jar "$OUTPUT_DIR/payload/"
 # Quiet Underground is a *world datapack*, not a second CML mod. Bundle it
 # with Nightly so the integrated Create World hook can apply it on new saves.
-if [[ ! -f dist/hw-quiet-underground-1.0.0.zip ]]; then
-  python3 scripts/build-hw-quiet-underground.py
-fi
+python3 scripts/build-hw-quiet-underground.py
 (cd dist && sha256sum -c hw-quiet-underground-1.0.0.zip.sha256)
 cp dist/hw-quiet-underground-1.0.0.zip "$OUTPUT_DIR/payload/"
 cp dist/hw-quiet-underground-1.0.0.zip.sha256 "$OUTPUT_DIR/payload/"
