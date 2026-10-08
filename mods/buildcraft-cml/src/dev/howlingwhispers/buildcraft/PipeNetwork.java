@@ -53,7 +53,7 @@ public final class PipeNetwork {
     private record Packet(String itemId, int amount, Direction enteredBy) {
         Packet {
             Objects.requireNonNull(itemId, "itemId");
-            if (itemId.isBlank() || amount < 1 || amount > 64) {
+            if (itemId.isBlank() || itemId.length() > 128 || amount < 1 || amount > 64) {
                 throw new IllegalArgumentException("Item ID must be nonblank and stack size 1..64");
             }
         }
@@ -83,7 +83,8 @@ public final class PipeNetwork {
     }
 
     public void addInventory(Pos pos, int itemCapacity) {
-        if (itemCapacity < 1) throw new IllegalArgumentException("Inventory capacity must be positive");
+        if (itemCapacity < 1 || itemCapacity > 1_000_000)
+            throw new IllegalArgumentException("Inventory capacity must be 1..1,000,000");
         add(pos, new Node(Kind.INVENTORY, itemCapacity));
     }
 
