@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "hw_essentials",
   "name": "HW Essentials",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "entrypoint": "dev.howlingwhispers.essentials.HwEssentialsMod",
   "minecraft": "26.4-snapshot-3",
   "depends": []

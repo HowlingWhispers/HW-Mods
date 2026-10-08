@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-MOD_VERSION="0.1.0"
+MOD_VERSION="0.2.0"
 MINECRAFT_VERSION="26.4-snapshot-3"
 
 rm -rf out dist

@@ -6,7 +6,7 @@ Each mod lives in its own folder under `mods/` with its own version, JAR, tests,
 
 ## Mods
 
-- `mods/hw-essentials/` — HW Essentials 0.1.0 — `/sethome`, `/home`, `/homes`, `/delhome`, `/hwessentials`
+- `mods/hw-essentials/` — HW Essentials 0.2.0 — `/sethome`, `/home`, `/back`, `/homes`, `/delhome`, `/hwessentials`
 
 ## Building
 
@@ -16,7 +16,7 @@ export HW_CODALOADER_API_DIR=../HW-CodaLoader/src/main/java
 ./scripts/build-hw-essentials.sh
 ```
 
-Output: `dist/hw-essentials-0.1.0.jar` + `.sha256`
+Output: `dist/hw-essentials-0.2.0.jar` + `.sha256`
 
 ## Testing
 

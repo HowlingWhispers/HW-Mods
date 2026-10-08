@@ -11,9 +11,17 @@ import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class HwEssentialsMod implements CodaMod {
     private HomeStore store;
+    private record PlayerWorld(Path world, UUID player) {}
+    private final Map<PlayerWorld, CodaPosition> returnPoints = new ConcurrentHashMap<>();
+
+    private PlayerWorld playerWorld(CodaCommandContext source) throws Exception {
+        return new PlayerWorld(source.worldDirectory().toAbsolutePath().normalize(), source.playerId());
+    }
 
     @Override public void onInitialize(CodaContext context) throws Exception {
         Path config = context.configDirectory().resolve("essentials.properties");
@@ -27,13 +35,14 @@ public final class HwEssentialsMod implements CodaMod {
         store = new HomeStore(Integer.parseInt(settings.getProperty("max-homes", "10").trim()));
         context.registerCommand("sethome", "Save a home in this world", this::setHome);
         context.registerCommand("home", "Return to a saved home", this::goHome);
+        context.registerCommand("back", "Return to where your last home trip started", this::goBack);
         context.registerCommand("homes", "List your homes in this world", this::listHomes);
         context.registerCommand("delhome", "Delete one of your homes", this::deleteHome);
         context.registerCommand("hwessentials", "HW Essentials version and help", (source, args) -> {
             if (!args.isEmpty()) throw new IllegalArgumentException("Usage: /hwessentials");
-            source.reply("HW Essentials 0.1.0 • Minecraft 26.4 Snapshot 3 • /sethome [name], /home [name], /homes, /delhome <name>");
+            source.reply("HW Essentials 0.2.0 • Minecraft 26.4 Snapshot 3 • /sethome [name], /home [name], /back, /homes, /delhome <name>");
         });
-        System.out.println("[HW Essentials] Homes filed. 5 commands registered for Minecraft 26.4 Snapshot 3.");
+        System.out.println("[HW Essentials] Homes filed. 6 commands registered for Minecraft 26.4 Snapshot 3.");
     }
 
     private String optionalName(List<String> args, String command) {
@@ -53,8 +62,25 @@ public final class HwEssentialsMod implements CodaMod {
         if (home == null) throw new IllegalArgumentException("No home named '" + name + "'. Use /sethome " + name + " first.");
         if (!home.dimension().equals(source.position().dimension()))
             throw new IllegalArgumentException("That home is in another dimension. Return there before using /home.");
+        CodaPosition departure = source.position();
+        PlayerWorld key = playerWorld(source);
         source.teleport(home);
+        returnPoints.put(key, departure);
         source.reply("Coda: Welcome home. Clipboard checked.");
+    }
+
+    private void goBack(CodaCommandContext source, List<String> args) throws Exception {
+        if (!args.isEmpty()) throw new IllegalArgumentException("Usage: /back");
+        PlayerWorld key = playerWorld(source);
+        CodaPosition destination = returnPoints.get(key);
+        if (destination == null)
+            throw new IllegalArgumentException("No return point yet. Use /home first. Return points reset when Minecraft restarts.");
+        CodaPosition departure = source.position();
+        if (!destination.dimension().equals(departure.dimension()))
+            throw new IllegalArgumentException("Your return point is in another dimension. Return there before using /back.");
+        source.teleport(destination);
+        returnPoints.put(key, departure);
+        source.reply("Coda: Back where you left off. Return trip filed.");
     }
 
     private void listHomes(CodaCommandContext source, List<String> args) throws Exception {

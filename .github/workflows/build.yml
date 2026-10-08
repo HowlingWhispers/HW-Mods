@@ -46,15 +46,15 @@ jobs:
         run: |
           MOD_JAR=$(find dist -name 'hw-essentials-*.jar' -print -quit)
           unzip -l "$MOD_JAR" | grep -F "coda.mod.json"
-          unzip -p "$MOD_JAR" coda.mod.json | jq -e '.id == "hw_essentials" and .version == "0.1.0" and .minecraft == "26.4-snapshot-3"'
+          unzip -p "$MOD_JAR" coda.mod.json | jq -e '.id == "hw_essentials" and .version == "0.2.0" and .minecraft == "26.4-snapshot-3"'
 
       - name: Upload mod artifact
         uses: actions/upload-artifact@v4
         with:
           name: hw-essentials-${{ github.sha }}
           path: |
-            dist/hw-essentials-0.1.0.jar
-            dist/hw-essentials-0.1.0.jar.sha256
+            dist/hw-essentials-0.2.0.jar
+            dist/hw-essentials-0.2.0.jar.sha256
           if-no-files-found: error
           retention-days: 30
 
@@ -81,24 +81,27 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         shell: bash
         run: |
-          MOD_JAR="dist/hw-essentials-0.1.0.jar"
-          SHA256="$(cat dist/hw-essentials-0.1.0.jar.sha256 | awk '{print $1}')"
-          TAG="v0.1.0"
+          MOD_JAR="dist/hw-essentials-0.2.0.jar"
+          SHA256="$(cat dist/hw-essentials-0.2.0.jar.sha256 | awk '{print $1}')"
+          TAG="v0.2.0"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "Release already exists; bump the version for a new build." >&2
             exit 1
           fi
           cat > release-notes.md <<'EOF'
-          # HW Essentials 0.1.0
+          # HW Essentials 0.2.0
 
           CML-native utility mod for **Minecraft Java 26.4 Snapshot 3**.
 
           Commands:
           - `/sethome [name]` — Save your current position and facing. Defaults to `home`.
           - `/home [name]` — Return to that home, after checking the landing spot.
+          - `/back` — Return to the departure point of your last successful home or return trip, with landing checks.
           - `/homes` — List your homes in this world.
           - `/delhome <name>` — Delete a home.
           - `/hwessentials` — Version and command help.
+
+          Return points are session-only and isolated per world and player. Refused trips preserve them. Restarting Minecraft clears return points; saved homes remain intact.
 
           Ten home slots by default. Names allow 1–32 letters, numbers, underscores and hyphens; case is normalized.
           Set `max-homes=1..100` in `config/hw_essentials/essentials.properties` and restart Minecraft to change the limit.
@@ -106,10 +109,10 @@ jobs:
           Homes are stored inside the active world at `cml/hw-essentials/homes/<player UUID>.properties`.
           Each world and player has separate homes. Writes use atomic replacement; corrupt files are left intact and reported rather than reset.
 
-          Requires CodaLoader 0.0.18+ (includes the Coda command API and server-thread bridge).
+          Requires CodaLoader 0.0.19+ (includes the Coda command API and server-thread bridge).
           This mod JAR is installed automatically by CodaLoader into the active game profile, including CodaLauncher-managed profiles.
           Existing homes, settings, and manually modified conflicting mod files are preserved.
           EOF
-          gh release create "$TAG" "$MOD_JAR" "dist/hw-essentials-0.1.0.jar.sha256" \
-            --target "$GITHUB_SHA" --title "HW Essentials 0.1.0" \
+          gh release create "$TAG" "$MOD_JAR" "dist/hw-essentials-0.2.0.jar.sha256" \
+            --target "$GITHUB_SHA" --title "HW Essentials 0.2.0" \
             --notes-file release-notes.md --prerelease

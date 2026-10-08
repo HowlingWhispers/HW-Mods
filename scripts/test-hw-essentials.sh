@@ -3,7 +3,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 # Requires hw-essentials JAR and API classes from build script
-if [[ ! -f dist/hw-essentials-0.1.0.jar ]]; then
+if [[ ! -f dist/hw-essentials-0.2.0.jar ]]; then
   echo "Mod JAR not found. Run ./scripts/build-hw-essentials.sh first" >&2
   exit 1
 fi
@@ -25,7 +25,7 @@ javac --release 21 -encoding UTF-8 -d out/api-classes "${API_SOURCES[@]}"
 
 # Compile tests
 mapfile -d '' TEST_SOURCES < <(find tests/src -name '*.java' -print0)
-javac --release 21 -encoding UTF-8 -cp out/api-classes:dist/hw-essentials-0.1.0.jar:out/test-libraries/brigadier.jar -d out/test-classes "${TEST_SOURCES[@]}"
+javac --release 21 -encoding UTF-8 -cp out/api-classes:dist/hw-essentials-0.2.0.jar:out/test-libraries/brigadier.jar -d out/test-classes "${TEST_SOURCES[@]}"
 
-TEST_CP=out/test-classes:out/api-classes:dist/hw-essentials-0.1.0.jar:out/test-libraries/brigadier.jar
+TEST_CP=out/test-classes:out/api-classes:dist/hw-essentials-0.2.0.jar:out/test-libraries/brigadier.jar
 java -cp "$TEST_CP" dev.howlingwhispers.essentials.EssentialsTest

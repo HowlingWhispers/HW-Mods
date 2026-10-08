@@ -46,17 +46,35 @@ public final class EssentialsTest {
 
         Path config = root.resolve("config"); Files.createDirectories(config);
         new HwEssentialsMod().onInitialize(new CodaContext("0.0.18-essentials", "26.4-snapshot-3", root, config, "hw_essentials", List.of("hw_essentials")));
-        check(CodaCommands.registrations().size() == 5, "command registration count");
+        check(CodaCommands.registrations().size() == 6, "command registration count");
         FakeContext context = new FakeContext(worldB, bob, home);
         command("sethome").execute(context, List.of());
         check(context.replies.getLast().contains("filed"), "sethome confirms save");
+        fails(() -> command("back").execute(context, List.of()));
         context.position = moved;
         command("home").execute(context, List.of());
         check(context.position.equals(home), "home sends saved destination");
         check(context.teleports == 1, "single teleport");
+        fails(() -> command("back").execute(context, List.of("extra")));
+        check(context.teleports == 1, "invalid back arguments do not move player");
+        command("back").execute(context, List.of());
+        check(context.position.equals(moved), "back restores departure coordinates and facing");
+        command("back").execute(context, List.of());
+        check(context.position.equals(home), "back toggles successful return trips");
+        context.refuseTeleport = true;
+        fails(() -> command("home").execute(context, List.of()));
+        fails(() -> command("back").execute(context, List.of()));
+        check(context.teleports == 3, "refused home and back do not move player");
+        context.refuseTeleport = false;
+        command("back").execute(context, List.of());
+        check(context.position.equals(moved), "refused travel preserves previous return point");
+        command("back").execute(context, List.of());
+        fails(() -> command("back").execute(new FakeContext(worldA, bob, home), List.of()));
+        fails(() -> command("back").execute(new FakeContext(worldB, alice, home), List.of()));
         context.position = new CodaPosition("nether", 0, 64, 0, 0, 0);
         fails(() -> command("home").execute(context, List.of()));
-        check(context.teleports == 1, "cross dimension refuses movement");
+        fails(() -> command("back").execute(context, List.of()));
+        check(context.teleports == 5, "cross dimension refuses home and back movement");
         fails(() -> command("sethome").execute(context, List.of("a", "b")));
         command("homes").execute(context, List.of());
         check(context.replies.getLast().contains("home"), "homes lists current player");
@@ -70,13 +88,16 @@ public final class EssentialsTest {
         return CodaCommands.registrations().stream().filter(c -> c.name().equals(name)).findFirst().orElseThrow().command();
     }
     private static final class FakeContext implements CodaCommandContext {
-        final Path world; final UUID player; CodaPosition position; int teleports;
+        final Path world; final UUID player; CodaPosition position; int teleports; boolean refuseTeleport;
         final List<String> replies = new ArrayList<>();
         FakeContext(Path world, UUID player, CodaPosition position) { this.world = world; this.player = player; this.position = position; }
         public Path worldDirectory() { return world; }
         public UUID playerId() { return player; }
         public CodaPosition position() { return position; }
         public void reply(String text) { replies.add(text); }
-        public void teleport(CodaPosition position) { this.position = position; teleports++; }
+        public void teleport(CodaPosition position) {
+            if (refuseTeleport) throw new IllegalArgumentException("Unsafe landing");
+            this.position = position; teleports++;
+        }
     }
 }
