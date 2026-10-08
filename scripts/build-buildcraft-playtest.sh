@@ -19,18 +19,20 @@ LOADER_ROOT="$(cd "$LOADER_ROOT" && pwd)"
 }
 OUTPUT_DIR="$(mktemp -d)"
 trap 'rm -rf "$OUTPUT_DIR"' EXIT
-mkdir -p "$OUTPUT_DIR/run/mods"
+mkdir -p "$OUTPUT_DIR/payload"
 cp "$LOADER_ROOT/dist/CodaLoader.jar" "$OUTPUT_DIR/CodaLoader.jar"
-cp dist/buildcraft-cml-0.1.0-dev.jar "$OUTPUT_DIR/run/mods/"
+cp dist/buildcraft-cml-0.1.0-dev.jar "$OUTPUT_DIR/payload/"
 cp mods/buildcraft-cml/PLAYTEST-README.txt "$OUTPUT_DIR/README-PLAYTEST.txt"
 cp mods/buildcraft-cml/Start-BuildCraft-Playtest.bat "$OUTPUT_DIR/Start-BuildCraft-Playtest.bat"
-# Proof that the packaged version loads the actual BuildCraft mod entrypoint.
-java -jar "$OUTPUT_DIR/CodaLoader.jar" --loader-only "$OUTPUT_DIR/run" \
-  | grep -F 'Loading buildcraft_cml 0.1.0-dev'
+# Inspect the actual entrypoint without constructing a second runtime mods
+# directory inside the package. The launcher will place this JAR in game/mods.
+unzip -l "$OUTPUT_DIR/payload/buildcraft-cml-0.1.0-dev.jar" \
+  | grep -F 'dev/howlingwhispers/buildcraft/BuildCraftGlassPipeDemo.class'
+java -jar "$OUTPUT_DIR/CodaLoader.jar" --version
 mkdir -p dist
 (cd "$OUTPUT_DIR" && zip -qr "$OLDPWD/dist/HOWL-BuildCraft-Singleplayer-Playtest.zip" .)
 unzip -l dist/HOWL-BuildCraft-Singleplayer-Playtest.zip \
-  | grep -F 'run/mods/buildcraft-cml-0.1.0-dev.jar'
+  | grep -F 'payload/buildcraft-cml-0.1.0-dev.jar'
 sha256sum dist/HOWL-BuildCraft-Singleplayer-Playtest.zip \
   > dist/HOWL-BuildCraft-Singleplayer-Playtest.zip.sha256
 echo 'Developer-only standalone single-player playtest built.'
