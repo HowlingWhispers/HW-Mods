@@ -17,12 +17,24 @@ public final class BuildCraftCmlMod implements CodaMod {
 
     @Override
     public void onInitialize(CodaContext context) {
+        // ORIGINAL BuildCraft 8.0.0 item identities and art; H.O.W.L. only
+        // adapts the Minecraft 26.4 Snapshot 3 registry lifecycle.
+        context.registerBlock("buildcrafttransport:wood_item", 0.7f);
+        context.registerBlock("buildcrafttransport:cobblestone_item", 1.4f);
+        context.registerBlock("buildcraftcore:engine_redstone", 1.5f);
+        context.registerItem("buildcraftcore:wrench");
+        context.registerCreativeTab("buildcraftcore:buildcraft", "BuildCraft",
+                "buildcrafttransport:wood_item", java.util.List.of(
+                    "buildcrafttransport:wood_item",
+                    "buildcrafttransport:cobblestone_item",
+                    "buildcraftcore:engine_redstone",
+                    "buildcraftcore:wrench"));
         context.registerServerTick("pipe_transport", TRANSPORT::onServerTick);
         // Actual native-chest test, available only when this development mod
         // is installed alongside the experimental H.O.W.L. world command bridge.
         context.registerCommand("buildcraft", "BuildCraft chest/pipe single-player test",
                 BuildCraftGlassPipeDemo::execute);
         System.out.println("[BuildCraft CML] Server-tick transport bridge registered. "
-                + "Minecraft block/item integration pending.");
+                + "Snapshot 3 native blocks, items and Creative tab queued.");
     }
 }
