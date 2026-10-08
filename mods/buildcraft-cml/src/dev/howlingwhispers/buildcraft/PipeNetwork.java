@@ -176,6 +176,72 @@ public final class PipeNetwork {
         return null;
     }
 
+
+    /** Immutable, ordered state for lossless chunk-save and restart handoff. */
+    public record PacketState(String itemId, int amount, Direction enteredBy) {}
+
+    public record NodeState(Pos pos, boolean inventory, int capacity, int cursor,
+                            List<PacketState> packets) {
+        public NodeState {
+            Objects.requireNonNull(pos, "pos");
+            packets = List.copyOf(packets);
+        }
+    }
+
+    /**
+     * Capture all in-flight stacks, sink contents and junction cursors.
+     * Call on the authoritative server thread between ticks.
+     */
+    public List<NodeState> snapshot() {
+        List<NodeState> result = new ArrayList<>();
+        for (Pos pos : nodes.keySet().stream().sorted(POSITION_ORDER).toList()) {
+            Node node = nodes.get(pos);
+            List<PacketState> packets = node.packets.stream()
+                    .map(p -> new PacketState(p.itemId, p.amount, p.enteredBy)).toList();
+            result.add(new NodeState(pos, node.kind == Kind.INVENTORY,
+                    node.capacity, node.cursor, packets));
+        }
+        return List.copyOf(result);
+    }
+
+    /**
+     * Validate the entire snapshot before exposing a restored network.
+     * A corrupt save cannot partially create a live transport network.
+     */
+    public static PipeNetwork restore(List<NodeState> saved) {
+        Objects.requireNonNull(saved, "saved");
+        if (saved.size() > 100_000)
+            throw new IllegalArgumentException("Too many transport nodes");
+        PipeNetwork result = new PipeNetwork();
+        for (NodeState state : saved) {
+            Objects.requireNonNull(state, "node");
+            if (state.capacity() < 1 || state.capacity() > 1_000_000
+                    || (!state.inventory() && state.capacity() != PIPE_PACKET_CAPACITY))
+                throw new IllegalArgumentException("Invalid node capacity at " + state.pos());
+            if (state.cursor() < 0 || state.cursor() >= DIRECTIONS.length)
+                throw new IllegalArgumentException("Invalid junction cursor at " + state.pos());
+            if (state.packets().size() > (state.inventory() ? 1_000_000 : PIPE_PACKET_CAPACITY))
+                throw new IllegalArgumentException("Too many stacks at " + state.pos());
+            if (state.inventory()) result.addInventory(state.pos(), state.capacity());
+            else result.addPipe(state.pos());
+            Node node = result.nodes.get(state.pos());
+            node.cursor = state.cursor();
+            long total = 0;
+            for (PacketState packet : state.packets()) {
+                Objects.requireNonNull(packet, "packet");
+                Packet validated = new Packet(packet.itemId(), packet.amount(), packet.enteredBy());
+                if (validated.itemId.length() > 128)
+                    throw new IllegalArgumentException("Item identifier too long at " + state.pos());
+                node.packets.addLast(validated);
+                total += validated.amount();
+                if (state.inventory() && total > state.capacity())
+                    throw new IllegalArgumentException("Inventory over capacity at " + state.pos());
+            }
+        }
+        return result;
+    }
+
+
     private Node require(Pos pos, Kind kind) {
         Node node = Objects.requireNonNull(nodes.get(pos), "Unknown position");
         if (node.kind != kind) throw new IllegalArgumentException("Not a " + kind + ": " + pos);
