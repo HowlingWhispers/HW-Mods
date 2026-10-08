@@ -11,5 +11,6 @@ mkdir -p "$TMP_DIR/api" "$TMP_DIR/test"
 mapfile -d '' API_SOURCES < <(find "$API_DIR" -name '*.java' -print0)
 javac --release 21 -encoding UTF-8 -d "$TMP_DIR/api" "${API_SOURCES[@]}"
 mapfile -d '' MOD_SOURCES < <(find mods/buildcraft-cml/src -name '*.java' -print0)
-javac --release 21 -encoding UTF-8 -cp "$TMP_DIR/api" -d "$TMP_DIR/test" "${MOD_SOURCES[@]}" tests/buildcraft-cml/BuildCraftRuntimeTest.java
+javac --release 21 -encoding UTF-8 -cp "$TMP_DIR/api" -d "$TMP_DIR/test" "${MOD_SOURCES[@]}" tests/buildcraft-cml/BuildCraftRuntimeTest.java tests/buildcraft-cml/BuildCraftGlassPipeDemoTest.java
 java -cp "$TMP_DIR/api:$TMP_DIR/test" BuildCraftRuntimeTest
+java -cp "$TMP_DIR/api:$TMP_DIR/test" BuildCraftGlassPipeDemoTest
