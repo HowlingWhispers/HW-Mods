@@ -1,0 +1,99 @@
+name: Publish Coda Wolf experimental mod
+on:
+  push:
+    branches:
+      - feature/coda-wolf-release
+    paths:
+      - '.github/workflows/coda-wolf-nightly.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-and-publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out HW-Mods release repository
+        uses: actions/checkout@v4
+      - name: Check out the isolated Coda Wolf module
+        uses: actions/checkout@v4
+        with:
+          repository: HowlingWhispers/HW-CodaLoader
+          ref: 3a0969f0d3cff37c4f59284261115f1d74d3912c
+          path: HW-CodaLoader
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify defensive rules and persistence
+        run: bash HW-CodaLoader/examples/coda-wolf/scripts/test.sh
+      - name: Build mod using H.O.W.L. public API only
+        run: |
+          set -euo pipefail
+          mkdir -p out/api
+          find HW-CodaLoader/src/main/java/dev/howlingwhispers/codaloader/api -name '*.java' > out/api-sources.txt
+          javac --release 21 -encoding UTF-8 -d out/api @out/api-sources.txt
+          jar --create --file out/howl-api.jar -C out/api .
+          bash HW-CodaLoader/examples/coda-wolf/scripts/build.sh "$PWD/out/howl-api.jar"
+          mkdir -p dist
+          cp HW-CodaLoader/examples/coda-wolf/out/coda-wolf-0.1.0-dev.jar dist/
+          (cd dist && sha256sum coda-wolf-0.1.0-dev.jar > coda-wolf-0.1.0-dev.jar.sha256)
+      - name: Validate publishable metadata and checksum
+        run: |
+          set -euo pipefail
+          cd dist
+          sha256sum --check coda-wolf-0.1.0-dev.jar.sha256
+          python3 - <<'PY'
+          import zipfile,json
+          with zipfile.ZipFile('coda-wolf-0.1.0-dev.jar') as z:
+              m = json.loads(z.read('coda.mod.json'))
+              assert m['schema'] == 1
+              assert m['id'] == 'coda_wolf'
+              assert m['version'] == '0.1.0-dev'
+              assert m['minecraft'] == '26.4-snapshot-3'
+              assert m['entrypoint'] == 'dev.howlingwhispers.codawolf.CodaWolfMod'
+              assert 'dev/howlingwhispers/codawolf/CodaWolfMod.class' in z.namelist()
+          print('Launcher-readable Coda Wolf JAR verified.')
+          PY
+      - name: Save verified artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: CodaWolf-dev-${{ github.sha }}
+          path: |
+            dist/coda-wolf-0.1.0-dev.jar
+            dist/coda-wolf-0.1.0-dev.jar.sha256
+          if-no-files-found: error
+      - name: Publish immutable GitHub prerelease for CodaLauncher
+        if: github.ref == 'refs/heads/feature/coda-wolf-release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          TAG="nightly-codawolf-$(date -u +%Y%m%d)-${GITHUB_SHA:0:10}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Coda Wolf release $TAG already exists; it is immutable."
+            exit 0
+          fi
+          cat > out/codawolf-release-notes.md <<'EOF'
+          # H.O.W.L. Coda Wolf 0.1.0-dev (EXPERIMENTAL)
+
+          A mortal, already-tamed Coda wolf for Minecraft Java 26.4 Snapshot 3.
+          Default: defensive. Respawns after successful bed sleep when death is
+          detected. Owner/world identity is persisted.
+
+          This release is NOT gameplay verified. Wolf spawning, death events,
+          and native entity mappings still need a live Snapshot 3 playtest.
+          Use a disposable singleplayer world. AI vision and voice are not
+          implemented yet.
+
+          These are downloadable assets for the experimental Nightly
+          integration. They do not replace the BuildCraft nightly bundle.
+          EOF
+          gh release create "$TAG" dist/coda-wolf-0.1.0-dev.jar dist/coda-wolf-0.1.0-dev.jar.sha256 \
+            --target "$GITHUB_SHA" --title "Coda Wolf Experimental $TAG" \
+            --notes-file out/codawolf-release-notes.md --prerelease
+          echo "Published $TAG in $GH_REPO"
