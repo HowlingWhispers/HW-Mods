@@ -198,7 +198,7 @@ jobs:
           HASH=dist/HOWL-BuildCraft-Singleplayer-Playtest.zip.sha256
           test -s "$ZIP"
           test -s "$HASH"
-          (cd dist && sha256sum -c "$(basename "$HASH")")
+          sha256sum -c "$HASH"
           TAG="nightly-buildcraft-$(date -u +%Y%m%d)-${GITHUB_SHA:0:10}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo "This verified nightly already exists."
