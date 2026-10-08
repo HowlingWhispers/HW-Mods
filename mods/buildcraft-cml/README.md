@@ -5,8 +5,11 @@ Target: **Minecraft Java 26.4 Snapshot 3** via native **CodaLoader**, without Fo
 
 ## Upstream and licensing
 
-Upstream reference: https://github.com/BuildCraft/BuildCraft, chiefly the `8.0.x-1.12.2` branch.
-Original copyright belongs to SpaceToad and BuildCraft contributors. This project is not endorsed by or affiliated with the BuildCraft team.
+**Primary modern reference:** [BuildCraft Refabricated](https://github.com/fromdisposition/BuildCraftRefabricated). Its modern Minecraft-facing architecture and gameplay implementations are the starting point for the H.O.W.L. port, **not** its Fabric dependencies. H.O.W.L. will use its own native block, inventory, lifecycle and rendering APIs.
+
+**Historical behavior reference:** [Original BuildCraft](https://github.com/BuildCraft/BuildCraft), particularly the `8.0.x-1.12.2` branch. See [PORTING-SOURCES.md](PORTING-SOURCES.md) for the agreed adapter mapping and migration order.
+
+Original BuildCraft copyright belongs to SpaceToad and BuildCraft contributors. BuildCraft Refabricated has its own contributors. The H.O.W.L. port is not endorsed by either upstream project.
 
 BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older code can be MMPL 1.0.1 (`LICENSE`). Check individual file notices and history before importing any source, assets, models or textures. Preserve notices, publish modified MPL files under MPL 2.0, and provide full corresponding source code for distributed binaries. Use old-MMPL material only after a separate licensing review. **No original BuildCraft code or assets have been copied in this milestone.** The transport prototype is newly written.
 
