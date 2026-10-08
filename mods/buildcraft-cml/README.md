@@ -27,7 +27,7 @@ BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older
 
 ## First executable single-player chest test (EXPERIMENTAL)
 
-H.O.W.L. can now build a manual **one-ZIP, standalone Windows playtest** with
+H.O.W.L. now builds a **Nightly-channel-only ZIP** that CodaLauncher downloads and unpacks into its isolated active game profile. with
 a current loader JAR and this mod's development JAR. The in-game
 `/buildcraft pulse <x1> <y1> <z1> <x2> <y2> <z2>` command verifies a straight
 row of **1-16 vanilla glass blocks between two real loaded single chests or
