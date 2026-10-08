@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: HowlingWhispers/HW-CodaLoader
-          ref: 50c035d8cf63c145c8c41b3e41ef467718c9fa42
+          ref: 2d66cb03fd804d07b1e23856c8f72887713311ab
           path: HW-CodaLoader
       - uses: actions/setup-java@v4
         with:
