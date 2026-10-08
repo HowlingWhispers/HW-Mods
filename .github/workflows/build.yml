@@ -81,7 +81,9 @@ jobs:
           HW_CODALOADER_API_DIR: ${{ github.workspace }}/HW-CodaLoader/src/main/java
         run: |
           bash scripts/build-buildcraft-cml.sh
+          bash scripts/test-buildcraft-integration.sh
           jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'PipeNetworkStore.class'
+          jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'BuildCraftTransportRuntime.class'
           unzip -p dist/buildcraft-cml-0.1.0-dev.jar coda.mod.json | jq -e '.id == "buildcraft_cml"'
       - name: Validate and package Quiet Underground worldgen
         run: |
