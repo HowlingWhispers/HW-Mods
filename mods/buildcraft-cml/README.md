@@ -23,8 +23,15 @@ BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older
 - JVM tests cover routing, conservation, chunk-load boundaries, snapshots, checksum corruption, overflow rejection and atomic restart recovery.
 - A development-only `BuildCraftTransportRuntime` now hooks H.O.W.L.'s native server-tick callback. A future Minecraft block adapter must explicitly attach the per-server pipe network and real loaded-chunk predicate. Integration tests cover server session isolation, tick/replay guards, off-thread rejection, and save snapshots on detach. **No playable pipe blocks or chests exist yet.**
 - **First wrench/upgrade prototype:** every simulated pipe can store a specific output direction or return to automatic routing, and optionally whitelist one item ID. Backpressure and filters retain cargo rather than dropping or rerouting it. These settings persist in **version 2** of the pipe save, while pre-upgrade version 1 saves remain readable with default settings. The wrench is a headless simulation operation only: no Minecraft item, UI, right-click hook or world block has been added.
+- **Wooden-pipe pulse simulation:** virtual inventories can hold bounded stacks, and a deliberate `extractVirtualOnPulse` operation pulls up to 64 items from a face-adjacent inventory into a pipe. It rejects unloaded positions and full pipes, honors item whitelists, marks entry direction to prevent immediate bounce-back, splits stacks without duplication and survives v2 save/reload. **This is not a Minecraft chest/engine integration**: real inventories and MJ power must be handled through a future authoritative, transactional block adapter.
 
 **Still a development-only build:** nothing currently places a BuildCraft block in Minecraft. No player distribution or launcher install is enabled until the pipes are playable and tested in Snapshot 3.
+
+## Planned wooden-pipe gameplay
+
+Original BuildCraft wooden pipes extracted items when supplied with engine energy or an appropriate pulse. Our headless test reproduces the **pulse-triggered transfer** and safe extraction behavior, rather than pretending that a wooden pipe passively vacuums nearby chests.
+
+Next required pieces are the Snapshot 3 block/item registrations, wooden pipe placement and facing, an energy-pulse producer, an actual transactional vanilla inventory adapter and a server-thread save/reload test. The current virtual inventory is for deterministic simulation tests only; **never mirror a live chest while leaving its original items available**.
 
 ## Planned in-game wrench behavior
 
