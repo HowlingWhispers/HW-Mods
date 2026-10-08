@@ -26,6 +26,12 @@ Minecraft Snapshot 3 data-pack format: **123.0**. This pack must be activated as
 
 This first build intentionally does not add automatic world-save mutation to CodaLoader. The release target is built-in, required worldgen for new H.O.W.L. worlds after live validation, not an optional one-click install. Existing-world migration needs explicit backup and compatibility testing.
 
+## Automatic provisioning groundwork
+
+The internal `scripts/provision-quiet-underground.py` now verifies the bundle, refuses existing or generated saves, and atomically stages the world data pack in an already-created but ungenerated test world. It preserves unrelated data packs and refuses overwriting a conflicting pack. `tests/test-provision-quiet-underground.py` checks this safety contract.
+
+**Still needed before a player release:** H.O.W.L. must connect this functionality to Minecraft's new-world creation **before initial data-pack discovery and chunk generation**. The developer script is not a manual player installation procedure. Live Snapshot 3 generation tests are mandatory.
+
 ## Source fidelity
 
 The JSON is based on vanilla files extracted for **26.4-snapshot-3** from `misode/mcmeta` data branch (version JSON identifies snapshot data version 5122). Each override contains only the intentional changes described above. This avoids copying old-worldgen formats into the 26.4 snapshot.
