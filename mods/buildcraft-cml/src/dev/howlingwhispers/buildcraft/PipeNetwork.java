@@ -8,6 +8,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.function.Predicate;
 
 /**
  * Minecraft-independent, server-authoritative transport prototype.
@@ -119,17 +120,27 @@ public final class PipeNetwork {
         return nodes.values().stream().flatMap(n -> n.packets.stream()).mapToInt(Packet::amount).sum();
     }
 
-    /** Simulate a single game tick; returns the number of packets advanced. */
+    /** Simulate a single game tick with all registered locations considered loaded. */
     public int tick() {
+        return tick(pos -> true);
+    }
+
+    /**
+     * Advance only through loaded positions. The Minecraft adapter must supply
+     * a server-thread chunk-load predicate, preventing movement into unloaded
+     * chunks without discarding packets or requesting forbidden chunk loads.
+     */
+    public int tick(Predicate<Pos> isLoaded) {
+        Objects.requireNonNull(isLoaded, "isLoaded");
         List<Pos> positions = nodes.keySet().stream().sorted(POSITION_ORDER).toList();
         List<Move> moves = new ArrayList<>();
         Map<Pos, Integer> reservedPackets = new HashMap<>();
         Map<Pos, Integer> reservedItems = new HashMap<>();
         for (Pos pos : positions) {
             Node node = nodes.get(pos);
-            if (node.kind != Kind.PIPE) continue;
+            if (node.kind != Kind.PIPE || !isLoaded.test(pos)) continue;
             for (Packet packet : node.packets) {
-                Move move = findDestination(pos, node, packet, reservedPackets, reservedItems);
+                Move move = findDestination(pos, node, packet, reservedPackets, reservedItems, isLoaded);
                 if (move == null) continue;
                 moves.add(move);
                 Node dest = nodes.get(move.destination);
@@ -153,7 +164,8 @@ public final class PipeNetwork {
     }
 
     private Move findDestination(Pos pos, Node source, Packet packet,
-            Map<Pos, Integer> reservedPackets, Map<Pos, Integer> reservedItems) {
+            Map<Pos, Integer> reservedPackets, Map<Pos, Integer> reservedItems,
+            Predicate<Pos> isLoaded) {
         // Deliver to inventories first; when none can accept, route along pipes.
         for (Kind sought : new Kind[] {Kind.INVENTORY, Kind.PIPE}) {
             for (int step = 0; step < DIRECTIONS.length; step++) {
@@ -161,6 +173,7 @@ public final class PipeNetwork {
                 Direction d = DIRECTIONS[idx];
                 if (packet.enteredBy != null && d == packet.enteredBy.opposite()) continue;
                 Pos neighborPos = pos.offset(d);
+                if (!isLoaded.test(neighborPos)) continue;
                 Node dest = nodes.get(neighborPos);
                 if (dest == null || dest.kind != sought) continue;
                 boolean hasRoom = dest.kind == Kind.PIPE
