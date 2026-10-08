@@ -48,10 +48,19 @@ HW Quiet Underground also ships as a checked world datapack inside Nightly.
 The H.O.W.L. Create World screen hook attempts to select it automatically
 BEFORE the new world is generated. Existing world saves are not modified.
 This is experimental and still requires a live Minecraft confirmation.
-Glass pipes: chest at (0,64,0), glass at x=1,2,3, chest at (4,64,0).
-Place iron ingots in the source chest and run:
+First native BuildCraft 8.0.0 transport slice (experimental):
+Open Creative -> BuildCraft. Place a wooden transport pipe at (1,64,0),
+cobblestone transport pipes at (2,64,0) and (3,64,0), source chest
+at (0,64,0), destination chest at (4,64,0). Add a redstone engine
+at (1,65,0), adjacent to the wooden pipe, and power its side with
+redstone. Fill the source chest. Native server ticks should move up
+to 16 items each engine pulse (20 ticks) through those connected pipes.
+As an optional manual diagnostic, run:
 /buildcraft pulse 0 64 0 4 64 0
-No native BuildCraft blocks/animations yet; game compatibility needs testing.
+The wrench item exists; right-click behavior and animated in-flight
+items are not yet ported. Use a NEW disposable world.
+This development preview is NOT BuildCraft 8.0.0 feature parity and
+requires an actual Minecraft playtest, despite Mojang registry tests.
 EOF
 # Inspect the actual entrypoint without constructing a second runtime mods
 # directory inside the package. The launcher will place this JAR in game/mods.
@@ -66,4 +75,4 @@ unzip -l dist/HOWL-BuildCraft-Singleplayer-Playtest.zip \
   | grep -F 'payload/hw-quiet-underground-1.0.0.zip'
 sha256sum dist/HOWL-BuildCraft-Singleplayer-Playtest.zip \
   > dist/HOWL-BuildCraft-Singleplayer-Playtest.zip.sha256
-echo 'Developer-only standalone single-player playtest built.'
+echo 'Verified opt-in Nightly BuildCraft native-block gameplay preview bundled.'
