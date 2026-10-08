@@ -48,6 +48,21 @@ public final class PipeNetwork {
         }
     }
 
+    /**
+     * Wrench-facing H.O.W.L. pipe controls. Null output means automatic routing;
+     * null item filter means all item IDs are accepted. This configuration
+     * belongs to the mod, not a Minecraft block API.
+     */
+    public record PipeSettings(Direction output, String itemFilter) {
+        public static final PipeSettings DEFAULT = new PipeSettings(null, null);
+
+        public PipeSettings {
+            if (itemFilter != null && (itemFilter.length() > 128
+                    || !itemFilter.matches("[a-z0-9_.-]+:[a-z0-9_./-]+")))
+                throw new IllegalArgumentException("Invalid namespaced pipe item filter");
+        }
+    }
+
     private enum Kind { PIPE, INVENTORY }
 
     private record Packet(String itemId, int amount, Direction enteredBy) {
@@ -69,6 +84,7 @@ public final class PipeNetwork {
         final int capacity;
         final Deque<Packet> packets = new ArrayDeque<>();
         int cursor;
+        PipeSettings settings = PipeSettings.DEFAULT;
         Node(Kind kind, int capacity) {
             this.kind = kind;
             this.capacity = capacity;
@@ -93,6 +109,31 @@ public final class PipeNetwork {
         if (nodes.putIfAbsent(pos, node) != null) {
             throw new IllegalArgumentException("Position already registered: " + pos);
         }
+    }
+
+    /** Return immutable pipe configuration for future GUI and Minecraft adapters. */
+    public PipeSettings settings(Pos pipe) {
+        return require(pipe, Kind.PIPE).settings;
+    }
+
+    /** Change directional routing and simple exact-item filtering on a pipe. */
+    public void configure(Pos pipe, PipeSettings settings) {
+        require(pipe, Kind.PIPE).settings = Objects.requireNonNull(settings, "settings");
+    }
+
+    /**
+     * Wrench cycle: automatic -> N -> S -> E -> W -> U -> D -> automatic.
+     * Only a future server-thread Minecraft interaction hook may expose it
+     * in-game. Changing a direction never discards stored packets.
+     */
+    public Direction wrenchRotate(Pos pipe) {
+        Node node = require(pipe, Kind.PIPE);
+        Direction current = node.settings.output();
+        Direction next = current == null ? DIRECTIONS[0]
+                : current.ordinal() == DIRECTIONS.length - 1 ? null
+                : DIRECTIONS[current.ordinal() + 1];
+        node.settings = new PipeSettings(next, node.settings.itemFilter());
+        return next;
     }
 
     /** Insert a virtual stack into a pipe for testing or from a game adapter. */
@@ -167,11 +208,16 @@ public final class PipeNetwork {
     private Move findDestination(Pos pos, Node source, Packet packet,
             Map<Pos, Integer> reservedPackets, Map<Pos, Integer> reservedItems,
             Predicate<Pos> isLoaded) {
+        // The first filter upgrade is a strict whitelist. A blocked packet
+        // stays in its pipe rather than being silently discarded.
+        if (source.settings.itemFilter() != null
+                && !source.settings.itemFilter().equals(packet.itemId)) return null;
         // Deliver to inventories first; when none can accept, route along pipes.
         for (Kind sought : new Kind[] {Kind.INVENTORY, Kind.PIPE}) {
             for (int step = 0; step < DIRECTIONS.length; step++) {
                 int idx = (source.cursor + step) % DIRECTIONS.length;
                 Direction d = DIRECTIONS[idx];
+                if (source.settings.output() != null && source.settings.output() != d) continue;
                 if (packet.enteredBy != null && d == packet.enteredBy.opposite()) continue;
                 Pos neighborPos = pos.offset(d);
                 if (!isLoaded.test(neighborPos)) continue;
@@ -195,10 +241,17 @@ public final class PipeNetwork {
     public record PacketState(String itemId, int amount, Direction enteredBy) {}
 
     public record NodeState(Pos pos, boolean inventory, int capacity, int cursor,
-                            List<PacketState> packets) {
+                            List<PacketState> packets, PipeSettings settings) {
         public NodeState {
             Objects.requireNonNull(pos, "pos");
             packets = List.copyOf(packets);
+            Objects.requireNonNull(settings, "settings");
+        }
+
+        /** Legacy state callers default to unrestricted pipe routing. */
+        public NodeState(Pos pos, boolean inventory, int capacity, int cursor,
+                         List<PacketState> packets) {
+            this(pos, inventory, capacity, cursor, packets, PipeSettings.DEFAULT);
         }
     }
 
@@ -213,7 +266,7 @@ public final class PipeNetwork {
             List<PacketState> packets = node.packets.stream()
                     .map(p -> new PacketState(p.itemId, p.amount, p.enteredBy)).toList();
             result.add(new NodeState(pos, node.kind == Kind.INVENTORY,
-                    node.capacity, node.cursor, packets));
+                    node.capacity, node.cursor, packets, node.settings));
         }
         return List.copyOf(result);
     }
@@ -236,10 +289,13 @@ public final class PipeNetwork {
                 throw new IllegalArgumentException("Invalid junction cursor at " + state.pos());
             if (state.packets().size() > (state.inventory() ? 1_000_000 : PIPE_PACKET_CAPACITY))
                 throw new IllegalArgumentException("Too many stacks at " + state.pos());
+            if (state.inventory() && !state.settings().equals(PipeSettings.DEFAULT))
+                throw new IllegalArgumentException("Inventory may not carry pipe controls at " + state.pos());
             if (state.inventory()) result.addInventory(state.pos(), state.capacity());
             else result.addPipe(state.pos());
             Node node = result.nodes.get(state.pos());
             node.cursor = state.cursor();
+            node.settings = state.settings();
             long total = 0;
             for (PacketState packet : state.packets()) {
                 Objects.requireNonNull(packet, "packet");
