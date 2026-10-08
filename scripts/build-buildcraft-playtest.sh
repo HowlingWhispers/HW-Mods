@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build a SEPARATE, manual single-player playtest ZIP. Never used by player auto-updates.
+# Build a Nightly-channel artifact. Only CodaLauncher installs its mod payload.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 LOADER_ROOT="${HW_CODALOADER_ROOT:-../HW-CodaLoader}"
@@ -22,8 +22,18 @@ trap 'rm -rf "$OUTPUT_DIR"' EXIT
 mkdir -p "$OUTPUT_DIR/payload"
 cp "$LOADER_ROOT/dist/CodaLoader.jar" "$OUTPUT_DIR/CodaLoader.jar"
 cp dist/buildcraft-cml-0.1.0-dev.jar "$OUTPUT_DIR/payload/"
-cp mods/buildcraft-cml/PLAYTEST-README.txt "$OUTPUT_DIR/README-PLAYTEST.txt"
-cp mods/buildcraft-cml/Start-BuildCraft-Playtest.bat "$OUTPUT_DIR/Start-BuildCraft-Playtest.bat"
+cat > "$OUTPUT_DIR/README-NIGHTLY.txt" <<'EOF'
+H.O.W.L. BuildCraft Nightly development payload
+===============================================
+This ZIP is consumed automatically by CodaLauncher Settings -> Nightly.
+Do not extract or run its loader by hand. The launcher validates SHA-256,
+keeps Stable untouched, and installs the JAR into nightly/minecraft/mods.
+Only use a fresh disposable single-player world.
+Glass pipes: chest at (0,64,0), glass at x=1,2,3, chest at (4,64,0).
+Place iron ingots in the source chest and run:
+/buildcraft pulse 0 64 0 4 64 0
+No native BuildCraft blocks/animations yet; game compatibility needs testing.
+EOF
 # Inspect the actual entrypoint without constructing a second runtime mods
 # directory inside the package. The launcher will place this JAR in game/mods.
 unzip -l "$OUTPUT_DIR/payload/buildcraft-cml-0.1.0-dev.jar" \
