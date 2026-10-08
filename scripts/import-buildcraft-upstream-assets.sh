@@ -6,6 +6,11 @@
 set -euo pipefail
 
 RELEASE="8.0.0"
+# Actual SHA-256 digests obtained from the official BuildCraft 8.0.0
+# binary/source artifacts in our Linux CI (Oct 8, 2026), NOT calculated
+# from a moving Git branch. The build refuses upstream replacement.
+BIN_SHA256="f617279f8148a9140ab86c0e4aa4c54fe8a94515d2cf487a47cbd928160b88aa"
+SRC_SHA256="63458fee5041e394a58e47d59872c1e0dc514f16ec92ef6d22351daed3db1241"
 BASE="https://mod-buildcraft.com/releases/BuildCraft/$RELEASE"
 MAVEN="https://mod-buildcraft.com/maven/com/mod-buildcraft/buildcraft-all/$RELEASE"
 OUTPUT_DIR="${1:?Usage: bash scripts/import-buildcraft-upstream-assets.sh OUTPUT_DIRECTORY}"
@@ -50,6 +55,14 @@ BIN="buildcraft-all-$RELEASE.jar"
 SRC="buildcraft-all-$RELEASE-sources.jar"
 fetch_release "$BIN"
 fetch_release "$SRC"
+printf '%s  %s\\n' "$BIN_SHA256" "$CACHE_DIR/$BIN" | sha256sum --check --status || {
+  echo "Refusing unexpected BuildCraft 8.0.0 binary: pinned SHA256 failed" >&2
+  exit 1
+}
+printf '%s  %s\\n' "$SRC_SHA256" "$CACHE_DIR/$SRC" | sha256sum --check --status || {
+  echo "Refusing unexpected BuildCraft 8.0.0 source: pinned SHA256 failed" >&2
+  exit 1
+}
 
 # Source JAR is the baseline for every ported behavior, not just a license
 # notice. CI checks the release source exists and is not a class-only binary.
