@@ -1,17 +1,17 @@
 # BuildCraft CML: unofficial CodaLoader port
 
-Status: **0.1.0-dev foundation only, NOT a playable BuildCraft release.**
+Status: **8.0.0 upstream baseline / 0.1.0-dev H.O.W.L. port, NOT a playable BuildCraft release.**
 Target: **Minecraft Java 26.4 Snapshot 3** via native **CodaLoader**, without Forge/Fabric/NeoForge.
 
 ## Upstream and licensing
 
-**Canonical BuildCraft source reference (user-selected):** [BuildCraft/BuildCraft](https://github.com/BuildCraft/BuildCraft). Start from this repository for the original gameplay, pipes, machines, recipes and licensing history, particularly the `8.0.x-1.12.2` branch.
+**Canonical BuildCraft port baseline:** **the latest officially published BuildCraft stable release 8.0.0** for Minecraft 1.12.2 ([official download](https://mod-buildcraft.com/pages/download.html), [matching complete original source JAR](https://mod-buildcraft.com/releases/BuildCraft/8.0.0/buildcraft-all-8.0.0-sources.jar), [matching original binary/assets](https://mod-buildcraft.com/releases/BuildCraft/8.0.0/buildcraft-all-8.0.0.jar)). The [original BuildCraft/BuildCraft repository](https://github.com/BuildCraft/BuildCraft) is the upstream project, but its GitHub Releases listing and moving development branch are **not** release 8.0.0. Use the matching 8.0.0 release artifacts for all one-to-one functionality.
 
 **Secondary modern implementation reference:** [BuildCraft Refabricated](https://github.com/fromdisposition/BuildCraftRefabricated). Consult it where helpful for newer Minecraft implementation ideas, but it does **not** replace the original source link and its Fabric dependencies are not part of H.O.W.L. H.O.W.L. keeps its own block, inventory, lifecycle and rendering APIs. See [PORTING-SOURCES.md](PORTING-SOURCES.md).
 
 Original BuildCraft copyright belongs to SpaceToad and BuildCraft contributors. BuildCraft Refabricated has its own contributors. The H.O.W.L. port is not endorsed by either upstream project.
 
-BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older code can be MMPL 1.0.1 (`LICENSE`). Check individual file notices and history before importing any source, assets, models or textures. Preserve notices, publish modified MPL files under MPL 2.0, and provide full corresponding source code for distributed binaries. Use old-MMPL material only after a separate licensing review. **No original BuildCraft code or assets have been copied in this milestone.** The transport prototype is newly written.
+BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older code can be MMPL 1.0.1 (`LICENSE`). Check individual file notices and history before importing any source, assets, models or textures. Preserve notices, publish modified MPL files under MPL 2.0, and provide full corresponding source code for distributed binaries. Use old-MMPL material only under its actual licensing terms and after verifying file provenance. **Unmodified original BuildCraft 8.0.0 resource assets are imported into the Nightly JAR directly from its published binary; the published 8.0.0 source JAR is also fetched and checksum-verified at build time.** The current transport prototype is newly written and not yet a one-to-one port of the original gameplay code.
 
 ## What exists now
 
