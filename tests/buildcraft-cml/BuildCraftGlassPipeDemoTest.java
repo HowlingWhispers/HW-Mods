@@ -38,7 +38,7 @@ public final class BuildCraftGlassPipeDemoTest {
         }
         @Override public boolean isBlock(CodaBlockPos pos, String blockId) {
             return (blockId.equals("buildcrafttransport:wood_item") && wooden.contains(pos))
-                    || (blockId.equals("buildcrafttransport:cobblestone_item") && cobble.contains(pos);
+                    || (blockId.equals("buildcrafttransport:cobblestone_item") && cobble.contains(pos));
         }
         @Override public int transfer(CodaBlockPos from, CodaBlockPos to, int maximum) {
             transfers++;
