@@ -11,13 +11,16 @@ mkdir -p out/classes dist
 # Compile API from HW-CodaLoader (expected to be built first or available as dependency)
 # For standalone build, we compile the API locally from a checked-out HW-CodaLoader
 API_SOURCE_DIR="${HW_CODALOADER_API_DIR:-../HW-CodaLoader/src/main/java}"
-if [[ ! -d "$API_SOURCE_DIR" ]]; then
+API_PACKAGE_DIR="$API_SOURCE_DIR/dev/howlingwhispers/codaloader/api"
+if [[ ! -d "$API_PACKAGE_DIR" ]]; then
   echo "HW-CodaLoader API sources not found at $API_SOURCE_DIR" >&2
   echo "Set HW_CODALOADER_API_DIR or check out HW-CodaLoader alongside HW-Mods" >&2
   exit 1
 fi
 
-mapfile -d '' API_SOURCES < <(find "$API_SOURCE_DIR" -name '*.java' -print0)
+# Only the public SDK belongs on a mod's compile classpath.
+# Pulling in the whole loader would wrongly require ASM/Minecraft internals.
+mapfile -d '' API_SOURCES < <(find "$API_PACKAGE_DIR" -name '*.java' -print0)
 javac --release 21 -encoding UTF-8 -d out/classes "${API_SOURCES[@]}"
 
 # Compile HW Essentials
