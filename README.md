@@ -8,6 +8,7 @@ Each mod lives in its own folder under `mods/` with its own version, JAR, tests,
 
 - `mods/hw-quiet-underground/` — HW Quiet Underground 1.0.0 — optional Snapshot 3 world-generation data pack; rare mega caves and five-times-rarer ravines. Enable per world via Data Packs.
 - `mods/hw-essentials/` — HW Essentials 0.2.0 — `/sethome`, `/home`, `/back`, `/homes`, `/delhome`, `/hwessentials`
+- `mods/buildcraft-cml/` — BuildCraft CML 0.1.0-dev — **experimental source-only port foundation** (item transport engine and tests, no in-game blocks or launcher installation yet). See its README for attribution and roadmap.
 
 ## Building
 
@@ -23,11 +24,12 @@ Output: `dist/hw-essentials-0.2.0.jar` + `.sha256`
 
 ```bash
 ./scripts/test-hw-essentials.sh
+./scripts/test-buildcraft-cml.sh
 ```
 
 ## Distribution
 
-Mod JARs are published to GitHub Releases. CodaLoader installs them automatically into the active game profile (including CodaLauncher-managed profiles).
+Existing released mod JARs are published to GitHub Releases. CodaLoader installs **released, bundled** mods into the active game profile (including CodaLauncher-managed profiles). BuildCraft CML is not published or bundled.
 
 The shared command API (`CodaMod`, `CodaContext`, `CodaCommand`, `CodaCommandContext`, `CodaPosition`, `CodaCommands`) and Minecraft hooks remain in **HW-CodaLoader**.
 

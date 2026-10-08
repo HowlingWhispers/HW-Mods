@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "id": "buildcraft_cml",
+  "name": "BuildCraft CML (Unofficial Port)",
+  "version": "0.1.0-dev",
+  "entrypoint": "dev.howlingwhispers.buildcraft.BuildCraftCmlMod",
+  "minecraft": "26.4-snapshot-3",
+  "depends": []
+}
