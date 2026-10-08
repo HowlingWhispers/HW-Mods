@@ -85,6 +85,10 @@ jobs:
           jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'PipeNetworkStore.class'
           jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'BuildCraftTransportRuntime.class'
           unzip -p dist/buildcraft-cml-0.1.0-dev.jar coda.mod.json | jq -e '.id == "buildcraft_cml"'
+      - name: Build isolated single-player BuildCraft playtest ZIP
+        env:
+          HW_CODALOADER_ROOT: ${{ github.workspace }}/HW-CodaLoader
+        run: bash scripts/build-buildcraft-playtest.sh
       - name: Validate and package Quiet Underground worldgen
         run: |
           python3 scripts/build-hw-quiet-underground.py
@@ -102,6 +106,8 @@ jobs:
             dist/DEVELOPMENT-ONLY.txt
             dist/buildcraft-cml-0.1.0-dev.jar
             dist/buildcraft-cml-0.1.0-dev.jar.sha256
+            dist/HOWL-BuildCraft-Singleplayer-Playtest.zip
+            dist/HOWL-BuildCraft-Singleplayer-Playtest.zip.sha256
             dist/hw-quiet-underground-1.0.0.zip
             dist/hw-quiet-underground-1.0.0.zip.sha256
           if-no-files-found: error
