@@ -16,6 +16,9 @@ mapfile -d '' MOD_SOURCES < <(find mods/buildcraft-cml/src -name '*.java' -print
 javac --release 21 -encoding UTF-8 -d "$TMP_DIR/api" "${API_SOURCES[@]}"
 javac --release 21 -encoding UTF-8 -cp "$TMP_DIR/api" -d "$TMP_DIR/mod" "${MOD_SOURCES[@]}"
 cp mods/buildcraft-cml/resources/coda.mod.json "$TMP_DIR/mod/"
+# Preserve every original upstream BuildCraft asset rather than drawing
+# substitute textures or using third-party recreation packs.
+bash scripts/import-buildcraft-upstream-assets.sh "$TMP_DIR/mod"
 jar --create --file dist/buildcraft-cml-0.1.0-dev.jar -C "$TMP_DIR/mod" .
 sha256sum dist/buildcraft-cml-0.1.0-dev.jar > dist/buildcraft-cml-0.1.0-dev.jar.sha256
-echo 'Built dist/buildcraft-cml-0.1.0-dev.jar (development scaffold, no world blocks yet)'
+echo 'Built dist/buildcraft-cml-0.1.0-dev.jar (original BuildCraft assets bundled; Minecraft block/item registration not yet implemented)'
