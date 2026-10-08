@@ -27,17 +27,18 @@ BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older
 
 ## First executable single-player chest test (EXPERIMENTAL)
 
-H.O.W.L. now builds a **Nightly-channel-only ZIP** that CodaLauncher downloads and unpacks into its isolated active game profile. with
-a current loader JAR and this mod's development JAR. The in-game
+H.O.W.L. now builds a **Nightly-channel-only ZIP** that CodaLauncher
+downloads and installs into the isolated Nightly game profile's `minecraft/mods`.
+The package contains the matching loader JAR and a transient BuildCraft
+development payload. The in-game
 `/buildcraft pulse <x1> <y1> <z1> <x2> <y2> <z2>` command verifies a straight
 row of **1-16 vanilla glass blocks between two real loaded single chests or
 barrels**, then uses the loader's integrated-server inventory API to move up to
 16 complete Minecraft ItemStack objects into the destination.
 
-- Place the chests and glass in a fresh throwaway world; read
-  [PLAYTEST-README.txt](PLAYTEST-README.txt) for precise coordinates and
-  [Start-BuildCraft-Playtest.bat](Start-BuildCraft-Playtest.bat) for isolated
-  local single-player launch.
+- In CodaLauncher 0.7.6, select Settings -> Nightly, save, then Play Nightly.
+  The launcher obtains the verified ZIP automatically. Place the chests and
+  glass in a new throwaway world; no extra playtest launcher is needed.
 - This is **real in-game chest mutation**, not our virtual PipeNetwork test.
   Every moved ItemStack retains its Minecraft components. It refuses unloaded
   chunks, missing glass, incompatible storage, full outputs, and wrong-thread use.
@@ -52,9 +53,9 @@ barrels**, then uses the loader's integrated-server inventory API to move up to
   Do not use this experiment in an existing world.
 
 **Still a development-only build:** no original BuildCraft block is placed
-in Minecraft yet. No official player distribution or CodaLauncher automatic
-install is enabled until real BuildCraft pipe blocks and in-game gameplay
-have been tested in Snapshot 3.
+in Minecraft yet. The Nightly opt-in delivery is enabled, but this is not a Stable release.
+Official Stable auto-install remains disabled until genuine BuildCraft blocks
+and live Snapshot 3 gameplay have been verified.
 
 ## Planned wooden-pipe gameplay
 
