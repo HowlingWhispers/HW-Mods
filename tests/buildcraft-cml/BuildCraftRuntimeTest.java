@@ -73,6 +73,37 @@ public final class BuildCraftRuntimeTest {
         check(controller.unbind("south-world").size() == 3, "World snapshot has all nodes");
         check(controller.activeSessions() == 0, "All sessions detached");
 
+        // The same single-player server owns several dimensions simultaneously.
+        // Identical block positions in them must never alias stored packets.
+        var overworld = new PipeNetwork();
+        var nether = new PipeNetwork();
+        overworld.addPipe(a); overworld.addInventory(b, 64);
+        nether.addPipe(a); nether.addInventory(b, 64);
+        overworld.insert(a, "minecraft:iron_ingot", 9);
+        nether.insert(a, "minecraft:gold_ingot", 13);
+        controller.bind("shared-integrated-server", "minecraft:overworld", overworld, pos -> true);
+        controller.bind("shared-integrated-server", "minecraft:the_nether", nether, pos -> true);
+        check(controller.activeSessions() == 2, "Separate dimensions attached to one server");
+        rejected(() -> controller.bind("shared-integrated-server", "minecraft:overworld",
+                overworld, pos -> true), "Duplicate dimension binding rejected");
+        CodaServerTicks.dispatch(new CodaServerTickContext("shared-integrated-server", 1));
+        check(overworld.itemsAt(b) == 9, "Overworld pipes moved only overworld cargo");
+        check(nether.itemsAt(b) == 13, "Nether pipes moved only Nether cargo");
+        check(overworld.totalItems() == 9 && nether.totalItems() == 13,
+                "No duplication or cross-dimensional cargo leakage");
+        check(controller.unbind("shared-integrated-server", "minecraft:overworld").size() == 2,
+                "Overworld snapshot detached independently");
+        check(controller.activeSessions() == 1 && nether.totalItems() == 13,
+                "Detaching the Overworld preserves the Nether");
+        check(controller.unbind("shared-integrated-server", "minecraft:the_nether").size() == 2,
+                "Nether snapshot still preserves its nodes");
+        check(controller.activeSessions() == 0, "All dimensions detached");
+        boolean invalidDimension = false;
+        try {
+            controller.bind("new-server", "the_nether", new PipeNetwork(), pos -> true);
+        } catch (IllegalArgumentException expected) { invalidDimension = true; }
+        check(invalidDimension, "Unnamespaced dimension identifiers are refused");
+
         System.out.println("PASS: " + tests + " BuildCraft H.O.W.L. server-tick bridge checks");
     }
 }

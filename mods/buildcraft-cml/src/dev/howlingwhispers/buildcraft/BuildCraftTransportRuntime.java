@@ -7,11 +7,22 @@ import java.util.Objects;
 import java.util.function.Predicate;
 
 /**
- * Minimal glue between H.O.W.L.'s native server ticks and BuildCraft transport.
- * The future Snapshot 3 block/chunk adapter must bind each world's pipe network
- * and its real loaded-chunk predicate before anything can move.
+ * Single-player first: one authoritative pipe network per (server, dimension).
+ * The overworld and Nether must never share packet positions or inventories.
  */
 public final class BuildCraftTransportRuntime {
+    public static final String OVERWORLD = "minecraft:overworld";
+
+    private record WorldKey(String session, String dimension) {
+        WorldKey {
+            if (session == null || session.isBlank())
+                throw new IllegalArgumentException("Missing server session ID");
+            if (dimension == null
+                    || !dimension.matches("[a-z0-9_.-]+:[a-z0-9_./-]+"))
+                throw new IllegalArgumentException("Invalid namespaced dimension");
+        }
+    }
+
     private static final class Binding {
         final PipeNetwork network;
         final Predicate<PipeNetwork.Pos> loaded;
@@ -24,52 +35,69 @@ public final class BuildCraftTransportRuntime {
         }
     }
 
-    private final Map<String, Binding> worlds = new HashMap<>();
+    private final Map<WorldKey, Binding> worlds = new HashMap<>();
 
     /**
-     * Bind an existing world network. The future Minecraft adapter must call
-     * this only on the authoritative server thread, not during a GUI callback.
-     * A loaded-chunk predicate is mandatory: fail closed if none is available.
+     * Explicit dimension-aware binding for Minecraft integration. A future
+     * block adapter supplies its per-dimension network and an existing-chunk
+     * predicate, on the actual integrated server thread.
      */
-    public synchronized void bind(String sessionId, PipeNetwork network,
+    public synchronized void bind(String sessionId, String dimensionId, PipeNetwork network,
                                   Predicate<PipeNetwork.Pos> isChunkLoaded) {
-        if (sessionId == null || sessionId.isBlank())
-            throw new IllegalArgumentException("Missing server session ID");
+        WorldKey key = new WorldKey(sessionId, dimensionId);
         Objects.requireNonNull(network, "network");
         Objects.requireNonNull(isChunkLoaded, "isChunkLoaded");
-        if (worlds.putIfAbsent(sessionId, new Binding(network, isChunkLoaded)) != null)
-            throw new IllegalStateException("World session already bound: " + sessionId);
+        if (worlds.putIfAbsent(key, new Binding(network, isChunkLoaded)) != null)
+            throw new IllegalStateException("BuildCraft world already bound: " + key);
+    }
+
+    /** Legacy test helper, which always binds the overworld. */
+    public void bind(String sessionId, PipeNetwork network,
+                     Predicate<PipeNetwork.Pos> isChunkLoaded) {
+        bind(sessionId, OVERWORLD, network, isChunkLoaded);
     }
 
     /**
-     * Returns the last in-flight state to the future world persistence adapter.
-     * A detached world is never allowed to silently lose the network.
+     * Take a fully validated snapshot BEFORE detaching an individual
+     * dimension, including all packets and inventories. Do not silently merge
+     * inventories between dimensions or create the snapshot after detach.
      */
-    public synchronized java.util.List<PipeNetwork.NodeState> unbind(String sessionId) {
-        Binding binding = worlds.get(sessionId);
-        if (binding == null) throw new IllegalStateException("Unknown BuildCraft world session");
-        // Take the snapshot successfully BEFORE dropping the authoritative network.
+    public synchronized java.util.List<PipeNetwork.NodeState> unbind(String sessionId,
+                                                                      String dimensionId) {
+        WorldKey key = new WorldKey(sessionId, dimensionId);
+        Binding binding = worlds.get(key);
+        if (binding == null)
+            throw new IllegalStateException("Unknown BuildCraft world: " + key);
         var preserved = binding.network.snapshot();
-        worlds.remove(sessionId);
+        worlds.remove(key);
         return preserved;
     }
 
-    /** Called from CodaContext.registerServerTick, once per native server tick. */
-    public synchronized void onServerTick(CodaServerTickContext tick) {
-        Objects.requireNonNull(tick, "tick");
-        Binding binding = worlds.get(tick.sessionId());
-        if (binding == null) return; // World adapter has not attached a pipe network.
-        Thread current = Thread.currentThread();
-        if (binding.serverThread == null) binding.serverThread = current;
-        if (binding.serverThread != current)
-            throw new IllegalStateException("BuildCraft transport would run off its world server thread");
-        if (tick.tick() <= binding.lastTick)
-            throw new IllegalStateException("Out-of-order or repeated BuildCraft server tick");
-        // No Minecraft world objects are accessed by this pure transport layer.
-        binding.network.tick(binding.loaded);
-        binding.lastTick = tick.tick();
+    /** Legacy test helper, which detaches only the overworld. */
+    public java.util.List<PipeNetwork.NodeState> unbind(String sessionId) {
+        return unbind(sessionId, OVERWORLD);
     }
 
+    /** Called from CodaContext.registerServerTick on the server thread. */
+    public synchronized void onServerTick(CodaServerTickContext tick) {
+        Objects.requireNonNull(tick, "tick");
+        Thread current = Thread.currentThread();
+        for (Map.Entry<WorldKey, Binding> entry : worlds.entrySet()) {
+            if (!entry.getKey().session.equals(tick.sessionId())) continue;
+            Binding binding = entry.getValue();
+            if (binding.serverThread == null) binding.serverThread = current;
+            if (binding.serverThread != current)
+                throw new IllegalStateException("BuildCraft transport would run off its world server thread");
+            if (tick.tick() <= binding.lastTick)
+                throw new IllegalStateException("Repeated or out-of-order BuildCraft server tick");
+            // No mutable Minecraft world objects are read or written by this
+            // Minecraft-independent pipe simulation.
+            binding.network.tick(binding.loaded);
+            binding.lastTick = tick.tick();
+        }
+    }
+
+    /** Number of attached dimension networks across all server sessions. */
     public synchronized int activeSessions() {
         return worlds.size();
     }
