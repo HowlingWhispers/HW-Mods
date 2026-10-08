@@ -87,6 +87,20 @@ jobs:
           bash scripts/test-buildcraft-integration.sh
           jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'PipeNetworkStore.class'
           jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'BuildCraftTransportRuntime.class'
+          # Authentic upstream BuildCraft originals, not fabricated placeholders.
+          for entry in \
+            assets/buildcrafttransport/textures/pipes/wood_item_clear.png \
+            assets/buildcrafttransport/textures/pipes/cobblestone_item.png \
+            assets/buildcraftcore/textures/items/wrench.png \
+            assets/buildcraftcore/models/item/engine_redstone.json \
+            META-INF/buildcraft-upstream/LICENSE.BUILDCRAFT \
+            META-INF/buildcraft-upstream/LICENSE-NEW \
+            META-INF/buildcraft-upstream/SOURCE.txt
+          do
+            jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -Fx "$entry"
+          done
+          unzip -p dist/buildcraft-cml-0.1.0-dev.jar META-INF/buildcraft-upstream/SOURCE.txt |
+            grep -F '7c86626d09c4569fb2e0f458a16aaf8c3148ebaf'
           unzip -p dist/buildcraft-cml-0.1.0-dev.jar coda.mod.json | jq -e '.id == "buildcraft_cml"'
       - name: Build isolated single-player BuildCraft playtest ZIP
         env:
