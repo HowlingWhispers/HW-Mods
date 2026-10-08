@@ -22,8 +22,16 @@ BuildCraft's 1.12.2-and-later source is generally MPL 2.0 (`LICENSE-NEW`); older
 - Lossless transport snapshot/restore with bounded packet and capacity validation, SHA-256 protected versioned saves, atomic file replacement, and corrupt-save rejection. Saving and loading never silently clears in-flight stacks.
 - JVM tests cover routing, conservation, chunk-load boundaries, snapshots, checksum corruption, overflow rejection and atomic restart recovery.
 - A development-only `BuildCraftTransportRuntime` now hooks H.O.W.L.'s native server-tick callback. A future Minecraft block adapter must explicitly attach the per-server pipe network and real loaded-chunk predicate. Integration tests cover server session isolation, tick/replay guards, off-thread rejection, and save snapshots on detach. **No playable pipe blocks or chests exist yet.**
+- **First wrench/upgrade prototype:** every simulated pipe can store a specific output direction or return to automatic routing, and optionally whitelist one item ID. Backpressure and filters retain cargo rather than dropping or rerouting it. These settings persist in **version 2** of the pipe save, while pre-upgrade version 1 saves remain readable with default settings. The wrench is a headless simulation operation only: no Minecraft item, UI, right-click hook or world block has been added.
 
 **Still a development-only build:** nothing currently places a BuildCraft block in Minecraft. No player distribution or launcher install is enabled until the pipes are playable and tested in Snapshot 3.
+
+## Planned in-game wrench behavior
+
+- Right-click a pipe with the future H.O.W.L. wrench to cycle output: auto, north, south, east, west, up, down, then auto again.
+- A future pipe GUI will let players select an exact item whitelist, then clear it to accept all. This is intentionally a minimal filter, **not** BuildCraft's full diamond per-side sorting yet.
+- Changes require a server-authoritative Minecraft interaction hook. An output aimed at a full container keeps items waiting safely. Invalid IDs and applying pipe controls to inventories are refused.
+- The configuration is native H.O.W.L. gameplay inspired by original BuildCraft, not a direct copy of its source or textures.
 
 ## Real port milestones
 
