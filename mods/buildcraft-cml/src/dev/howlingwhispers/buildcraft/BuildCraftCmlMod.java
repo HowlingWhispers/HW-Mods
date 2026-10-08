@@ -9,6 +9,7 @@ import dev.howlingwhispers.codaloader.api.CodaMod;
  */
 public final class BuildCraftCmlMod implements CodaMod {
     private static final BuildCraftTransportRuntime TRANSPORT = new BuildCraftTransportRuntime();
+    private static final BuildCraftEngineRuntime ENGINES = new BuildCraftEngineRuntime();
 
     /** Reserved for the future Minecraft block/chunk lifecycle adapter. */
     public static BuildCraftTransportRuntime transportRuntime() {
@@ -29,12 +30,14 @@ public final class BuildCraftCmlMod implements CodaMod {
                     "buildcrafttransport:cobblestone_item",
                     "buildcraftcore:engine_redstone",
                     "buildcraftcore:wrench"));
+        context.registerBlockPlacement(ENGINES::onPlacement);
+        context.registerServerTick("real_engine_transport", ENGINES::onServerTick);
         context.registerServerTick("pipe_transport", TRANSPORT::onServerTick);
         // Actual native-chest test, available only when this development mod
         // is installed alongside the experimental H.O.W.L. world command bridge.
         context.registerCommand("buildcraft", "BuildCraft chest/pipe single-player test",
                 BuildCraftGlassPipeDemo::execute);
         System.out.println("[BuildCraft CML] Server-tick transport bridge registered. "
-                + "Snapshot 3 native blocks, items and Creative tab queued.");
+                + "Original BuildCraft 8.0 native pipe and redstone engine pulse loop registered.");
     }
 }
