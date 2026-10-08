@@ -6,6 +6,7 @@ Each mod lives in its own folder under `mods/` with its own version, JAR, tests,
 
 ## Mods
 
+- `mods/hw-quiet-underground/` — HW Quiet Underground 1.0.0 — optional Snapshot 3 world-generation data pack; rare mega caves and five-times-rarer ravines. Enable per world via Data Packs.
 - `mods/hw-essentials/` — HW Essentials 0.2.0 — `/sethome`, `/home`, `/back`, `/homes`, `/delhome`, `/hwessentials`
 
 ## Building
