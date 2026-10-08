@@ -69,6 +69,21 @@ public final class PipeNetworkTest {
         equal(deadEnd.itemsAt(two), 5, "Retains stalled packets");
         tests++;
 
+        PipeNetwork chunks = new PipeNetwork();
+        Pos loadedPipe = new Pos(15, 64, 0), unloadedPipe = new Pos(16, 64, 0),
+                farChest = new Pos(17, 64, 0);
+        chunks.addPipe(loadedPipe);
+        chunks.addPipe(unloadedPipe);
+        chunks.addInventory(farChest, 64);
+        chunks.insert(loadedPipe, "minecraft:copper_ingot", 7);
+        equal(chunks.tick(pos -> pos.x() < 16), 0, "Unloaded destination is not traversed");
+        equal(chunks.itemsAt(loadedPipe), 7, "Packet waits for chunk load");
+        equal(chunks.tick(pos -> true), 1, "Chunk loads, packet may advance");
+        equal(chunks.tick(pos -> pos.x() < 16), 0, "Unloaded source cannot tick");
+        equal(chunks.tick(pos -> true), 1, "Resumed transport reaches chest");
+        equal(chunks.itemsAt(farChest), 7, "No loss across chunk boundary");
+        tests++;
+
         System.out.println("PASS: " + tests + " BuildCraft CML transport tests");
     }
 }
