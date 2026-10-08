@@ -4,7 +4,7 @@ import dev.howlingwhispers.codaloader.api.CodaContext;
 import dev.howlingwhispers.codaloader.api.CodaMod;
 
 /**
- * Unofficial BuildCraft Refabricated-inspired port for native H.O.W.L.
+ * Native H.O.W.L. BuildCraft port, using original BuildCraft as reference.
  * Development-only: the actual block and inventory adapter is not yet shipped.
  */
 public final class BuildCraftCmlMod implements CodaMod {
@@ -18,11 +18,10 @@ public final class BuildCraftCmlMod implements CodaMod {
     @Override
     public void onInitialize(CodaContext context) {
         context.registerServerTick("pipe_transport", TRANSPORT::onServerTick);
-        context.registerCommand("buildcraft", "BuildCraft CML port status", (source, args) -> {
-            if (!args.isEmpty()) throw new IllegalArgumentException("Usage: /buildcraft");
-            source.reply("BuildCraft CML 0.1.0-dev: server-tick transport bridge is ready; "
-                    + "pipe blocks, chest inventory adapters and recipes are not installed yet.");
-        });
+        // Actual native-chest test, available only when this development mod
+        // is installed alongside the experimental H.O.W.L. world command bridge.
+        context.registerCommand("buildcraft", "BuildCraft chest/pipe single-player test",
+                BuildCraftGlassPipeDemo::execute);
         System.out.println("[BuildCraft CML] Server-tick transport bridge registered. "
                 + "Minecraft block/item integration pending.");
     }
