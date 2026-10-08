@@ -87,6 +87,11 @@ jobs:
           bash scripts/test-buildcraft-integration.sh
           jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'PipeNetworkStore.class'
           jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'BuildCraftTransportRuntime.class'
+          # Authentic original BuildCraft 8.0.0 stable artifacts, not the
+          # newer unreleased development branch or any fan recreation.
+          grep -F 'BuildCraft 8.0.0' <(unzip -p dist/buildcraft-cml-0.1.0-dev.jar META-INF/buildcraft-upstream/SOURCE.txt)
+          test -s dist/buildcraft-upstream/8.0.0/buildcraft-all-8.0.0-sources.jar
+          test -s dist/buildcraft-upstream/8.0.0/buildcraft-all-8.0.0.jar
           # Authentic upstream BuildCraft originals, not fabricated placeholders.
           for entry in \
             assets/buildcrafttransport/textures/pipes/wood_item_clear.png \
@@ -100,7 +105,7 @@ jobs:
             jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -Fx "$entry"
           done
           unzip -p dist/buildcraft-cml-0.1.0-dev.jar META-INF/buildcraft-upstream/SOURCE.txt |
-            grep -F '7c86626d09c4569fb2e0f458a16aaf8c3148ebaf'
+            grep -F 'Release: 8.0.0 (official stable'
           unzip -p dist/buildcraft-cml-0.1.0-dev.jar coda.mod.json | jq -e '.id == "buildcraft_cml"'
       - name: Build isolated single-player BuildCraft playtest ZIP
         env:
