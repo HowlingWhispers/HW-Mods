@@ -72,6 +72,10 @@ jobs:
         with:
           repository: HowlingWhispers/HW-CodaLoader
           path: HW-CodaLoader
+      - name: Verify local Mojang metadata bootstrap hotfix is in this Nightly
+        run: |
+          grep -F 'Reusing cached Minecraft version metadata; no manifest request.' \
+            HW-CodaLoader/src/main/java/dev/howlingwhispers/codaloader/bootstrap/MinecraftBootstrap.java
       - name: Set up Java 21
         uses: actions/setup-java@v4
         with:
