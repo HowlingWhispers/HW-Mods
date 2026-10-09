@@ -1,12 +1,7 @@
-import dev.howlingwhispers.buildcraft.BuildCraftCmlMod;
 import dev.howlingwhispers.buildcraft.BuildCraftTransportRuntime;
 import dev.howlingwhispers.buildcraft.PipeNetwork;
 import dev.howlingwhispers.buildcraft.PipeNetwork.Pos;
-import dev.howlingwhispers.codaloader.api.CodaContext;
 import dev.howlingwhispers.codaloader.api.CodaServerTickContext;
-import dev.howlingwhispers.codaloader.api.CodaServerTicks;
-import java.nio.file.Path;
-import java.util.List;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -21,11 +16,9 @@ public final class BuildCraftRuntimeTest {
         throw new AssertionError(why);
     }
     public static void main(String[] args) throws Exception {
-        var mod = new BuildCraftCmlMod();
-        mod.onInitialize(new CodaContext("0.0.26", "26.4-snapshot-3",
-                Path.of("run"), Path.of("run/config/buildcraft_cml"), "buildcraft_cml",
-                List.of("buildcraft_cml")));
-        var controller = BuildCraftCmlMod.transportRuntime();
+        // Archived custom transport fixture ONLY. The active BuildCraft
+        // mod never constructs or registers this network to Minecraft.
+        var controller = new BuildCraftTransportRuntime();
         Pos a = new Pos(0, 65, 0), b = new Pos(1, 65, 0), chest = new Pos(2, 65, 0);
         var north = new PipeNetwork();
         north.addPipe(a); north.addPipe(b); north.addInventory(chest, 128);
@@ -39,18 +32,18 @@ public final class BuildCraftRuntimeTest {
         check(controller.activeSessions() == 2, "Two worlds bound separately");
         rejected(() -> controller.bind("north-world", north, pos -> true), "Duplicate world bind accepted");
 
-        CodaServerTicks.dispatch(new CodaServerTickContext("north-world", 1));
+        controller.onServerTick(new CodaServerTickContext("north-world", 1));
         check(north.itemsAt(a) == 17, "Pipe is blocked by unloaded chunk");
         check(south.itemsAt(a) == 12, "Unrelated world not ticked");
 
         loaded.set(true);
-        CodaServerTicks.dispatch(new CodaServerTickContext("north-world", 2));
+        controller.onServerTick(new CodaServerTickContext("north-world", 2));
         check(north.itemsAt(b) == 17, "Loader tick callback routes first hop");
         check(north.itemsAt(chest) == 0, "No double hop in same tick");
-        CodaServerTicks.dispatch(new CodaServerTickContext("north-world", 3));
+        controller.onServerTick(new CodaServerTickContext("north-world", 3));
         check(north.itemsAt(chest) == 17, "Loader tick callback routes second hop");
         check(north.totalItems() == 17, "No missing or duplicated cargo");
-        CodaServerTicks.dispatch(new CodaServerTickContext("south-world", 1));
+        controller.onServerTick(new CodaServerTickContext("south-world", 1));
         check(south.itemsAt(b) == 12, "Second world routes independently");
 
         var threadFailure = new AtomicReference<Throwable>();
@@ -86,7 +79,7 @@ public final class BuildCraftRuntimeTest {
         check(controller.activeSessions() == 2, "Separate dimensions attached to one server");
         rejected(() -> controller.bind("shared-integrated-server", "minecraft:overworld",
                 overworld, pos -> true), "Duplicate dimension binding rejected");
-        CodaServerTicks.dispatch(new CodaServerTickContext("shared-integrated-server", 1));
+        controller.onServerTick(new CodaServerTickContext("shared-integrated-server", 1));
         check(overworld.itemsAt(b) == 9, "Overworld pipes moved only overworld cargo");
         check(nether.itemsAt(b) == 13, "Nether pipes moved only Nether cargo");
         check(overworld.totalItems() == 9 && nether.totalItems() == 13,
@@ -104,6 +97,6 @@ public final class BuildCraftRuntimeTest {
         } catch (IllegalArgumentException expected) { invalidDimension = true; }
         check(invalidDimension, "Unnamespaced dimension identifiers are refused");
 
-        System.out.println("PASS: " + tests + " BuildCraft H.O.W.L. server-tick bridge checks");
+        System.out.println("PASS: " + tests + " archived BuildCraft custom transport fixture checks (NOT active gameplay)");
     }
 }
