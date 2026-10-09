@@ -86,6 +86,7 @@ def verify(upstream: Path, effective: Path) -> None:
                    if "vendor" not in x.parts and "tests" not in x.parts}
     allowed_java = {
         "bridge/src/main/java/dev/howlingwhispers/buildcraftreborn/BuildCraftRebornMod.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/ActiveModNamespace.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/BlockCapability.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/NativeCapabilityAccess.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/OriginalCapabilityLookup.java",
