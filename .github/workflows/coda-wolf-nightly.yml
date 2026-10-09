@@ -65,6 +65,12 @@ jobs:
               assert 'dev/howlingwhispers/codawolf/CodaWolfMod.class' in z.namelist()
           print('Launcher-readable Coda Wolf JAR verified.')
           PY
+      - name: Require H.O.W.L. 0.0.30+ for Coda-only wolf appearance
+        run: |
+          grep -F 'LOADER_VERSION = "0.0.30"' HW-CodaLoader/src/main/java/dev/howlingwhispers/codaloader/core/CodaTarget.java
+          test -f HW-CodaLoader/src/main/java/dev/howlingwhispers/codaloader/bootstrap/CodaWolfTextureTransformer.java
+          test -f HW-CodaLoader/src/main/java/dev/howlingwhispers/codaloader/api/CodaEntityAppearance.java
+
       - name: Save verified artifact
         uses: actions/upload-artifact@v4
         with:
@@ -74,7 +80,10 @@ jobs:
             dist/coda-wolf-0.1.0-dev.jar.sha256
           if-no-files-found: error
       - name: Publish immutable GitHub prerelease for CodaLauncher
-        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.publish_coda_wolf == true
+        # One explicit approval commit may publish one visual test Nightly.
+        # All ordinary pushes remain build-only; the manual approval input
+        # is also supported without changing this workflow again.
+        if: github.ref == 'refs/heads/main' && ((github.event_name == 'workflow_dispatch' && inputs.publish_coda_wolf == true) || (github.event_name == 'push' && github.event.head_commit.message == 'Approve Coda Wolf visual Nightly'))
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -97,7 +106,7 @@ jobs:
 
           This release is NOT gameplay verified. Wolf spawning, death events,
           and in-game Coda-only icy fur rendering still need a live Snapshot 3 playtest.
-          Coda's verified wolf UUID selects an ice-white/cyan resourcepack texture;\n          ordinary vanilla wolves remain unchanged. Use disposable worlds.\n          AI vision and voice are not
+          Coda's verified wolf UUID selects an icy-white/cyan texture in an exclusive\n          resource pack. Ordinary vanilla wolves remain unchanged.\n          Use a disposable world. AI vision and voice are not
           implemented yet.
 
           These are downloadable assets for the experimental Nightly
