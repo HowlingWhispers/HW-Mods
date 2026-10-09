@@ -52,7 +52,7 @@ CHANGES = {
             '    \tsuper(BCTransportBlocks.PIPE_HOLDER_BE.get(), pos, bs);',
             '    public TilePipeHolder(BlockPos pos, BlockState bs) {\n'
             '    \tsuper(' + REG + ', pos, bs);'
-        )
+        ),
         (
             'IPipe neighbourPipe = level.getCapability(PipeApi.CAP_PIPE, neighbourPos, side.getOpposite());',
             'IPipe neighbourPipe = buildcraft.lib.compat.howl.OriginalCapabilityLookup.get('
