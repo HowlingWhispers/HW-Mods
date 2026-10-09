@@ -1,0 +1,8 @@
+{
+  "repository": "https://github.com/HowlingWhispers/HW-CodaLoader",
+  "commit": "35e33a7a4696a6eb01d07980dc62e3286d0e9f03",
+  "status": "PROPOSED_NOT_APPLIED",
+  "patches": [
+    "0001-native-keyed-items.patch"
+  ]
+}

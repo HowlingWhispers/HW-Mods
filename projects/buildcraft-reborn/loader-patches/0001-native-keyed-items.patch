@@ -1,0 +1,72 @@
+--- a/src/main/java/dev/howlingwhispers/codaloader/api/CodaContext.java
++++ b/src/main/java/dev/howlingwhispers/codaloader/api/CodaContext.java
+@@ -83,6 +83,12 @@
+         CodaNativeContents.registerItem(modId, namespacedId);
+     }
+ 
++    /** Construct a mod's original Item with Minecraft's registry-keyed Properties. */
++    public void registerNativeKeyedItemFactory(String itemId,
++            java.util.function.Function<Object,Object> originalItemConstructor) {
++        CodaNativeContents.registerNativeKeyedItemFactory(modId, itemId, originalItemConstructor);
++    }
++
+     public void registerCreativeTab(String id, String title, String icon, List<String> entries) {
+         CodaNativeContents.registerTab(modId, id, title, icon, entries);
+     }
+--- a/src/main/java/dev/howlingwhispers/codaloader/api/CodaNativeContents.java
++++ b/src/main/java/dev/howlingwhispers/codaloader/api/CodaNativeContents.java
+@@ -40,6 +40,8 @@
+             NATIVE_BLOCK_ENTITY_FACTORIES = new LinkedHashMap<>();
+     private static final Map<String, java.util.function.Consumer<CodaBlockEntityTick>> BLOCK_ENTITY_TICKS =
+             new LinkedHashMap<>();
++    private static final Map<String, java.util.function.Function<Object,Object>>
++            NATIVE_KEYED_ITEM_FACTORIES = new LinkedHashMap<>();
+     private static boolean sealed;
+ 
+     private CodaNativeContents() {}
+@@ -126,6 +128,24 @@
+ 
+     public static synchronized java.util.function.Function<Object,Object> nativeKeyedBlockFactory(String id) {
+         return NATIVE_KEYED_BLOCK_FACTORIES.get(id);
++    }
++
++    /** Native Item constructor; supplied Properties already contain its own registry key. */
++    public static synchronized void registerNativeKeyedItemFactory(String owner, String id,
++            java.util.function.Function<Object,Object> factory) {
++        requireOwner(owner);
++        requireId(id);
++        Objects.requireNonNull(factory, "nativeKeyedItemFactory");
++        if (sealed) throw new IllegalStateException("Native item factories closed after bootstrap");
++        Definition definition = DEFINITIONS.get(id);
++        if (definition == null || !definition.owner().equals(owner))
++            throw new IllegalArgumentException("Factory must target an owned registered item: " + id);
++        if (NATIVE_KEYED_ITEM_FACTORIES.putIfAbsent(id, factory) != null)
++            throw new IllegalArgumentException("Duplicate native item factory: " + id);
++    }
++
++    public static synchronized java.util.function.Function<Object,Object> nativeKeyedItemFactory(String id) {
++        return NATIVE_KEYED_ITEM_FACTORIES.get(id);
+     }
+ 
+     /** Original BlockEntity constructor: takes real Minecraft BlockPos, BlockState. */
+--- a/src/main/java/dev/howlingwhispers/codaloader/bootstrap/CodaNativeRegistryBridge.java
++++ b/src/main/java/dev/howlingwhispers/codaloader/bootstrap/CodaNativeRegistryBridge.java
+@@ -151,7 +151,17 @@
+                 p = properties.getMethod("setId", type("net.minecraft.resources.ResourceKey"))
+                         .invoke(p, key(registry, def.id()));
+                 Object value;
+-                if (def.kind() == CodaNativeContents.Kind.BLOCK) {
++                java.util.function.Function<Object,Object> keyedItemFactory =
++                        CodaNativeContents.nativeKeyedItemFactory(def.id());
++                if (keyedItemFactory != null) {
++                    value = keyedItemFactory.apply(p);
++                    if (value == null || !item.isInstance(value))
++                        throw new IllegalStateException("Keyed factory returned a non-Minecraft Item: " + def.id());
++                    if (def.kind() == CodaNativeContents.Kind.BLOCK &&
++                            (!blockItem.isInstance(value) ||
++                             invoke(value, "getBlock", new Class<?>[0]) != BLOCKS.get(def.id())))
++                        throw new IllegalStateException("BlockItem factory returned a foreign block: " + def.id());
++                } else if (def.kind() == CodaNativeContents.Kind.BLOCK) {
+                     Object nativeBlock = BLOCKS.get(def.id());
+                     if (nativeBlock == null)
+                         throw new IllegalStateException("Block missing before item phase: " + def.id());

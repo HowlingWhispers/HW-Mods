@@ -4,8 +4,9 @@ Port the original **BCCE 8.0.23** to **Minecraft 26.4 Snapshot 3** on
 **H.O.W.L.** The exact upstream commit is pinned in `UPSTREAM.lock.json`.
 NeoForge is a source dependency being migrated away from, not the target loader.
 
-**Not playable. The complete original pipe build still fails. No Nightly or
-installable JAR is produced.**
+**Not playable. The selected original wooden/stone pipe mechanics, redstone
+engine, travelling-item renderer and pipe-body model compile against Snapshot 3.
+The chest-to-chest world test has not run. No Nightly or installable JAR is produced.**
 
 ## Source and build
 
@@ -24,12 +25,21 @@ bash projects/buildcraft-reborn/scripts/compile-original-pipes.sh
 ```
 
 `HW_CODALOADER_API_DIR` can point to the SDK's `src/main/java` directory.
-The compiler includes both original holders, their entire dependency closure,
-and the H.O.W.L. entrypoint. Mojang metadata, client and libraries are verified
+`stage-original-item-pipes.py` selects wooden item extraction, stone transport
+and the original redstone engine. Unselected fluid, FE, gate, facade, robot and
+builder branches are omitted from shared classes; item algorithms remain original.
+`--with-diamond` selects the next sorting scenario, which is not yet compilation-verified.
+
+The compiler includes both original holders, the selected mechanics and their
+dependencies, original API runtime/MJ bridge, original item and engine renderers,
+native pipe-body model, and the H.O.W.L. entrypoint. Mojang metadata, client and libraries are verified
 against their published hashes. There is no NeoForge JAR on the classpath.
 A failed compilation returns a nonzero exit code. The existing CI probe now
 uses the same strict build gate; diagnostic collection cannot make CI green.
 Full errors are written to `dist/buildcraft-reborn/original-pipes-javac-errors.txt`.
+Staging or compilation failure deletes previous class output. The scope manifest
+records final source hashes and asserts byte-identical method bodies for wooden
+extraction, travelling-item movement/merging, engine heating and item submission.
 
 ## Implemented compatibility changes
 
@@ -54,9 +64,20 @@ Snapshot 3. Native Mojang registry bootstrap and save/load/save tests pass for
 the original flat pipe-holder layout and nested `bc_legacy` machine layout.
 This tests the persistence superclass, not pipe placement, extraction or cargo.
 
-The full build remains blocked by the original dependency closure: fluid
-carriers/handlers used by `Tank` and `TankManager`, native transaction and
-capability seams, networking, module registration and client rendering.
+The current H.O.W.L. SDK cannot construct an original `ItemPipeHolder` for an
+item declaration: it always constructs a generic Item/BlockItem. The proposed
+`loader-patches/0001-native-keyed-items.patch` adds keyed original Item factories
+and validates their native type, ownership and block association. It applies
+cleanly to the pinned loader commit in `loader-patches/BASE.json`; it has not
+been applied to the loader. This project remains the only modified repository.
+
+Native incoming payload registration, client renderer/model registration and
+client cache tick/join callbacks also need loader hooks. The native payload
+boundary retains original codecs and handlers, sends through Minecraft's real
+connections, and rejects sends until a real registrar has installed the payload.
+The current entrypoint is still source-only and does not complete item registration
+or the original module/cache initialization sequence. These are required before
+an in-world pipe can extract and visibly move items.
 Native chunk-unload dispatch and cancellable player breaking also remain
 unwired; inherited compatibility method declarations are not evidence that
 Minecraft calls those hooks. Do not package until those are connected.

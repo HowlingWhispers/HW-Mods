@@ -95,6 +95,8 @@ def verify(upstream: Path, effective: Path) -> None:
         "bridge/src/main/java/buildcraft/lib/compat/howl/ModelData.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/ModelProperty.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/FluidAction.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/NativeLifecycleAccess.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/NativeNetworkAccess.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/storage/IItemHandler.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/storage/IItemHandlerModifiable.java",
     }
