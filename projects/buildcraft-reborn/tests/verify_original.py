@@ -80,8 +80,12 @@ def verify(upstream: Path, effective: Path) -> None:
             "Original BCCE source absent from its own effective layout: " + path
         )
 
-    active_java = [x for x in PROJECT.rglob("*.java") if "vendor" not in x.parts]
+    # Executable tests may exist, but production Java outside the original
+    # BCCE tree is prohibited until a reviewed loader-specific adapter lands.
+    active_java = [x for x in PROJECT.rglob("*.java")
+                   if "vendor" not in x.parts and "tests" not in x.parts]
     assert not active_java, "Do not introduce a substitute BuildCraft implementation"
+    assert (PROJECT / "tests/OriginalPipeSchedulingTest.java").is_file()
     assert not any(x.name in FORBIDDEN_JAVA for x in PROJECT.rglob("*.java"))
     assert not (PROJECT / "resources/coda.mod.json").exists(), (
         "No runnable H.O.W.L. mod exists yet; do not advertise a fake build"

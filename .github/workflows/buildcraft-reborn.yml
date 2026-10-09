@@ -23,6 +23,13 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify fresh source project from upstream
         run: bash projects/buildcraft-reborn/scripts/prepare-source.sh
+      - name: Set up Java 21 for genuine original BCCE code regression
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - name: Compile and test BCCE's original travelling-item scheduler
+        run: bash projects/buildcraft-reborn/scripts/test-original-flow-core.sh
       - name: Confirm no old BuildCraft build or release is active
         run: |
           test ! -e mods/buildcraft-cml

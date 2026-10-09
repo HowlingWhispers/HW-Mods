@@ -25,6 +25,25 @@ are the authority. We are **not recreating** their pipes or engines.
   source dependency. There are no copied `PipeNetwork` or placeholder
   `BuildCraftRedstoneEngine` implementations here.
 
+## First genuine executable upstream regression
+
+The original **BCCE `DelayedList`** scheduler used by
+`PipeFlowItems`, and **`ItemTransportProfile`** API2 record now compile
+unchanged in their original Java packages. A dedicated Java 21 test verifies
+original delayed ordering, exactly-once completion, empty/negative delays,
+concurrent queue behavior, and original item-profile validation:
+
+```bash
+bash projects/buildcraft-reborn/scripts/prepare-source.sh
+bash projects/buildcraft-reborn/scripts/test-original-flow-core.sh
+```
+
+This is **original executable BuildCraft library code**, not a custom
+transport engine or player-ready pipe. It doesn't yet create block entities,
+move real Minecraft ItemStacks, consume MJ or render animations. Compilation
+of `TilePipeHolder` and `BlockPipeHolder` is still pending their NeoForge
+and Minecraft 26.4 compatibility adapters.
+
 ## Status
 
 **Source import only. NOT a playable Minecraft mod, NOT a compilation of the

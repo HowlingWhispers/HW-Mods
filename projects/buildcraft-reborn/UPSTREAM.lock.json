@@ -28,7 +28,9 @@
     "source-families/modern/src/main/java/buildcraft/transport/client/render/RenderPipeHolder.java",
     "source-families/modern/src/main/java/buildcraft/transport/BCTransportPipes.java",
     "source-families/modern/src/main/java/buildcraft/energy/BCEnergyBlocks.java",
-    "source-shared/src/main/java/buildcraft/transport/BCTransportRegistries.java"
+    "source-shared/src/main/java/buildcraft/transport/BCTransportRegistries.java",
+    "source-shared/src/main/java/buildcraft/lib/misc/data/DelayedList.java",
+    "source-shared/src/main/java/buildcraft/api/v2/pipe/ItemTransportProfile.java"
   ],
   "source_policy": "Original BCCE source owns gameplay; port only necessary compatibility boundaries. Do not import the retired HW-Mods/mods/buildcraft-cml implementation."
 }

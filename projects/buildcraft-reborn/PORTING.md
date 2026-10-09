@@ -21,3 +21,18 @@ CI currently validates **source provenance only**, not gameplay.
 BuildCraft Nightly asset names. Do not load an old BuildCraft test
 save into the new mod. H.O.W.L. may gain generic lifecycle APIs, but
 no fabricated pipe/engine gameplay is allowed.
+
+## Source-backed scheduling baseline
+
+The unmodified upstream `buildcraft.lib.misc.data.DelayedList` is the
+queue directly used by BCCE `PipeFlowItems` when advancing travelling
+items. `buildcraft.api.v2.pipe.ItemTransportProfile` is its original
+configured item routing policy. Both are compiled and exercised in CI in
+their original packages, never replaced with a homemade network. This is
+the first executable upstream regression, not a runnable mod.
+
+No artificial Minecraft block/entity implementations, transport shortcuts
+or legacy `PipeNetwork` classes may be added to this project. The next
+compile milestone is original `TilePipeHolder` and `BlockPipeHolder`
+against Snapshot 3 and H.O.W.L. with explicit, reviewed compatibility
+adaptations.
