@@ -13,11 +13,34 @@ REPORT="$BASE/pipe-holder-compiler-report.txt"
 ERRORS="$BASE/pipe-holder-javac-errors.txt"
 mkdir -p "$BASE"
 test -s "$CLIENT" && test -s "$GUAVA" && test -s "$STAGED/buildcraft/transport/tile/TilePipeHolder.java"
+# Pull Mojang's EXACT SHA-1-authenticated support libraries so missing
+# JOML/Authlib/Netty do not obscure actual NeoForge/API port blockers.
+LIBROOT="$BASE/mojang-26.4-snapshot-3/libraries"
+mkdir -p "$LIBROOT"
+jq -r '.libraries[].downloads.artifact | select(.url != null) |
+  [.url, .path, .sha1] | join("|")' \
+  "$BASE/mojang-26.4-snapshot-3/version.json" > "$BASE/mojang-libraries-list.txt"
+while IFS='|' read -r url artifact expected; do
+  [[ "$artifact" != /* && "$artifact" != *".."* && "$expected" =~ ^[0-9a-f]{40}$ ]] ||
+    { echo "Mojang library entry unsafe" >&2; exit 1; }
+  target="$LIBROOT/$artifact"
+  mkdir -p "$(dirname "$target")"
+  if [[ ! -s "$target" ]]; then
+    curl --fail --location --silent --show-error --retry 3 "$url" -o "$target.tmp"
+    mv "$target.tmp" "$target"
+  fi
+  [[ "$(sha1sum "$target" | awk '{print $1}')" == "$expected" ]] ||
+    { echo "Mojang library checksum mismatch: $artifact" >&2; exit 1; }
+done < "$BASE/mojang-libraries-list.txt"
+CLASSPATH="$CLIENT:$GUAVA"
+while IFS= read -r jar; do CLASSPATH="$CLASSPATH:$jar"; done < <(
+  find "$LIBROOT" -type f -name '*.jar' | sort
+)
 BUILD="$(mktemp -d)"
 trap 'rm -rf "$BUILD"' EXIT
 set +e
 timeout 120s javac --release 25 -proc:none -Xmaxerrs 70 -J-Xmx1536m \
-  -sourcepath "$STAGED:$ORIGINAL" -cp "$CLIENT:$GUAVA" -d "$BUILD" \
+  -sourcepath "$STAGED:$ORIGINAL" -cp "$CLASSPATH" -d "$BUILD" \
   "$STAGED/buildcraft/transport/block/BlockPipeHolder.java" \
   "$STAGED/buildcraft/transport/tile/TilePipeHolder.java" > "$REPORT.stdout" 2>"$ERRORS"
 RESULT=$?
@@ -35,6 +58,9 @@ else
     echo 'BLOCK_PIPE_HOLDER=NOT_COMPILED'
     echo 'TILE_PIPE_HOLDER=NOT_COMPILED'
     echo "JAVAC_EXIT=$RESULT"
+    echo "OFFICIAL_MOJANG_LIBRARIES=$(find "$LIBROOT" -name '*.jar' | wc -l)"
+    echo 'EXACT_MOJANG_API_SOUND_CLASSES:'
+    jar tf "$CLIENT" | grep -F 'SoundType.class' | head -n 8 || true
     echo 'TARGET=official Mojang Minecraft 26.4 Snapshot 3 with original BCCE layered source'
     echo 'SOURCE=original BCCE 8.0.23 + 3 documented registry/constructor seam substitutions'
     echo "NEOFORGE_MISSING=$(grep -c 'package net.neoforged' "$ERRORS" || true)"
