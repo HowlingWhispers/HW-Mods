@@ -71,6 +71,13 @@ CHANGES = {
             'level, nPos, facing.getOpposite(), PipeApi.CAP_PLUG);'
         )
     ],
+    "transport/pipe/flow/PipeFlowItems.java": [
+        (
+            'return ItemTransactorHelper.getTransactor(level, pos, face.getOpposite(), oTile) != NoSpaceTransactor.INSTANCE;',
+            'return buildcraft.lib.compat.howl.NativeLoadedContainerLookup.get(level, pos, face.getOpposite()) != null'
+            ' || ItemTransactorHelper.getTransactor(level, pos, face.getOpposite(), oTile) != NoSpaceTransactor.INSTANCE;'
+        ),
+    ],
     "lib/block/BlockBCBase_Neptune.java": [
         (
             'import net.minecraft.world.level.block.SoundType;',
