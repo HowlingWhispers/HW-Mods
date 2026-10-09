@@ -75,7 +75,11 @@ jobs:
             projects/buildcraft-reborn/tests/NativeCapabilityModelDataTest.java \
             projects/buildcraft-reborn/tests/NativeContainerItemPortTest.java
           java -cp "$CLASS_DIR:$NATIVE_CP" NativeCapabilityModelDataTest
-          java -cp "$CLASS_DIR:$NATIVE_CP" NativeContainerItemPortTest
+          java -cp "$CLASS_DIR:$NATIVE_CP" NativeContainerItemPortTest |
+            tee "$CLASS_DIR/native-container-test.log"
+          if grep -q '^BLOCKED:' "$CLASS_DIR/native-container-test.log"; then
+            echo "::warning::Native ItemPort real-slot test deferred until Minecraft world component binding; adapter compile only."
+          fi
           javap -classpath "$CLASS_DIR" \
             buildcraft.lib.compat.howl.OriginalCapabilityLookup |
             grep -F 'get(net.minecraft.world.level.Level, net.minecraft.core.BlockPos'

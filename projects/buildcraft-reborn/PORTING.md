@@ -170,10 +170,17 @@ components, without introducing pipe routing or teleportation.
 - Never coalesces item stacks with different components
 - Never fills a synthetic intermediate inventory
 
-The exact Mojang `SimpleContainer` and `Items` are used by
+The exact Mojang `SimpleContainer` and `Items` are referenced by
 `NativeContainerItemPortTest.java` in GitHub Actions, with the Mojang
-`Bootstrap` initialized and BCCE's **original** transfer-result
-types compiled. This proves actual container-level operations, not
-complete BuildCraft pipe mechanics. The original `PipeFlowItems`
-and NeoForge/BCCE `IItemHandler` source bridge still need hooking up.
-No public JAR until the original BCCE pipe gameplay compiles.
+`Bootstrap` initialized and BCCE's **original** transfer-result types
+compiled. In Minecraft 26.4, ItemStack prototypes are not bound until
+world/datapack initialization, so this headless test explicitly prints
+`BLOCKED: native ItemStack components not bound before Minecraft world
+reload` and **does not claim live slot transfers passed**. Those tests
+will run during a full Minecraft-world integration check, not with
+fake ItemStacks or fabricated registries.
+
+The source ABI compiles, but the original `PipeFlowItems`, vanilla
+inventory discovery and NeoForge/BCCE `IItemHandler` source bridge
+still need integrating. No public JAR until the original BCCE pipe
+gameplay compiles and is tested with real world component binding.
