@@ -42,6 +42,29 @@ CLASSPATH="$CLIENT:$GUAVA"
 while IFS= read -r jar; do CLASSPATH="$CLASSPATH:$jar"; done < <(
   find "$LIBROOT" -type f -name '*.jar' | sort
 )
+# Explicit compile-only annotations retained by the original BCCE source.
+# These are upstream Java annotations, NOT gameplay shims.
+for coordinate in \
+  'com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.jar' \
+  'org/jetbrains/annotations/24.1.0/annotations-24.1.0.jar'; do
+  path="$BASE/test-deps/$coordinate"
+  baseurl="https://repo.maven.apache.org/maven2/$coordinate"
+  mkdir -p "$(dirname "$path")"
+  if [[ ! -s "$path" ]]; then
+    curl --fail --location --silent --show-error --retry 2 "$baseurl" -o "$path.tmp"
+    mv "$path.tmp" "$path"
+  fi
+  expected="$(curl --fail --location --silent --show-error --retry 2 "$baseurl.sha1" | tr -d '[:space:]')"
+  [[ "$expected" =~ ^[a-f0-9]{40}$ ]] || {
+    echo "Invalid annotation dependency digest: $coordinate" >&2
+    exit 1
+  }
+  [[ "$(sha1sum "$path" | awk '{print $1}')" == "$expected" ]] || {
+    echo "Annotation dependency SHA-1 mismatch: $coordinate" >&2
+    exit 1
+  }
+  CLASSPATH="$CLASSPATH:$path"
+done
 BUILD="$(mktemp -d)"
 trap 'rm -rf "$BUILD"' EXIT
 
