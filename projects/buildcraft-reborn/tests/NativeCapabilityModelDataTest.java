@@ -1,3 +1,4 @@
+import buildcraft.lib.compat.howl.ActiveModNamespace;
 import buildcraft.lib.compat.howl.BlockCapability;
 import buildcraft.lib.compat.howl.ModelData;
 import buildcraft.lib.compat.howl.ModelProperty;
@@ -41,6 +42,24 @@ public final class NativeCapabilityModelDataTest {
         check(ModelData.EMPTY.get(originalGeometry)==null,
               "Empty original model state must be empty");
         check(!firstSnapshot.has(anotherProperty), "Property keys must preserve identity");
+        boolean missingScopeRejected = false;
+        try { ActiveModNamespace.get(); }
+        catch (IllegalStateException expected) { missingScopeRejected = true; }
+        check(missingScopeRejected, "Pipe registration without a loader scope must fail");
+        try (var outer = ActiveModNamespace.enter("hw_buildcraft_reborn")) {
+            check(ActiveModNamespace.get().equals("hw_buildcraft_reborn"),
+                  "Original pipe must inherit loader namespace");
+            try (var inner = ActiveModNamespace.enter("buildcraft_transport")) {
+                check(ActiveModNamespace.get().equals("buildcraft_transport"),
+                      "Nested module scope must override parent");
+            }
+            check(ActiveModNamespace.get().equals("hw_buildcraft_reborn"),
+                  "Nested scope must restore parent");
+        }
+        missingScopeRejected = false;
+        try { ActiveModNamespace.get(); }
+        catch (IllegalStateException expected) { missingScopeRejected = true; }
+        check(missingScopeRejected, "Closed namespace must not leak to other registrations");
         System.out.println("PASS: original BCCE capability identities and immutable model payload bridge");
         System.out.println("NOT PLAYABLE: no native Level provider or chunk renderer wired yet");
     }
