@@ -60,7 +60,28 @@ else
     echo "JAVAC_EXIT=$RESULT"
     echo "OFFICIAL_MOJANG_LIBRARIES=$(find "$LIBROOT" -name '*.jar' | wc -l)"
     echo 'EXACT_MOJANG_API_SOUND_CLASSES:'
-    jar tf "$CLIENT" | grep -F 'SoundType.class' | head -n 8 || true
+    jar tf "$CLIENT" | grep -Ei '/(BlockSoundSet|SoundSet|SoundType|BlocksSound|BlockSounds)\\.class
+    echo 'TARGET=official Mojang Minecraft 26.4 Snapshot 3 with original BCCE layered source'
+    echo 'SOURCE=original BCCE 8.0.23 + 3 documented registry/constructor seam substitutions'
+    echo "NEOFORGE_MISSING=$(grep -c 'package net.neoforged' "$ERRORS" || true)"
+    echo "IMPORT_ERRORS=$(grep -c 'error: package .* does not exist' "$ERRORS" || true)"
+    echo "MISSING_SYMBOLS=$(grep -c 'error: cannot find symbol' "$ERRORS" || true)"
+    echo 'FIRST_COMPILER_ERRORS:'
+    awk '/error:|symbol:|location:|cannot access|module not found/ {print; if (++n == 55) exit}' "$ERRORS" || true
+    echo 'NEXT=port NeoForge capability/render hooks and BCCE base tile dependency closure'
+  } > "$REPORT"
+  echo 'BLOCKED: original pipe-holder classes do NOT compile against current HOWL/Mojang classpath.'
+fi
+cat "$REPORT"
+echo 'Full exact javac diagnostics saved as pipeline artifact, not hidden.'
+# No JAR, mod metadata or release is produced for a blocked compiler build.
+ || true
+    echo 'EXACT_MOJANG_BLOCK_SOUND_PROPERTIES:'
+    javap -p -classpath "$CLASSPATH" 'net.minecraft.world.level.block.state.BlockBehaviour$Properties' 2>/dev/null |
+      grep -iE 'sound|Properties' | head -n 22 || true
+    echo 'SOUND_REGISTRY_TYPES:'
+    javap -p -classpath "$CLASSPATH" net.minecraft.core.registries.BuiltInRegistries 2>/dev/null |
+      grep -i 'SOUND' | head -n 12 || true
     echo 'TARGET=official Mojang Minecraft 26.4 Snapshot 3 with original BCCE layered source'
     echo 'SOURCE=original BCCE 8.0.23 + 3 documented registry/constructor seam substitutions'
     echo "NEOFORGE_MISSING=$(grep -c 'package net.neoforged' "$ERRORS" || true)"
