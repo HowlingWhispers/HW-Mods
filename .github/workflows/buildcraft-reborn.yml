@@ -61,13 +61,21 @@ jobs:
               -name '*.jar' -type f | sort
           )
           STAGED_SRC="dist/buildcraft-reborn/staged-snapshot3/src/main/java"
+          ORIGINAL_SRC="dist/buildcraft-reborn/effective-1.21.11-neoforge/src/main/java"
           javac --release 25 -encoding UTF-8 \
             -cp "$NATIVE_CP" \
             -d "$CLASS_DIR" \
             "$STAGED_SRC/buildcraft/lib/internal/capabilities/IBCCapabilityProvider.java" \
+            "$ORIGINAL_SRC/buildcraft/api/v2/OperationMode.java" \
+            "$ORIGINAL_SRC/buildcraft/api/v2/item/ItemMatcher.java" \
+            "$ORIGINAL_SRC/buildcraft/api/v2/item/ItemPort.java" \
+            "$ORIGINAL_SRC/buildcraft/api/v2/item/ItemTransferPolicy.java" \
+            "$ORIGINAL_SRC/buildcraft/api/v2/item/ItemTransferResult.java" \
             projects/buildcraft-reborn/bridge/src/main/java/buildcraft/lib/compat/howl/*.java \
-            projects/buildcraft-reborn/tests/NativeCapabilityModelDataTest.java
+            projects/buildcraft-reborn/tests/NativeCapabilityModelDataTest.java \
+            projects/buildcraft-reborn/tests/NativeContainerItemPortTest.java
           java -cp "$CLASS_DIR:$NATIVE_CP" NativeCapabilityModelDataTest
+          java -cp "$CLASS_DIR:$NATIVE_CP" NativeContainerItemPortTest
           javap -classpath "$CLASS_DIR" \
             buildcraft.lib.compat.howl.OriginalCapabilityLookup |
             grep -F 'get(net.minecraft.world.level.Level, net.minecraft.core.BlockPos'

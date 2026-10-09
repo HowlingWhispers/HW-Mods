@@ -89,6 +89,7 @@ def verify(upstream: Path, effective: Path) -> None:
         "bridge/src/main/java/buildcraft/lib/compat/howl/BlockCapability.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/NativeCapabilityAccess.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/OriginalCapabilityLookup.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/NativeContainerItemPort.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/ModelData.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/ModelProperty.java",
     }

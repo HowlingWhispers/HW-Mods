@@ -154,3 +154,26 @@ real inventory adapter to the original BCCE `IItemHandler` or
 `ItemPort`, including proper simulate/execute behavior, before item
 transport may be released. Missing capabilities are not substituted
 with fake inventory data or teleportation.
+
+## Native vanilla inventory endpoint for original BCCE ItemPort
+
+`NativeContainerItemPort` is a **Minecraft Container adapter** that
+implements the unchanged BCCE API2 `ItemPort` interface. It mutates
+real Minecraft `Container` slots with their original `ItemStack`
+components, without introducing pipe routing or teleportation.
+
+- Distinguishes `SIMULATE` from `EXECUTE`
+- Honors `ALL_OR_NOTHING` versus `PARTIAL` for insertion
+- Honors original ranged extraction minimums
+- Uses vanilla inventory stack-size and `canPlaceItem` constraints
+- Supports vanilla `WorldlyContainer` directional insertion/extraction
+- Never coalesces item stacks with different components
+- Never fills a synthetic intermediate inventory
+
+The exact Mojang `SimpleContainer` and `Items` are used by
+`NativeContainerItemPortTest.java` in GitHub Actions, with the Mojang
+`Bootstrap` initialized and BCCE's **original** transfer-result
+types compiled. This proves actual container-level operations, not
+complete BuildCraft pipe mechanics. The original `PipeFlowItems`
+and NeoForge/BCCE `IItemHandler` source bridge still need hooking up.
+No public JAR until the original BCCE pipe gameplay compiles.
