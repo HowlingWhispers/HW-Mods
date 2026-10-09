@@ -8,13 +8,12 @@ import dev.howlingwhispers.codaloader.api.CodaMod;
  * Development-only: initial native transport adapter, not full BCCE parity.
  */
 public final class BuildCraftCmlMod implements CodaMod {
-    private static final BuildCraftTransportRuntime TRANSPORT = new BuildCraftTransportRuntime();
     private static final BuildCraftEngineRuntime ENGINES = new BuildCraftEngineRuntime();
 
-    /** Reserved for the future Minecraft block/chunk lifecycle adapter. */
-    public static BuildCraftTransportRuntime transportRuntime() {
-        return TRANSPORT;
-    }
+    // The previous custom PipeNetwork / BuildCraftTransportRuntime experiment
+    // is deliberately DISCONNECTED from gameplay. Preserve it only for
+    // regression fixtures while BCCE's original TilePipeHolder/PipeFlowItems
+    // are ported into the native H.O.W.L. BlockEntity lifecycle.
 
     @Override
     public void onInitialize(CodaContext context) {
@@ -40,8 +39,7 @@ public final class BuildCraftCmlMod implements CodaMod {
                     "buildcraftcore:wrench"));
         context.registerBlockPlacement(ENGINES::onPlacement);
         context.registerServerTick("real_engine_transport", ENGINES::onServerTick);
-        context.registerServerTick("pipe_transport", TRANSPORT::onServerTick);
-        context.registerCommand("buildcraft", "Inspect nearby native BuildCraft pipes and engines",
+         context.registerCommand("buildcraft", "Inspect nearby native BuildCraft pipes and engines",
                 (command, arguments) -> {
                     if (!arguments.isEmpty() && !arguments.equals(java.util.List.of("status"))) {
                         command.reply("Usage: /buildcraft [status]");
@@ -56,11 +54,12 @@ public final class BuildCraftCmlMod implements CodaMod {
                                 : " (latest: " + last.dimension() + " " + last.position() + ")")
                             + ". This does not indicate moving items.");
                 });
+        // The legacy custom PipeNetwork is NOT running on the game server.
         // Do not expose the obsolete /buildcraft pulse chest teleportation
         // command. Its JVM fixture remains separately testable, but genuine
         // player transport requires BCCE pipe block entities and MJ ports.
         System.out.println("[BuildCraft H.O.W.L.] Native BCCE redstone-engine MJ and piston "
                 + "state enabled; real pipe route inspection available via /buildcraft status; " +
-                "item-stack transport is not installed.");
+                "item-stack transport is not installed; legacy custom network is DISABLED.");
     }
 }

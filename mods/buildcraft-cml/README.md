@@ -63,3 +63,29 @@ conservation, simulation, piston-midpoint and role tests. It is not connected
 to real Minecraft pipes until the original pipe BlockEntity and inventory
 lifecycle are ported. This is progress on the genuine compatibility layer,
 not a playable cargo release.
+
+
+## Legacy experiment retired from the active game path
+
+The older `PipeNetwork`, `PipeNetworkStore`,
+`BuildCraftGlassPipeDemo` and `BuildCraftTransportRuntime` were
+development-only alternatives to original BuildCraft item transport.
+They remain in the repository for regression/testing, and are **not**
+called from the mod entrypoint. They must **not** be reactivated to
+deliver a fake playable BuildCraft.
+
+The active `BuildCraftCmlMod` still registers simplified native
+wooden/cobblestone blocks and a redstone engine whose BC8-inspired
+simulation is not connected to original Minecraft rendering.
+These are **compatibility smoke-test placeholders**, not an authentic
+port of the original `BlockPipeHolder`, `TilePipeHolder`,
+`PipeFlowItems`, `TravellingItem` or animated engine.
+
+**Source-first acceptance criterion:** the next playable gameplay
+release must compile and execute original BCCE 8.0.23 pipe-holder/flow
+behavior and the corresponding original engine/pipe renderer through
+H.O.W.L. compatibility shims, with safe save/reload and live validation.
+Simply changing the version label or registering extra Minecraft
+block entities cannot meet this criterion. The last public Nightly
+remains a limited placement/ticker smoke test, not an item transport
+playtest.
