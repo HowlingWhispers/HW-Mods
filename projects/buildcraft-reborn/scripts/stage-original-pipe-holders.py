@@ -77,6 +77,20 @@ CHANGES = {
             'return buildcraft.lib.compat.howl.NativeLoadedContainerLookup.get(level, pos, face.getOpposite()) != null'
             ' || ItemTransactorHelper.getTransactor(level, pos, face.getOpposite(), oTile) != NoSpaceTransactor.INSTANCE;'
         ),
+        (
+            'excess = transactor.insert(excess, false, false);',
+            'if (transactor == NoSpaceTransactor.INSTANCE) {\n'
+            '                            buildcraft.api.v2.item.ItemPort port = '
+            'buildcraft.lib.compat.howl.NativeLoadedContainerLookup.get(level, targetPos, oppositeSide);\n'
+            '                            if (port != null) {\n'
+            '                                var moved = port.insert(excess, buildcraft.api.v2.OperationMode.EXECUTE);\n'
+            '                                excess = moved.remainderCount() == 0 ? ItemStack.EMPTY'
+            ' : excess.copyWithCount(moved.remainderCount());\n'
+            '                            }\n'
+            '                        } else {\n'
+            '                            excess = transactor.insert(excess, false, false);\n'
+            '                        }'
+        ),
     ],
     "lib/block/BlockBCBase_Neptune.java": [
         (
