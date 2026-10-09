@@ -22,6 +22,12 @@ public final class BuildCraftCmlMod implements CodaMod {
         // adapts the Minecraft 26.4 Snapshot 3 registry lifecycle.
         context.registerBlock("buildcrafttransport:wood_item", 0.7f);
         context.registerBlock("buildcrafttransport:cobblestone_item", 1.4f);
+        // BCCE's original BlockPipeHolder/TilePipeHolder model shares one
+        // native Minecraft block-entity type across the item pipe variants.
+        // H.O.W.L. supplies the entity registration seam only; no invented
+        // pipe inventory, moving packet, or MJ receiver is enabled yet.
+        context.registerBlockEntityType("buildcrafttransport:pipe_holder", java.util.List.of(
+                "buildcrafttransport:wood_item", "buildcrafttransport:cobblestone_item"));
         context.registerBlock("buildcraftcore:engine_redstone", 1.5f);
         context.registerItem("buildcraftcore:wrench");
         context.registerCreativeTab("buildcraftcore:buildcraft", "BuildCraft",
