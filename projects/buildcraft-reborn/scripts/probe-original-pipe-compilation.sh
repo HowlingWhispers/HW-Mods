@@ -5,6 +5,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../../.." && pwd)"
 BASE="$ROOT/dist/buildcraft-reborn"
 STAGED="$BASE/staged-snapshot3/src/main/java"
+BRIDGE="$ROOT/projects/buildcraft-reborn/bridge/src/main/java"
 ORIGINAL="$BASE/effective-1.21.11-neoforge/src/main/java"
 CACHE="$BASE/mojang-26.4-snapshot-3"
 CLIENT="$CACHE/client.jar"
@@ -70,7 +71,7 @@ trap 'rm -rf "$BUILD"' EXIT
 
 set +e
 timeout 120s javac --release 25 -proc:none -Xmaxerrs 70 -J-Xmx1536m \
-  -sourcepath "$STAGED:$ORIGINAL" -cp "$CLASSPATH" -d "$BUILD" \
+  -sourcepath "$STAGED:$BRIDGE:$ORIGINAL" -cp "$CLASSPATH" -d "$BUILD" \
   "$STAGED/buildcraft/transport/block/BlockPipeHolder.java" \
   "$STAGED/buildcraft/transport/tile/TilePipeHolder.java" \
   > "$BASE/pipe-holder-javac-stdout.txt" 2>"$ERRORS"

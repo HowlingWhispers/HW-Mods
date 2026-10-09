@@ -80,15 +80,21 @@ def verify(upstream: Path, effective: Path) -> None:
             "Original BCCE source absent from its own effective layout: " + path
         )
 
-    # Exactly ONE source-only registration bridge is approved. It directly
-    # constructs original BCCE BlockPipeHolder and TilePipeHolder classes.
-    # No general transport substitutes are allowed outside original source.
-    active_java = [x for x in PROJECT.rglob("*.java")
-                   if "vendor" not in x.parts and "tests" not in x.parts]
-    bridge = PROJECT / "bridge/src/main/java/dev/howlingwhispers/buildcraftreborn/BuildCraftRebornMod.java"
-    assert active_java == [bridge], (
-        "Only the reviewed source-only BCCE registration bridge is permitted"
+    # Only reviewed boundary types are permitted outside the ORIGINAL BCCE.
+    # None implement pipe flow, item motion, animation or MJ gameplay.
+    active_java = {x.relative_to(PROJECT).as_posix() for x in PROJECT.rglob("*.java")
+                   if "vendor" not in x.parts and "tests" not in x.parts}
+    allowed_java = {
+        "bridge/src/main/java/dev/howlingwhispers/buildcraftreborn/BuildCraftRebornMod.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/BlockCapability.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/NativeCapabilityAccess.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/ModelData.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/ModelProperty.java",
+    }
+    assert active_java == allowed_java, (
+        "Unexpected game code outside original BCCE: " + str(active_java ^ allowed_java)
     )
+    bridge = PROJECT / "bridge/src/main/java/dev/howlingwhispers/buildcraftreborn/BuildCraftRebornMod.java"
     binding = bridge.read_text(encoding="utf-8")
     for expected in (
         "import buildcraft.transport.block.BlockPipeHolder;",

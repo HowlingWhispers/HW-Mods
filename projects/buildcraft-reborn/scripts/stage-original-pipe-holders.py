@@ -68,6 +68,21 @@ CHANGES = {
     ]
 }
 
+# Rebind NeoForge capability/model import types to native H.O.W.L.
+# compatibility descriptors. Original BCCE method bodies remain unchanged.
+NEOFORGE_IMPORTS = {
+    "import net.neoforged.neoforge.capabilities.BlockCapability;":
+        "import buildcraft.lib.compat.howl.BlockCapability;",
+    "import net.neoforged.neoforge.model.data.ModelData;":
+        "import buildcraft.lib.compat.howl.ModelData;",
+    "import net.neoforged.neoforge.model.data.ModelProperty;":
+        "import buildcraft.lib.compat.howl.ModelProperty;",
+    "import net.neoforged.neoforge.client.model.data.ModelData;":
+        "import buildcraft.lib.compat.howl.ModelData;",
+    "import net.neoforged.neoforge.client.model.data.ModelProperty;":
+        "import buildcraft.lib.compat.howl.ModelProperty;",
+}
+
 def main():
     assert not (ROOT / "mods/buildcraft-cml").exists(), "Retired source must stay deleted"
     report = {
@@ -77,9 +92,18 @@ def main():
         "loader_block_entity_id": "hw_buildcraft_reborn:pipe_holder",
         "files": []
     }
-    for relative, edits in CHANGES.items():
-        p = SOURCE / relative
+    staged_count = 0
+    for p in sorted(SOURCE.rglob("*.java")):
+        relative = p.relative_to(SOURCE).as_posix()
         original = p.read_text(encoding="utf-8")
+        edits = CHANGES.get(relative, [])[:]
+        for before, after in NEOFORGE_IMPORTS.items():
+            if before in original:
+                assert original.count(before) == 1
+                edits.append((before, after))
+        if not edits:
+            continue
+        staged_count += 1
         revised = original
         for before, after in edits:
             assert revised.count(before) == 1, (
@@ -104,7 +128,7 @@ def main():
                          "void onChunkUnloaded()", "void onLoad()"):
                 assert name in revised, f"Original BCCE lifecycle missing: {name}"
             assert "pipe.onTick();" in revised
-        else:
+        elif relative == "lib/block/BlockBCBase_Neptune.java":
             assert "public BlockBCBase_Neptune(BlockBehaviour.Properties prop)" in revised
             assert "super(RegistryCompat.blockProperties(prop));" in revised
         dest = DEST / relative
@@ -125,7 +149,10 @@ def main():
         print("\n".join(diff))
     manifest = BASE / "staged-snapshot3/ADAPTATIONS.json"
     manifest.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print("PASS: 7 narrow compatibility source edits across 3 original BCCE classes; original methods retained.")
+    assert staged_count == len(report["files"])
+    print(f"PASS: {staged_count} original BCCE source classes staged via reversible "
+          "capability/model imports and constructor/sound compatibility seams.")
+    print("Original BCCE transport method bodies are unchanged.")
     print("STAGED_ONLY: NeoForge dependency closure + Minecraft compilation still required.")
 
 if __name__ == "__main__":

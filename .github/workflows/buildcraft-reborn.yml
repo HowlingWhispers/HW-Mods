@@ -45,7 +45,19 @@ jobs:
           echo "PASS: Minecraft 26.4 BlockSoundSet and key-based stone/metal sound mappings compile."
       - name: Validate original pipe compilation probe shell syntax
         run: bash -n projects/buildcraft-reborn/scripts/probe-original-pipe-compilation.sh
-      - name: Stage BCCE original pipe holders and block sound compatibility
+      - name: Compile H.O.W.L. BCCE capability and model-data boundaries against real Mojang API
+        run: |
+          set -euo pipefail
+          CLASS_DIR="dist/buildcraft-reborn/compat-tests"
+          mkdir -p "$CLASS_DIR"
+          javac --release 25 -encoding UTF-8 \
+            -cp dist/buildcraft-reborn/mojang-26.4-snapshot-3/client.jar \
+            -d "$CLASS_DIR" \
+            projects/buildcraft-reborn/bridge/src/main/java/buildcraft/lib/compat/howl/*.java \
+            projects/buildcraft-reborn/tests/NativeCapabilityModelDataTest.java
+          java -cp "$CLASS_DIR:dist/buildcraft-reborn/mojang-26.4-snapshot-3/client.jar" \
+            NativeCapabilityModelDataTest
+      - name: Stage BCCE original pipe holders with capability/model import adapters
         run: python3 projects/buildcraft-reborn/scripts/stage-original-pipe-holders.py
       - name: Probe exact pipe holder compiler blockers against Snapshot 3
         run: bash projects/buildcraft-reborn/scripts/probe-original-pipe-compilation.sh

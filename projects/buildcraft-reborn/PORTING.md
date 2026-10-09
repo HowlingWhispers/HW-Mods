@@ -105,3 +105,30 @@ Never remove the original pipe sound setting to mask compile errors.
 
 These are reversible source-level changes. All upstream methods still
 belong to BCCE; no custom audio or fake pipe system was introduced.
+
+## NeoForge capability and model-data boundary (in progress)
+
+New **H.O.W.L.-only type adapters**, not new BuildCraft mechanics:
+
+- `buildcraft.lib.compat.howl.BlockCapability` preserves canonical
+  BCCE capability identity, sided type and strict return-type validation.
+- `NativeCapabilityAccess.get` reads an **existing, loaded, real Minecraft
+  BlockEntity** and delegates to the caller's actual original BCCE capability
+  provider. It does not create an inventory or load missing chunks. This
+  lookup still needs wiring to BCCE's original `IBCCapabilityProvider` in
+  the full original class port.
+- `ModelProperty` and immutable `ModelData` preserve the **original
+  BCCE baked `PipeRenderData` snapshot**, not a replacement pipe renderer.
+  Native H.O.W.L. chunk meshing/render invalidation is still required.
+
+`scripts/stage-original-pipe-holders.py` now stages all original BCCE
+classes that reference NeoForge's `BlockCapability`, `ModelData` or
+`ModelProperty`, replacing **only the exact import lines**. Each edit
+must be reversible without modifying the original BCCE method body.
+The original BCCE source remains untouched.
+
+Compilation of the type adapters against the **real Mojang Snapshot 3**
+classes is covered by `NativeCapabilityModelDataTest.java`. This does
+not satisfy the playable BuildCraft milestone: vanilla chest exposure,
+sided pluggable/pipe queries, actual chunk rendering, original tile
+persistence and the other NeoForge ABI dependencies must be completed.
