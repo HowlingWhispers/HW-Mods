@@ -22,7 +22,7 @@ public final class NativeLoadedContainerLookup {
      *         or null when the chunk or inventory is unavailable.
      */
     public static ItemPort get(Level level, BlockPos pos, Direction insertionFace) {
-        if (level == null || pos == null || !level.isLoaded(pos)) return null;
+        if (level == null || pos == null || level.isClientSide() || !level.isLoaded(pos)) return null;
         BlockEntity entity = level.getBlockEntity(pos);
         if (entity == null || entity.isRemoved()) return null;
         if (!(entity instanceof Container container)) return null;
