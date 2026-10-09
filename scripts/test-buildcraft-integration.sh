@@ -11,7 +11,7 @@ mkdir -p "$TMP_DIR/api" "$TMP_DIR/test"
 mapfile -d '' API_SOURCES < <(find "$API_DIR" -name '*.java' -print0)
 javac --release 21 -encoding UTF-8 -d "$TMP_DIR/api" "${API_SOURCES[@]}"
 mapfile -d '' MOD_SOURCES < <(find mods/buildcraft-cml/src -name '*.java' -print0)
-javac --release 21 -encoding UTF-8 -cp "$TMP_DIR/api" -d "$TMP_DIR/test" "${MOD_SOURCES[@]}" tests/buildcraft-cml/BuildCraftRuntimeTest.java tests/buildcraft-cml/BuildCraftGlassPipeDemoTest.java tests/buildcraft-cml/BuildCraftEngineRuntimeTest.java tests/buildcraft-cml/BuildCraftEnginePersistenceTest.java tests/buildcraft-cml/BuildCraftRedstoneEngineTest.java tests/buildcraft-cml/BuildCraftMjPortAdapterTest.java tests/buildcraft-cml/BuildCraftNativeRouteTest.java
+javac --release 21 -encoding UTF-8 -cp "$TMP_DIR/api" -d "$TMP_DIR/test" "${MOD_SOURCES[@]}" tests/buildcraft-cml/BuildCraftRuntimeTest.java tests/buildcraft-cml/BuildCraftGlassPipeDemoTest.java tests/buildcraft-cml/BuildCraftEngineRuntimeTest.java tests/buildcraft-cml/BuildCraftEnginePersistenceTest.java tests/buildcraft-cml/BuildCraftRedstoneEngineTest.java tests/buildcraft-cml/BuildCraftMjPortAdapterTest.java tests/buildcraft-cml/BuildCraftNativePipeTickObserverTest.java tests/buildcraft-cml/BuildCraftNativeRouteTest.java
 java -cp "$TMP_DIR/api:$TMP_DIR/test" BuildCraftRuntimeTest
 java -cp "$TMP_DIR/api:$TMP_DIR/test" BuildCraftGlassPipeDemoTest
 
@@ -19,4 +19,5 @@ java -cp "$TMP_DIR/api:$TMP_DIR/test" BuildCraftEngineRuntimeTest
 java -cp "$TMP_DIR/api:$TMP_DIR/test" BuildCraftEnginePersistenceTest
 java -cp "$TMP_DIR/api:$TMP_DIR/test" BuildCraftRedstoneEngineTest
 java -cp "$TMP_DIR/api:$TMP_DIR/test" BuildCraftMjPortAdapterTest
+java -cp "$TMP_DIR/api:$TMP_DIR/test" BuildCraftNativePipeTickObserverTest
 java -cp "$TMP_DIR/api:$TMP_DIR/test" BuildCraftNativeRouteTest

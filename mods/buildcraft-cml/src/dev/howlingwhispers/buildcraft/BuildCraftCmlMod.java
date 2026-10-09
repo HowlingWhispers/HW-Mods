@@ -28,6 +28,8 @@ public final class BuildCraftCmlMod implements CodaMod {
         // pipe inventory, moving packet, or MJ receiver is enabled yet.
         context.registerBlockEntityType("buildcrafttransport:pipe_holder", java.util.List.of(
                 "buildcrafttransport:wood_item", "buildcrafttransport:cobblestone_item"));
+        context.registerBlockEntityTick("buildcrafttransport:pipe_holder",
+                BuildCraftNativePipeTickObserver::observe);
         context.registerBlock("buildcraftcore:engine_redstone", 1.5f);
         context.registerItem("buildcraftcore:wrench");
         context.registerCreativeTab("buildcraftcore:buildcraft", "BuildCraft",
