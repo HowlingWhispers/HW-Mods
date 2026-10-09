@@ -73,6 +73,20 @@ CHANGES = {
     ],
     "transport/pipe/flow/PipeFlowItems.java": [
         (
+            'ItemStack possible = trans.extract(filter, 1, count, true);',
+            'buildcraft.api.v2.item.ItemPort nativeSource = trans == NoSpaceTransactor.INSTANCE'
+            ' ? buildcraft.lib.compat.howl.NativeLoadedContainerLookup.get(level, targetPos, from.getOpposite()) : null;\n'
+            '        ItemStack possible = nativeSource == null ? trans.extract(filter, 1, count, true)'
+            ' : nativeSource.extract(filter::matches, 1, count, buildcraft.api.v2.OperationMode.SIMULATE).transferred();'
+        ),
+        (
+            'ItemStack stack = trans.extract(filter, count, count, simulate == FluidAction.SIMULATE);',
+            'ItemStack stack = nativeSource == null ? trans.extract(filter, count, count, simulate == FluidAction.SIMULATE)'
+            ' : nativeSource.extract(filter::matches, count, count, simulate == FluidAction.SIMULATE'
+            ' ? buildcraft.api.v2.OperationMode.SIMULATE : buildcraft.api.v2.OperationMode.EXECUTE).transferred();'
+        ),
+
+        (
             'return ItemTransactorHelper.getTransactor(level, pos, face.getOpposite(), oTile) != NoSpaceTransactor.INSTANCE;',
             'return buildcraft.lib.compat.howl.NativeLoadedContainerLookup.get(level, pos, face.getOpposite()) != null'
             ' || ItemTransactorHelper.getTransactor(level, pos, face.getOpposite(), oTile) != NoSpaceTransactor.INSTANCE;'
