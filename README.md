@@ -22,6 +22,15 @@ The previous BuildCraft CML prototype was intentionally **deleted** from
 It is not a source for a new BuildCraft port. See `RETIRED-BUILDCRAFT.md`
 before introducing any future BuildCraft project.
 
+## Clean source-first BuildCraft port
+
+- `projects/buildcraft-reborn/` — **BuildCraft Reborn for H.O.W.L.**
+  (`hw_buildcraft_reborn`, `0.0.1-dev.1`), an entirely **new project path**
+  using the original pinned BCCE 8.0.23 sources. It has its own source-import
+  verification workflow and is **not yet a Minecraft mod or player release**.
+  No classes or artifacts from the deleted `mods/buildcraft-cml/` prototype
+  are imported.
+
 ## Building
 
 ```bash

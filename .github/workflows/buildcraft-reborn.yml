@@ -1,0 +1,32 @@
+name: BuildCraft Reborn source verification
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'projects/buildcraft-reborn/**'
+      - '.github/workflows/buildcraft-reborn.yml'
+  pull_request:
+    paths:
+      - 'projects/buildcraft-reborn/**'
+      - '.github/workflows/buildcraft-reborn.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify-bcce-original:
+    name: Verify original BCCE 8.0.23 source and isolation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify fresh source project from upstream
+        run: bash projects/buildcraft-reborn/scripts/prepare-source.sh
+      - name: Confirm no old BuildCraft build or release is active
+        run: |
+          test ! -e mods/buildcraft-cml
+          test ! -e scripts/build-buildcraft-cml.sh
+          test ! -e dist/buildcraft-cml-0.1.0-dev.jar
+          test ! -e projects/buildcraft-reborn/resources/coda.mod.json
+          echo 'PASS: no old prototype, no playable BuildCraft artifact and no release publisher.'
