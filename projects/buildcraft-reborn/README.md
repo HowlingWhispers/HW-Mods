@@ -120,3 +120,23 @@ classes compile and load.
 
 No old custom pipe gameplay, fake `BlockEntity` payload or released mod
 jar is present.
+
+## H.O.W.L. entrypoint wired to original BCCE constructors (source only)
+
+The exact registration source now lives at
+`bridge/src/main/java/dev/howlingwhispers/buildcraftreborn/BuildCraftRebornMod.java`.
+It registers a **single original `BlockPipeHolder`** with the new ID
+`hw_buildcraft_reborn:pipe_holder`, passes Mojang's keyed block
+Properties into that original constructor, and supplies the actual
+`TilePipeHolder` constructor as the native block-entity factory.
+It intentionally does **not** register the H.O.W.L. generic tick callback:
+the original BCCE `BlockPipeHolder.getTicker` already calls
+`TilePipeHolder.update`.
+
+The original BCCE ported classes are **not yet compiling**. At the
+last verified probe the remaining failures include unported NeoForge
+capabilities, model-data support and the removed Minecraft
+`SoundType` API, plus missing annotation dependencies. The bridge
+is therefore source only and has **no mod metadata**, launcher
+installation, or release. A native registry bridge test alone is
+not evidence of working BCCE gameplay.

@@ -74,3 +74,21 @@ can run. The explicit compiler probe gives **NOT_COMPILED** status
 and saves all javac errors rather than silently treating import or
 factory tests as proof of original pipe gameplay. Neither a playable
 JAR nor any package for CodaLauncher is created.
+
+## Explicit original class registration
+
+See `bridge/src/main/java/dev/howlingwhispers/buildcraftreborn/BuildCraftRebornMod.java`.
+It is the *actual* integration source for the original BCCE
+`BlockPipeHolder` and `TilePipeHolder` constructors, not a
+stand-in `Block` or empty `BlockEntity`. It registers only BCCE's
+shared pipe holder, not invented wood/cobblestone blocks.
+Eventually BCCE's original `ItemPipeHolder` will be responsible for
+installing pipe variants, exactly as upstream does.
+
+The registration bridge cannot compile until the original upstream
+dependencies are ported to Minecraft 26.4 Snapshot 3. In particular
+NeoForge `BlockCapability`, `ModelData`, item/fluids capabilities
+and Minecraft's removed `SoundType` must be handled as explicit
+API compatibility work. CI retains the exact compiler report; no
+synthetic inventory/network or new public BuildCraft Nightly may
+substitute for this.

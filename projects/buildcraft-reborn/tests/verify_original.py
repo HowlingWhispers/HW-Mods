@@ -80,11 +80,34 @@ def verify(upstream: Path, effective: Path) -> None:
             "Original BCCE source absent from its own effective layout: " + path
         )
 
-    # Executable tests may exist, but production Java outside the original
-    # BCCE tree is prohibited until a reviewed loader-specific adapter lands.
+    # Exactly ONE source-only registration bridge is approved. It directly
+    # constructs original BCCE BlockPipeHolder and TilePipeHolder classes.
+    # No general transport substitutes are allowed outside original source.
     active_java = [x for x in PROJECT.rglob("*.java")
                    if "vendor" not in x.parts and "tests" not in x.parts]
-    assert not active_java, "Do not introduce a substitute BuildCraft implementation"
+    bridge = PROJECT / "bridge/src/main/java/dev/howlingwhispers/buildcraftreborn/BuildCraftRebornMod.java"
+    assert active_java == [bridge], (
+        "Only the reviewed source-only BCCE registration bridge is permitted"
+    )
+    binding = bridge.read_text(encoding="utf-8")
+    for expected in (
+        "import buildcraft.transport.block.BlockPipeHolder;",
+        "import buildcraft.transport.tile.TilePipeHolder;",
+        "new BlockPipeHolder(",
+        "new TilePipeHolder(",
+        'HOLDER_ID = "hw_buildcraft_reborn:pipe_holder"',
+        "registerNativeKeyedBlockFactory(",
+        "registerNativeBlockEntityFactory(",
+        "context.registerBlockEntityType(HOLDER_ID, List.of(HOLDER_ID));",
+    ):
+        assert expected in binding, "Original BCCE registration bridge missing: " + expected
+    for forbidden in (
+        "registerServerTick(", "registerBlockEntityTick(", "PipeNetwork",
+        "BuildCraftGlassPipeDemo", "mods/buildcraft-cml", "buildcraft_cml"
+    ):
+        assert forbidden not in binding, (
+            "Bridge must not reintroduce the old custom BuildCraft: " + forbidden
+        )
     assert (PROJECT / "tests/OriginalPipeSchedulingTest.java").is_file()
     assert not any(x.name in FORBIDDEN_JAVA for x in PROJECT.rglob("*.java"))
     assert not (PROJECT / "resources/coda.mod.json").exists(), (
