@@ -181,6 +181,17 @@ def main():
                          "void onChunkUnloaded()", "void onLoad()"):
                 assert name in revised, f"Original BCCE lifecycle missing: {name}"
             assert "pipe.onTick();" in revised
+        elif relative == "transport/pipe/flow/PipeFlowItems.java":
+            # Preserve the original event-driven travelling-item flow.
+            # The native inventory path is only an endpoint fallback.
+            for name in ("void onTick()", "onItemReachCenter(",
+                         "onItemReachEnd(", "insertItemEvents(",
+                         "scheduleTravellingItem(", "holder.fireEvent("):
+                assert name in revised, f"Original BCCE item flow missing: {name}"
+            assert "NativeLoadedContainerLookup.get(" in revised
+            assert "OperationMode.SIMULATE" in revised
+            assert "OperationMode.EXECUTE" in revised
+            assert "NoSpaceTransactor.INSTANCE" in revised
         elif relative == "lib/block/BlockBCBase_Neptune.java":
             assert "public BlockBCBase_Neptune(BlockBehaviour.Properties prop)" in revised
             assert "super(RegistryCompat.blockProperties(prop));" in revised
