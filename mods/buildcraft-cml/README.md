@@ -1,6 +1,6 @@
 # BuildCraft Community Edition for H.O.W.L.
 
-**Status: upstream 8.0.23 pinned and reference source materialization implemented. This is not yet a playable one-to-one BuildCraft port.**
+**H.O.W.L. port version: 0.0.1-dev.1.** Upstream BuildCraft Community Edition 8.0.23 is an unchanged source/behavior reference, not our mod version. This is a development build with original MJ engine logic and read-only real-block route discovery, NOT a playable item-transport release.
 
 - Original source: https://github.com/BCCE-team/BuildCraft
 - Official release: `8.0.23` (tag commit `23c6af379676ce5262c5c0cb6f1f331edc9b12c6`)

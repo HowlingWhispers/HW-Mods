@@ -2,10 +2,10 @@
   "schema": 1,
   "id": "buildcraft_cml",
   "name": "BuildCraft Community Edition (H.O.W.L. Port)",
-  "version": "0.1.2-dev",
+  "version": "0.0.1-dev.1",
   "entrypoint": "dev.howlingwhispers.buildcraft.BuildCraftCmlMod",
   "minecraft": "26.4-snapshot-3",
   "depends": [],
-  "description": "BuildCraft Community Edition pipes and redstone engines for moving items between chests. Early H.O.W.L. port.",
-  "changeSummary": "Switches the source baseline to BCCE 8.0.23. Fixes creative inventory and pipe-placement crashes and original texture mapping. Requires H.O.W.L. 0.0.29."
+  "description": "Native BCCE redstone engine MJ and real-world pipe route inspection. Development-only; actual item transport is not implemented.",
+  "changeSummary": "Reset H.O.W.L. port version to 0.0.1-dev.1. Adds real placed-pipe route inspection and /buildcraft status; engine MJ and save state remain experimental. No item transfer yet."
 }

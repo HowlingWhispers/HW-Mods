@@ -14,7 +14,7 @@ Unreleased prototypes are **development-only**, not optional player mods. World-
 
 - `mods/hw-quiet-underground/` — HW Quiet Underground 1.0.0 — **development-only** Snapshot 3 world generation. A guarded pre-generation provisioner exists, but the Minecraft new-world hook remains to be implemented and tested.
 - `mods/hw-essentials/` — HW Essentials 0.2.0 — `/sethome`, `/home`, `/back`, `/homes`, `/delhome`, `/hwessentials`
-- `mods/buildcraft-cml/` — BuildCraft CML 0.1.0-dev — **development-only** transport core with chunk-load checks and checksummed, atomic item persistence. Block/item registry, recipes and a server tick/inventory bridge remain to be implemented.
+- `mods/buildcraft-cml/` — BuildCraft CML **0.0.1-dev.1** — **development-only** genuine BCCE 8.0.23 redstone engine MJ/heat/piston port, real Native Creative block registration and live pipe-route surveying. Native pipe BlockEntities, moving ItemStacks, wrench actions and machine parity remain to be implemented. The older JAR filename is kept temporarily for CodaLauncher compatibility.
 
 ## Building
 

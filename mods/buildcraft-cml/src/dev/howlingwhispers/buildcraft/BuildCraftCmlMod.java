@@ -46,6 +46,7 @@ public final class BuildCraftCmlMod implements CodaMod {
         // command. Its JVM fixture remains separately testable, but genuine
         // player transport requires BCCE pipe block entities and MJ ports.
         System.out.println("[BuildCraft H.O.W.L.] Native BCCE redstone-engine MJ and piston "
-                + "state enabled; real travelling-item pipe port is not yet installed.");
+                + "state enabled; real pipe route inspection available via /buildcraft status; " +
+                "item-stack transport is not installed.");
     }
 }

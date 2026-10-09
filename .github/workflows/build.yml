@@ -117,7 +117,7 @@ jobs:
           done
           unzip -p dist/buildcraft-cml-0.1.0-dev.jar META-INF/buildcraft-upstream/SOURCE.txt |
             grep -F 'Pinned commit: 23c6af379676ce5262c5c0cb6f1f331edc9b12c6'
-          unzip -p dist/buildcraft-cml-0.1.0-dev.jar coda.mod.json | jq -e '.id == "buildcraft_cml" and .version == "0.1.2-dev" and (.description | length > 0) and (.changeSummary | length > 0)'
+          unzip -p dist/buildcraft-cml-0.1.0-dev.jar coda.mod.json | jq -e '.id == "buildcraft_cml" and .version == "0.0.1-dev.1" and (.description | length > 0) and (.changeSummary | length > 0)'
       - name: Build isolated single-player BuildCraft playtest ZIP
         env:
           HW_CODALOADER_ROOT: ${{ github.workspace }}/HW-CodaLoader
