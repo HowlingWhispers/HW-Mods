@@ -22,6 +22,16 @@ REG = ('net.minecraft.core.registries.BuiltInRegistries.BLOCK_ENTITY_TYPE'
 CHANGES = {
     BLOCK: [
         (
+            'import net.neoforged.neoforge.client.extensions.common.IClientBlockExtensions;',
+            '// H.O.W.L. owns client model/render registration, not NeoForge block extensions.'
+        ),
+        (
+            '    public void initializeClient(Consumer<IClientBlockExtensions> consumer) {\n'
+            '        consumer.accept(BlockPipeHolderClientExtensions.INSTANCE);\n'
+            '    }',
+            '    // H.O.W.L. renders this original pipe through its native client registration.'
+        ),
+        (
             '\tpublic BlockPipeHolder() {\n'
             '\t\tsuper(RegistryCompat.blockProperties(BlockBehaviour.Properties.of())'
             '.mapColor(MapColor.STONE).sound(SoundType.STONE).strength(0.25f)\n'
