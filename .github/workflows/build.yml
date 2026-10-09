@@ -115,6 +115,16 @@ jobs:
         env:
           HW_CODALOADER_ROOT: ${{ github.workspace }}/HW-CodaLoader
         run: bash scripts/build-buildcraft-playtest.sh
+      - name: Verify the packaged creative-inventory crash fix
+        run: |
+          grep -F 'CodaCreativeInventoryTransformer.install(instrumentation);' \
+            HW-CodaLoader/src/main/java/dev/howlingwhispers/codaloader/bootstrap/CodaAgent.java
+          mkdir -p out/creative-inventory-tests
+          javac --release 21 -cp HW-CodaLoader/dist/CodaLoader.jar \
+            -d out/creative-inventory-tests \
+            HW-CodaLoader/tests/src/dev/howlingwhispers/codaloader/bootstrap/CreativeInventoryTest.java
+          java -cp out/creative-inventory-tests:HW-CodaLoader/dist/CodaLoader.jar \
+            dev.howlingwhispers.codaloader.bootstrap.CreativeInventoryTest
       - name: Validate and package Quiet Underground worldgen
         run: |
           python3 scripts/build-hw-quiet-underground.py
@@ -233,15 +243,23 @@ jobs:
           Opt-in **single-player-only** test. Does not replace Stable.
           Use a NEW disposable world in a separate CodaLauncher Nightly profile.
 
-          This first preview uses a straight line of vanilla glass blocks as
-          temporary pipe markers. Put vanilla chests at each end and run:
-          `/buildcraft pulse 0 64 0 4 64 0`
-          after placing glass at x=1,2,3 and chests at x=0,4 (y=64,z=0).
-          Up to 16 items move per manual command if native Snapshot 3 methods match.
+          - Fixed the crash when opening creative inventory with BuildCraft:
+            the extra tab now uses a valid Minecraft tab sprite index.
+          - Original BuildCraft pipe, engine and wrench textures are included
+            in the modern texture atlases. Unsupported legacy Forge models
+            are excluded from the active resource pack.
+          - Installed through CodaLauncher's normal Nightly update flow.
+            BuildCraft remains one JAR in the active profile's mods folder.
 
-          Not yet verified with a human in the actual game. This is an early
-          implementation test, NOT a fully featured BuildCraft port.
-          No custom blocks/wrench, networking, engine, animations or shared play.
+          Includes wooden and cobblestone transport pipes, a redstone engine,
+          a wrench item and the BuildCraft creative tab. Engine-driven chest
+          transport remains experimental; wrench interactions and moving-item
+          animations are still in development. This is an early port, not full
+          BuildCraft feature parity.
+
+          Automated checks cover the actual Snapshot 3 renderer bytecode,
+          native registry bootstrap, transport and original texture packaging.
+          Live creative-inventory and gameplay confirmation is still required.
           EOF
           gh release create "$TAG" "$ZIP" "$HASH" --prerelease \
             --target "$GITHUB_SHA" \
