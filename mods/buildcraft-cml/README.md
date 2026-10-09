@@ -52,3 +52,14 @@ Next mandatory boundary: native H.O.W.L. block-entity state and Minecraft
 ItemStack transactions, then traveling pipe packets and rendering, with
 lossless save/reload and a real single-player smoke test. This work stays
 development-only rather than pretending the old chest-transfer shortcut works.
+
+## Original BCCE MJ port interface (compatibility stage)
+
+Original BCCE 8.0.23 `MjPort`, `MjTransferResult`, `MjTransferPolicy`,
+`MjPortRole` and `OperationMode` now compile unchanged within the H.O.W.L.
+mod. `BuildCraftMjPortAdapter` connects the existing BCCE-derived redstone
+engine to the original API2 MJ port interface, validated by isolated
+conservation, simulation, piston-midpoint and role tests. It is not connected
+to real Minecraft pipes until the original pipe BlockEntity and inventory
+lifecycle are ported. This is progress on the genuine compatibility layer,
+not a playable cargo release.

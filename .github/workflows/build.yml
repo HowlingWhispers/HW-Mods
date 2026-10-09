@@ -93,6 +93,18 @@ jobs:
         run: |
           bash scripts/prepare-buildcraft-bcce.sh
           python3 tests/test-buildcraft-bcce-reference.py
+      - name: Assert original BCCE API2 MJ sources are byte-identical
+        run: |
+          BCCE="dist/buildcraft-upstream/bcce-23c6af379676ce5262c5c0cb6f1f331edc9b12c6/source-shared/src/main/java"
+          for java in \
+            buildcraft/api/v2/OperationMode.java \
+            buildcraft/api/v2/energy/MjPort.java \
+            buildcraft/api/v2/energy/MjTransferResult.java \
+            buildcraft/api/v2/energy/MjTransferPolicy.java \
+            buildcraft/api/v2/energy/MjPortRole.java
+          do
+            cmp "$BCCE/$java" "mods/buildcraft-cml/src/$java"
+          done
       - name: Compile BuildCraft development mod against H.O.W.L. API
         env:
           HW_CODALOADER_API_DIR: ${{ github.workspace }}/HW-CodaLoader/src/main/java

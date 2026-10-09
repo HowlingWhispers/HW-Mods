@@ -48,3 +48,37 @@ H.O.W.L.'s native Block and BlockItem bridge still constructs generic blocks; it
 **No compatibility claim from a compile-only fixture, source materialization or successful asset import.** Test directly in Minecraft; preserve separate test worlds and never rewrite existing saves without a backup/migration plan.
 
 MPL-2.0 notices and per-file attribution are mandatory. Corresponding modified source must remain available under the applicable license terms. The unofficial H.O.W.L. port is not endorsed by the original BuildCraft or BCCE teams.
+
+## BCCE MJ API2 compatibility milestone (0.0.1-dev.1)
+
+The following five unmodified Java sources were brought directly across from
+**official BCCE 8.0.23**, retaining the original `buildcraft.api.v2` packages:
+
+- `OperationMode.java`
+- `energy/MjPort.java`
+- `energy/MjTransferResult.java`
+- `energy/MjTransferPolicy.java`
+- `energy/MjPortRole.java`
+
+`BuildCraftMjPortAdapter` is deliberately just an interface compatibility
+shim from the already adapted `TileEngineRedstone_BC8` to the original
+`MjPort` simulate/execute contract and redstone-receiver role. No synthetic
+pipe, invented energy mechanic or instant item transfer is used. The original
+API2 source is compared byte-for-byte against the pinned upstream in CI.
+
+**Not yet player-ready:** H.O.W.L. still needs the native
+`BlockPipeHolder`/`TilePipeHolder` lifecycle, real Minecraft ItemStack
+ownership/extraction using BCCE's `ItemPort` contract, and its original
+`TravellingItem`/`PipeFlowItems` event and animation systems. Until those
+exist, real-world engine ticking deliberately uses `MjEndpoint.NONE` and
+cannot emit energy to an imaginary pipe. Continue by exposing the original
+pipe BlockEntity and its MJ/item ports, not by implementing a new transport
+simulation.
+
+Upstream authoritative source references:
+
+- `source-family-platforms/modern/neoforge/src/main/java/buildcraft/transport/block/BlockPipeHolder.java`
+- `source-family-platforms/modern/neoforge/src/main/java/buildcraft/transport/tile/TilePipeHolder.java`
+- `source-platforms/neoforge/src/main/java/buildcraft/transport/pipe/behaviour/PipeBehaviourWood.java`
+- `source-platforms/neoforge/src/main/java/buildcraft/transport/pipe/flow/PipeFlowItems.java`
+- `source-families/modern/src/main/java/buildcraft/transport/pipe/flow/TravellingItem.java`
