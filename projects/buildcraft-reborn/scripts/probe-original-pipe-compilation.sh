@@ -101,11 +101,11 @@ else
     echo 'NEOFORGE_PACKAGE_BREAKDOWN:'
     # Count distinct missing external NeoForge packages, not individual symbols.
     # This is diagnostic only: failure still means NOT_COMPILED.
-    grep -oE 'package net\\.neoforged[.[:alnum:]_]+ does not exist' "$ERRORS" |
+    grep -oE 'package net\.neoforged[.[:alnum:]_]+ does not exist' "$ERRORS" |
       sed -E 's/^package (.*) does not exist$/\\1/' |
       sort | uniq -c | sort -rn || true
     echo 'NEOFORGE_AFFECTED_SOURCE_FILES:'
-    grep -E '^[^[:space:]]+\\.java:[0-9]+: error: package net\\.neoforged' "$ERRORS" |
+    grep -E '^[^[:space:]]+\.java:[0-9]+: error: package net\.neoforged' "$ERRORS" |
       sed -E 's/:[0-9]+: error:.*$//' |
       sed -E "s#^$BASE/##" | sort -u || true
     echo "IMPORT_ERRORS=$(grep -c 'error: package .* does not exist' "$ERRORS" || true)"
