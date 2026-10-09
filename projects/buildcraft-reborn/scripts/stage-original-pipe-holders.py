@@ -87,6 +87,13 @@ CHANGES = {
         ),
 
         (
+            'return ItemTransactorHelper.getTransactor(oTile, face.getOpposite()) != NoSpaceTransactor.INSTANCE;',
+            'return (oTile != null && oTile.getLevel() != null && '
+            'buildcraft.lib.compat.howl.NativeLoadedContainerLookup.get('
+            'oTile.getLevel(), oTile.getBlockPos(), face.getOpposite()) != null)'
+            ' || ItemTransactorHelper.getTransactor(oTile, face.getOpposite()) != NoSpaceTransactor.INSTANCE;'
+        ),
+        (
             'return ItemTransactorHelper.getTransactor(level, pos, face.getOpposite(), oTile) != NoSpaceTransactor.INSTANCE;',
             'return buildcraft.lib.compat.howl.NativeLoadedContainerLookup.get(level, pos, face.getOpposite()) != null'
             ' || ItemTransactorHelper.getTransactor(level, pos, face.getOpposite(), oTile) != NoSpaceTransactor.INSTANCE;'
