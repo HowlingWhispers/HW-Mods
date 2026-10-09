@@ -54,17 +54,23 @@ jobs:
           set -euo pipefail
           CLASS_DIR="dist/buildcraft-reborn/compat-tests"
           mkdir -p "$CLASS_DIR"
+          MC_CACHE="dist/buildcraft-reborn/mojang-26.4-snapshot-3"
+          NATIVE_CP="$MC_CACHE/client.jar"
+          while IFS= read -r jar; do NATIVE_CP="$NATIVE_CP:$jar"; done < <(
+            find "$MC_CACHE/libraries" dist/buildcraft-reborn/test-deps \
+              -name '*.jar' -type f | sort
+          )
+          STAGED_SRC="dist/buildcraft-reborn/staged-snapshot3/src/main/java"
           javac --release 25 -encoding UTF-8 \
-            -cp dist/buildcraft-reborn/mojang-26.4-snapshot-3/client.jar \
+            -cp "$NATIVE_CP" \
             -d "$CLASS_DIR" \
+            "$STAGED_SRC/buildcraft/lib/internal/capabilities/IBCCapabilityProvider.java" \
             projects/buildcraft-reborn/bridge/src/main/java/buildcraft/lib/compat/howl/*.java \
             projects/buildcraft-reborn/tests/NativeCapabilityModelDataTest.java
-          MC_CACHE="dist/buildcraft-reborn/mojang-26.4-snapshot-3"
-          RUNTIME="$CLASS_DIR:$MC_CACHE/client.jar"
-          while IFS= read -r jar; do RUNTIME="$RUNTIME:$jar"; done < <(
-            find "$MC_CACHE/libraries" -name '*.jar' -type f | sort
-          )
-          java -cp "$RUNTIME" NativeCapabilityModelDataTest
+          java -cp "$CLASS_DIR:$NATIVE_CP" NativeCapabilityModelDataTest
+          javap -classpath "$CLASS_DIR" \
+            buildcraft.lib.compat.howl.OriginalCapabilityLookup |
+            grep -F 'get(net.minecraft.world.level.Level, net.minecraft.core.BlockPos'
       - name: Upload full original BCCE compilation diagnostics
         if: always()
         uses: actions/upload-artifact@v4

@@ -53,6 +53,23 @@ CHANGES = {
             '    public TilePipeHolder(BlockPos pos, BlockState bs) {\n'
             '    \tsuper(' + REG + ', pos, bs);'
         )
+        (
+            'IPipe neighbourPipe = level.getCapability(PipeApi.CAP_PIPE, neighbourPos, side.getOpposite());',
+            'IPipe neighbourPipe = buildcraft.lib.compat.howl.OriginalCapabilityLookup.get('
+            'level, neighbourPos, side.getOpposite(), PipeApi.CAP_PIPE);'
+        ),
+        (
+            'return level.getCapability(capability, neighbourPos, targetSide);',
+            'return buildcraft.lib.compat.howl.OriginalCapabilityLookup.get('
+            'level, neighbourPos, targetSide, capability);'
+        )
+    ],
+    "transport/pipe/Pipe.java": [
+        (
+            'PipePluggable oPlug = level.getCapability(PipeApi.CAP_PLUG, nPos, facing.getOpposite());',
+            'PipePluggable oPlug = buildcraft.lib.compat.howl.OriginalCapabilityLookup.get('
+            'level, nPos, facing.getOpposite(), PipeApi.CAP_PLUG);'
+        )
     ],
     "lib/block/BlockBCBase_Neptune.java": [
         (
@@ -124,6 +141,7 @@ def main():
             assert "getCollisionShape(" in revised
             assert "getShape(" in revised
         elif relative == TILE:
+            assert "OriginalCapabilityLookup.get(" in revised
             for name in ("void update()", "void writeData(", "void readData(",
                          "void onChunkUnloaded()", "void onLoad()"):
                 assert name in revised, f"Original BCCE lifecycle missing: {name}"

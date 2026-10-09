@@ -132,3 +132,25 @@ classes is covered by `NativeCapabilityModelDataTest.java`. This does
 not satisfy the playable BuildCraft milestone: vanilla chest exposure,
 sided pluggable/pipe queries, actual chunk rendering, original tile
 persistence and the other NeoForge ABI dependencies must be completed.
+
+## BCCE original pipe-to-pipe capability discovery
+
+`OriginalCapabilityLookup.get` now connects to the **original**
+`IBCCapabilityProvider.getCapability` on a real loaded Minecraft
+`BlockEntity`. It never fabricates a block entity, loads missing
+chunks, or bypasses the original BCCE pluggable blocking logic.
+
+Reversible source substitutions are staged only at three specific
+NeoForge positional lookup sites:
+- `TilePipeHolder.getNeighbourPipe`, querying the original
+  `PipeApi.CAP_PIPE`
+- `TilePipeHolder.getCapabilityFromPipe`, querying the original
+  `getCapability` path
+- `Pipe`'s CAP_PLUG lookup when building original pipe topology
+
+This initial bridge covers **BCCE native block-entity providers only**.
+Discovering vanilla chest/barrel automation on 26.4 still needs a
+real inventory adapter to the original BCCE `IItemHandler` or
+`ItemPort`, including proper simulate/execute behavior, before item
+transport may be released. Missing capabilities are not substituted
+with fake inventory data or teleportation.
