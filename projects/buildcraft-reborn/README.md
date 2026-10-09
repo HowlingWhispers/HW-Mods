@@ -69,3 +69,22 @@ project script.
 
 Original sources retain the upstream MPL-2.0 license. See
 `vendor/bcce-8.0.23/LICENSE.txt` and `UPSTREAM.lock.json`.
+
+## Original item-port compatibility check
+
+The original `buildcraft.api.v2.item.ItemPort`, `ItemMatcher`,
+`ItemTransferResult`, `ItemTransferPolicy`, and `OperationMode` are
+now vendored unchanged. CI compiles these exact BCCE sources against the
+**SHA-1-verified Mojang Minecraft 26.4 Snapshot 3 client JAR**, using Java
+25. It checks that the interfaces still reference Minecraft's real
+`ItemStack`, not a mock or custom inventory transfer type:
+
+```bash
+bash projects/buildcraft-reborn/scripts/prepare-source.sh
+bash projects/buildcraft-reborn/scripts/test-original-item-api.sh
+```
+
+A successful compile proves only the **item-transfer interface ABI** can be
+used on this Minecraft target. It does not establish that pipe block entities,
+NeoForge capabilities, world save/reload, energy receivers, renderer or
+inventory transactions work yet. No mod JAR is produced.

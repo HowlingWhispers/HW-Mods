@@ -36,3 +36,14 @@ or legacy `PipeNetwork` classes may be added to this project. The next
 compile milestone is original `TilePipeHolder` and `BlockPipeHolder`
 against Snapshot 3 and H.O.W.L. with explicit, reviewed compatibility
 adaptations.
+
+## Original Minecraft ItemStack compatibility
+
+The source-first boundary retains the original `ItemPort` and
+`ItemTransferResult` Java implementations and tests them with the
+actual verified Mojang Snapshot 3 `ItemStack` class. This is
+a strict compilation test, not an invented item-transfer system.
+The next step must connect those unchanged classes to the original
+`TilePipeHolder`, `PipeFlowItems`, and real Minecraft containers
+through H.O.W.L.'s new native factory API, while retaining BCCE
+save/load and renderer behavior.

@@ -23,13 +23,15 @@ jobs:
       - uses: actions/checkout@v4
       - name: Verify fresh source project from upstream
         run: bash projects/buildcraft-reborn/scripts/prepare-source.sh
-      - name: Set up Java 21 for genuine original BCCE code regression
+      - name: Set up Java 25 for exact Minecraft Snapshot 3
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "21"
+          java-version: "25"
       - name: Compile and test BCCE's original travelling-item scheduler
         run: bash projects/buildcraft-reborn/scripts/test-original-flow-core.sh
+      - name: Compile original BCCE item transfer API against real Minecraft 26.4
+        run: bash projects/buildcraft-reborn/scripts/test-original-item-api.sh
       - name: Confirm no old BuildCraft build or release is active
         run: |
           test ! -e mods/buildcraft-cml
