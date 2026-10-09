@@ -33,11 +33,10 @@ public final class BuildCraftCmlMod implements CodaMod {
         context.registerBlockPlacement(ENGINES::onPlacement);
         context.registerServerTick("real_engine_transport", ENGINES::onServerTick);
         context.registerServerTick("pipe_transport", TRANSPORT::onServerTick);
-        // Actual native-chest test, available only when this development mod
-        // is installed alongside the experimental H.O.W.L. world command bridge.
-        context.registerCommand("buildcraft", "BuildCraft chest/pipe single-player test",
-                BuildCraftGlassPipeDemo::execute);
-        System.out.println("[BuildCraft CML] Server-tick transport bridge registered. "
-                + "BCCE-source H.O.W.L. native pipe and redstone engine pulse loop registered.");
+        // Do not expose the obsolete /buildcraft pulse chest teleportation
+        // command. Its JVM fixture remains separately testable, but genuine
+        // player transport requires BCCE pipe block entities and MJ ports.
+        System.out.println("[BuildCraft H.O.W.L.] Native BCCE redstone-engine MJ and piston "
+                + "state enabled; real travelling-item pipe port is not yet installed.");
     }
 }

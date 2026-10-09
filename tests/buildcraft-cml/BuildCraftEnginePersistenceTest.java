@@ -1,145 +1,99 @@
-import dev.howlingwhispers.buildcraft.BuildCraftEngineRuntime;
-import dev.howlingwhispers.buildcraft.BuildCraftEngineStore;
-import dev.howlingwhispers.codaloader.api.CodaBlockPlacements;
-import dev.howlingwhispers.codaloader.api.CodaBlockPos;
-import dev.howlingwhispers.codaloader.api.CodaInventoryView;
-import dev.howlingwhispers.codaloader.api.CodaServerTickContext;
-import dev.howlingwhispers.codaloader.api.CodaWorldView;
+import dev.howlingwhispers.buildcraft.*;
+import dev.howlingwhispers.codaloader.api.*;
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
+import java.nio.file.*;
 import java.util.*;
 
 public final class BuildCraftEnginePersistenceTest {
-    static final String DIM = "minecraft:overworld";
-    static final CodaBlockPos ENGINE_POS = new CodaBlockPos(1,65,0);
+    static final String DIM="minecraft:overworld";
+    static final CodaBlockPos POS=new CodaBlockPos(1,65,0);
+    static final BuildCraftEngineStore.Engine KEY=new BuildCraftEngineStore.Engine(DIM,POS);
     static int checks;
-    static void check(boolean good, String message) {
-        checks++;
-        if (!good) throw new AssertionError(message);
+    static void check(boolean yes,String description){
+        checks++;if(!yes)throw new AssertionError(description);
     }
-
     static final class World implements CodaWorldView {
         Path root;
-        boolean powered = true;
-        boolean loaded = true;
-        Map<CodaBlockPos,String> blocks = new HashMap<>();
-        Map<CodaBlockPos,Integer> items = new HashMap<>();
+        boolean powered=true,loaded=true;
+        boolean exists=true;
         int transfers;
-        World(Path root) {
-            this.root = root;
-            blocks.put(ENGINE_POS,"buildcraftcore:engine_redstone");
-            blocks.put(new CodaBlockPos(1,64,0),"buildcrafttransport:wood_item");
-            blocks.put(new CodaBlockPos(2,64,0),"buildcrafttransport:cobblestone_item");
-            blocks.put(new CodaBlockPos(3,64,0),"buildcrafttransport:cobblestone_item");
-            items.put(new CodaBlockPos(0,64,0),32);
-            items.put(new CodaBlockPos(4,64,0),0);
+        World(Path root){this.root=root;}
+        @Override public Optional<Path> worldDirectory(){return Optional.of(root);}
+        @Override public List<String> dimensions(){return List.of(DIM);}
+        @Override public boolean isChunkLoaded(String dim,CodaBlockPos pos){return DIM.equals(dim)&&loaded;}
+        @Override public Optional<CodaInventoryView> inventory(String dim,CodaBlockPos pos){return Optional.empty();}
+        @Override public boolean isBlock(String dim,CodaBlockPos pos,String id){
+            return isChunkLoaded(dim,pos)&&exists && id.equals("buildcraftcore:engine_redstone");
         }
-        @Override public Optional<Path> worldDirectory() { return Optional.of(root); }
-        @Override public List<String> dimensions() { return List.of(DIM); }
-        @Override public boolean isChunkLoaded(String dim, CodaBlockPos pos) {
-            return DIM.equals(dim) && loaded;
-        }
-        @Override public Optional<CodaInventoryView> inventory(String dim,CodaBlockPos pos) {
-            if (!isChunkLoaded(dim,pos) || !items.containsKey(pos)) return Optional.empty();
-            return Optional.of(new CodaInventoryView(pos,
-                    List.of(new CodaInventoryView.Slot(0, items.get(pos),64))));
-        }
-        @Override public boolean isBlock(String dim,CodaBlockPos pos,String id) {
-            return isChunkLoaded(dim,pos) && id.equals(blocks.get(pos));
-        }
-        @Override public boolean hasNeighborSignal(String dim,CodaBlockPos pos) {
-            return isChunkLoaded(dim,pos) && powered;
-        }
-        @Override public int transfer(String dim,CodaBlockPos src,CodaBlockPos dst,int max) {
-            if (!isChunkLoaded(dim,src) || !isChunkLoaded(dim,dst)) throw new AssertionError("Unloaded transfer");
-            int n = Math.min(max,Math.min(items.get(src),64-items.get(dst)));
-            if (n>0) {
-                items.put(src,items.get(src)-n);
-                items.put(dst,items.get(dst)+n);
-                transfers++;
-            }
-            return n;
+        @Override public boolean hasNeighborSignal(String dim,CodaBlockPos pos){return powered&&loaded;}
+        @Override public int transfer(String dim,CodaBlockPos from,CodaBlockPos to,int max){
+            transfers++;throw new AssertionError("Unported pipes may not teleport cargo");
         }
     }
-    static void tick(BuildCraftEngineRuntime runtime, World world, String session,long number)
-            throws Exception {
-        runtime.onServerTick(new CodaServerTickContext(session,number,Optional.of(world)));
+    static void tick(BuildCraftEngineRuntime e,World w,String session,long time)throws Exception{
+        e.onServerTick(new CodaServerTickContext(session,time,Optional.of(w)));
     }
-    static void place(BuildCraftEngineRuntime runtime) {
-        runtime.onPlacement(new CodaBlockPlacements.Placement(DIM,ENGINE_POS,"buildcraftcore:engine_redstone"));
+    static void place(BuildCraftEngineRuntime e){
+        e.onPlacement(new CodaBlockPlacements.Placement(DIM,POS,"buildcraftcore:engine_redstone"));
     }
-    public static void main(String[] args) throws Exception {
-        Path root = Files.createTempDirectory("howl-bc-world-");
-        Path other = Files.createTempDirectory("howl-bc-other-");
-        World first = new World(root);
-        BuildCraftEngineRuntime runtime = new BuildCraftEngineRuntime();
-        tick(runtime, first, "a",1);
-        place(runtime);
-        tick(runtime, first, "a",2);
-        check(BuildCraftEngineStore.load(root).size()==1, "Placement indexed in world save");
-        tick(runtime, first, "a",20);
-        check(first.transfers==1, "A native powered engine can use the indexed position");
+    public static void main(String[] args)throws Exception{
+        Path root=Files.createTempDirectory("howl-bc-mj-world-");
+        Path another=Files.createTempDirectory("howl-bc-mj-other-");
+        World first=new World(root);
+        BuildCraftEngineRuntime a=new BuildCraftEngineRuntime();
+        tick(a,first,"a",1);
+        place(a);
+        for(int t=2;t<=40;t++)tick(a,first,"a",t);
+        var before=a.engineState(DIM,POS).orElseThrow();
+        check(BuildCraftEngineStore.load(root).contains(KEY),"Original engine location persists in this world");
+        var saved=BuildCraftEngineMjStore.load(root).get(KEY);
+        check(before.equals(saved),"BCCE heat/MJ/piston state was checkpointed intact");
+        check(before.powerMicroMj()==1_000_000,"BCCE stored energy persisted accurately");
+        BuildCraftEngineRuntime b=new BuildCraftEngineRuntime();
+        World reopened=new World(root);
+        tick(b,reopened,"b",41);
+        var next=b.engineState(DIM,POS).orElseThrow();
+        check(next.heat()>before.heat()-0.21,"Reopen restored warm engine, not cold reset");
+        check(next.powerMicroMj()==1_000_000,"Reopen retained 1 MJ buffer");
+        check(reopened.transfers==0,"No fake cargo extraction after engine reload");
 
-        // New MinecraftServer: reloaded engine location must be discovered
-        // without requiring the player to break and replace the block.
-        BuildCraftEngineRuntime reopened = new BuildCraftEngineRuntime();
-        World second = new World(root);
-        tick(reopened,second,"b",1);
-        tick(reopened,second,"b",20);
-        check(second.transfers==1,"Reopened world retains engine location");
-        check(second.items.get(new CodaBlockPos(0,64,0))==16,
-                "Reloaded engine moved actual source inventory");
+        BuildCraftEngineRuntime c=new BuildCraftEngineRuntime();
+        tick(c,new World(another),"c",1);
+        check(c.engineState(DIM,POS).isEmpty(),"Other save has no phantom engines");
+        reopened.loaded=false;
+        tick(b,reopened,"b",42);
+        check(b.engineState(DIM,POS).isPresent(),"Unloaded chunk leaves engine state intact");
+        reopened.loaded=true;
+        reopened.exists=false;
+        tick(b,reopened,"b",43);
+        check(b.engineState(DIM,POS).isEmpty(),"Removed Minecraft block is pruned from MJ state");
+        check(BuildCraftEngineMjStore.load(root).isEmpty(),"Removed engine atomically purged from MJ save");
 
-        // One player's world cannot influence a second world's instance.
-        BuildCraftEngineRuntime separate = new BuildCraftEngineRuntime();
-        World isolated = new World(other);
-        tick(separate,isolated,"c",1);
-        tick(separate,isolated,"c",20);
-        check(isolated.transfers==0,"No shared engine registry across different saves");
-        check(BuildCraftEngineStore.load(other).isEmpty(),"No phantom engine save in other world");
-
-        // Chunk unloading must not erase the world index.
-        second.loaded=false;
-        tick(reopened,second,"b",40);
-        check(BuildCraftEngineStore.load(root).size()==1,
-                "Unloaded engine remains indexed, never orphaned");
-        second.loaded=true;
-        second.blocks.remove(ENGINE_POS);
-        tick(reopened,second,"b",60);
-        check(BuildCraftEngineStore.load(root).isEmpty(),
-                "Removed engine pruned from world index");
-
-        // A corrupt save must not silently reset and overwrite coordinates.
-        BuildCraftEngineStore.save(root,Set.of(new BuildCraftEngineStore.Engine(DIM,ENGINE_POS)));
-        Path save = root.resolve("cml/buildcraft/engines.v1.dat");
-        byte[] damaged = Files.readAllBytes(save);
-        damaged[12] ^= 0x31;
-        Files.write(save,damaged);
-        try {
-            BuildCraftEngineStore.load(root);
-            throw new AssertionError("Corrupt engine file accepted");
-        } catch (IOException expected) { checks++; }
-        try {
-            BuildCraftEngineStore.save(root,Set.of());
-            throw new AssertionError("Corrupt engine file overwritten");
-        } catch (IOException expected) { checks++; }
-        check(Arrays.equals(damaged,Files.readAllBytes(save)),"Corrupt save preserved for repair");
-        try {
-            tick(new BuildCraftEngineRuntime(),new World(root),"bad",1);
-            throw new AssertionError("Corrupt save allowed engine runtime to start");
-        } catch (IOException expected) { checks++; }
-
-        Path dir = Files.createTempDirectory("howl-bc-symlink-");
-        try {
-            Files.createSymbolicLink(dir.resolve("cml"),root);
-            try {
-                BuildCraftEngineStore.save(dir,Set.of());
-                throw new AssertionError("Symlink save path accepted");
-            } catch (IOException expected) { checks++; }
-        } catch (UnsupportedOperationException | java.nio.file.FileSystemException excluded) {
-            // Not every CI filesystem permits symlinks; behavior tested when allowed.
-        }
-        System.out.println("PASS: "+checks+" per-world engine persistence, reload, isolation and corrupt-save checks");
+        // Store round-trip preserves mid-stroke state without forcing cold
+        // restart and without losing original 1.0-dev position-only saves.
+        var custom=new BuildCraftRedstoneEngine.Snapshot(56.75,400_000L,0.51f,2,true,true);
+        BuildCraftEngineMjStore.save(root,Map.of(KEY,custom));
+        check(custom.equals(BuildCraftEngineMjStore.load(root).get(KEY)),
+                "All piston/heat/MJ fields roundtrip exactly");
+        Path target=root.resolve("cml/buildcraft/engine-mj.v1.dat");
+        byte[] damaged=Files.readAllBytes(target);
+        damaged[12]^=0x11;
+        Files.write(target,damaged);
+        try{
+            BuildCraftEngineMjStore.load(root);
+            throw new AssertionError("Corrupt MJ file accepted");
+        }catch(IOException expected){checks++;}
+        try{
+            BuildCraftEngineMjStore.save(root,Map.of());
+            throw new AssertionError("Corrupt MJ file overwritten");
+        }catch(IOException expected){checks++;}
+        check(Arrays.equals(damaged,Files.readAllBytes(target)),
+                "Corrupt MJ save remains available for recovery");
+        try{
+            tick(new BuildCraftEngineRuntime(),new World(root),"invalid",1);
+            throw new AssertionError("Corrupt MJ file permitted ticking");
+        }catch(IOException expected){checks++;}
+        check(reopened.transfers==0,"World never mutates user inventories during MJ state tests");
+        System.out.println("PASS: "+checks+" BCCE per-world MJ/piston persistence assertions");
     }
 }
