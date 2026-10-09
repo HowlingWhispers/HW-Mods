@@ -7,6 +7,12 @@ on:
     paths:
       - '.github/workflows/coda-wolf-nightly.yml'
   workflow_dispatch:
+    inputs:
+      publish_coda_wolf:
+        description: 'Explicitly publish the Coda Wolf experimental skin after headless validation'
+        type: boolean
+        default: false
+        required: false
 
 permissions:
   contents: read
@@ -23,7 +29,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: HowlingWhispers/HW-CodaLoader
-          ref: e86ca92e105cd06f2bfd6c9591cb9dc4ba4c2384
+          ref: main
           path: HW-CodaLoader
       - uses: actions/setup-java@v4
         with:
@@ -68,7 +74,7 @@ jobs:
             dist/coda-wolf-0.1.0-dev.jar.sha256
           if-no-files-found: error
       - name: Publish immutable GitHub prerelease for CodaLauncher
-        if: github.ref == 'refs/heads/main'
+        if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.publish_coda_wolf == true
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -90,8 +96,8 @@ jobs:
           stays unchanged during this compatibility transition.
 
           This release is NOT gameplay verified. Wolf spawning, death events,
-          and native entity mappings still need a live Snapshot 3 playtest.
-          Use a disposable singleplayer world. AI vision and voice are not
+          and in-game Coda-only icy fur rendering still need a live Snapshot 3 playtest.
+          Coda's verified wolf UUID selects an ice-white/cyan resourcepack texture;\n          ordinary vanilla wolves remain unchanged. Use disposable worlds.\n          AI vision and voice are not
           implemented yet.
 
           These are downloadable assets for the experimental Nightly
