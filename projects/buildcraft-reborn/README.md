@@ -140,3 +140,13 @@ capabilities, model-data support and the removed Minecraft
 is therefore source only and has **no mod metadata**, launcher
 installation, or release. A native registry bridge test alone is
 not evidence of working BCCE gameplay.
+
+## Snapshot 3 original BCCE stone and metal block sounds
+
+Minecraft 26.4 replaces the old `SoundType` block API with
+registry-keyed `BlockSoundSet` entries. The staging script now
+maps **original stone** pipe sounds to `minecraft:stone` and the
+original BCCE base metal block sound to `minecraft:metal`.
+No sound effect is deleted. This modifies the original class's
+registry references only, not its geometry, item routing or ticking.
+The old unmodified BCCE source remains vendored for review.

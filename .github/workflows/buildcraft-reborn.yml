@@ -32,7 +32,9 @@ jobs:
         run: bash projects/buildcraft-reborn/scripts/test-original-flow-core.sh
       - name: Compile original BCCE item transfer API against real Minecraft 26.4
         run: bash projects/buildcraft-reborn/scripts/test-original-item-api.sh
-      - name: Stage original BCCE pipe holders with 3 reversible native constructor patches
+      - name: Validate original pipe compilation probe shell syntax
+        run: bash -n projects/buildcraft-reborn/scripts/probe-original-pipe-compilation.sh
+      - name: Stage BCCE original pipe holders and block sound compatibility
         run: python3 projects/buildcraft-reborn/scripts/stage-original-pipe-holders.py
       - name: Probe exact pipe holder compiler blockers against Snapshot 3
         run: bash projects/buildcraft-reborn/scripts/probe-original-pipe-compilation.sh

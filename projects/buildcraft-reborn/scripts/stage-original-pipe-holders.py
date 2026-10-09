@@ -34,6 +34,16 @@ CHANGES = {
         (
             'BCTransportBlocks.PIPE_HOLDER_BE.get()',
             REG
+        ),
+        (
+            'import net.minecraft.world.level.block.SoundType;',
+            '// Snapshot 3 block sounds are keyed by the original stone sound-set id.'
+        ),
+        (
+            '.sound(SoundType.STONE)',
+            '.sound(net.minecraft.resources.ResourceKey.create('
+            'net.minecraft.core.registries.Registries.BLOCK_SOUND_SET, '
+            'Identifier.parse("minecraft:stone")))'
         )
     ],
     TILE: [
@@ -42,6 +52,18 @@ CHANGES = {
             '    \tsuper(BCTransportBlocks.PIPE_HOLDER_BE.get(), pos, bs);',
             '    public TilePipeHolder(BlockPos pos, BlockState bs) {\n'
             '    \tsuper(' + REG + ', pos, bs);'
+        )
+    ],
+    "lib/block/BlockBCBase_Neptune.java": [
+        (
+            'import net.minecraft.world.level.block.SoundType;',
+            '// Snapshot 3 block sounds use registry-backed sound-set keys.'
+        ),
+        (
+            '.sound(SoundType.METAL)',
+            '.sound(net.minecraft.resources.ResourceKey.create('
+            'net.minecraft.core.registries.Registries.BLOCK_SOUND_SET, '
+            'net.minecraft.resources.Identifier.parse("minecraft:metal")))'
         )
     ]
 }
@@ -77,11 +99,14 @@ def main():
             assert "((TilePipeHolder) BlockEntity).update();" in revised
             assert "getCollisionShape(" in revised
             assert "getShape(" in revised
-        else:
+        elif relative == TILE:
             for name in ("void update()", "void writeData(", "void readData(",
                          "void onChunkUnloaded()", "void onLoad()"):
                 assert name in revised, f"Original BCCE lifecycle missing: {name}"
             assert "pipe.onTick();" in revised
+        else:
+            assert "public BlockBCBase_Neptune(BlockBehaviour.Properties prop)" in revised
+            assert "super(RegistryCompat.blockProperties(prop));" in revised
         dest = DEST / relative
         dest.parent.mkdir(parents=True, exist_ok=True)
         dest.write_text(revised, encoding="utf-8", newline="")
@@ -100,7 +125,7 @@ def main():
         print("\n".join(diff))
     manifest = BASE / "staged-snapshot3/ADAPTATIONS.json"
     manifest.write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
-    print("PASS: 3 narrow compatibility source edits; all original methods retained.")
+    print("PASS: 7 narrow compatibility source edits across 3 original BCCE classes; original methods retained.")
     print("STAGED_ONLY: NeoForge dependency closure + Minecraft compilation still required.")
 
 if __name__ == "__main__":

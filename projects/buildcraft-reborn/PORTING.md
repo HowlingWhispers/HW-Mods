@@ -92,3 +92,16 @@ and Minecraft's removed `SoundType` must be handled as explicit
 API compatibility work. CI retains the exact compiler report; no
 synthetic inventory/network or new public BuildCraft Nightly may
 substitute for this.
+
+## Sound API migration
+
+The original BCCE `BlockPipeHolder` constructor uses
+`SoundType.STONE`, and its `BlockBCBase_Neptune` superclass has
+a `SoundType.METAL` default constructor. Minecraft 26.4 has
+removed `SoundType`. Stage their original sound choices as
+`ResourceKey<BlockSoundSet>` for `minecraft:stone` and
+`minecraft:metal`, using native `Registries.BLOCK_SOUND_SET`.
+Never remove the original pipe sound setting to mask compile errors.
+
+These are reversible source-level changes. All upstream methods still
+belong to BCCE; no custom audio or fake pipe system was introduced.

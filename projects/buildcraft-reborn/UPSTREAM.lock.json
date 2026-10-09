@@ -35,7 +35,8 @@
     "source-shared/src/main/java/buildcraft/api/v2/item/ItemMatcher.java",
     "source-shared/src/main/java/buildcraft/api/v2/item/ItemPort.java",
     "source-shared/src/main/java/buildcraft/api/v2/item/ItemTransferPolicy.java",
-    "source-shared/src/main/java/buildcraft/api/v2/item/ItemTransferResult.java"
+    "source-shared/src/main/java/buildcraft/api/v2/item/ItemTransferResult.java",
+    "source-families/modern/src/main/java/buildcraft/lib/block/BlockBCBase_Neptune.java"
   ],
   "source_policy": "Original BCCE source owns gameplay; port only necessary compatibility boundaries. Do not import the retired HW-Mods/mods/buildcraft-cml implementation."
 }
