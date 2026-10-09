@@ -8,6 +8,14 @@
 - Port target: **Minecraft Java 26.4 Snapshot 3**, using H.O.W.L. without Forge, NeoForge or Fabric.
 - License: MPL-2.0 (upstream notices, original authors and modified-file source obligations must remain intact).
 
+## Current native engine milestone
+
+**Implemented and tested:** the original BCCE API2 `MjAmount` Java source, a loader-neutral port of `TileEngineRedstone_BC8` + `TileEngineBase_BC8` MJ generation/heat/piston timing, redstone-receiver midpoint pulse semantics, strict MJ acceptance checks, and lossless world-local MJ/heat/stroke snapshot restoration. The engine runtime now ticks every server tick against the placed native engine block; it no longer teleports vanilla chest contents in place of real traveling items. The old `/buildcraft pulse` command is no longer registered in-game.
+
+**Not yet implemented:** real Snapshot 3 block-entity ownership, BCCE MJ ports on pipe blocks, mobile item packet entities and rendering, wrench interactions, proper engine orientation, recipes, full pipe set, and all remaining machines/modules. This commit is not a candidate for a player download or normal Nightly release.
+
+Unit and integration checks: `bash scripts/test-buildcraft-integration.sh` with `HW_CODALOADER_API_DIR` pointing at the sibling H.O.W.L. source.
+
 ## First engineering milestone
 
 Run from the HW-Mods repository root:

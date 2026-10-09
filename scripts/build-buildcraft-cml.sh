@@ -21,4 +21,4 @@ cp mods/buildcraft-cml/resources/coda.mod.json "$TMP_DIR/mod/"
 bash scripts/import-buildcraft-upstream-assets.sh "$TMP_DIR/mod"
 jar --create --file dist/buildcraft-cml-0.1.0-dev.jar -C "$TMP_DIR/mod" .
 sha256sum dist/buildcraft-cml-0.1.0-dev.jar > dist/buildcraft-cml-0.1.0-dev.jar.sha256
-echo 'Built dist/buildcraft-cml-0.1.0-dev.jar (BCCE 8.0.23 source assets; native H.O.W.L. transport preview)'
+echo 'Built dist/buildcraft-cml-0.1.0-dev.jar (BCCE 8.0.23 source assets; native BCCE MJ/heat/piston engine baseline; pipe gameplay pending)'

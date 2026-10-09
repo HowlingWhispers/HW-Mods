@@ -48,19 +48,19 @@ HW Quiet Underground also ships as a checked world datapack inside Nightly.
 The H.O.W.L. Create World screen hook attempts to select it automatically
 BEFORE the new world is generated. Existing world saves are not modified.
 This is experimental and still requires a live Minecraft confirmation.
-First native BuildCraft 8.0.0 transport slice (experimental):
-Open Creative -> BuildCraft. Place a wooden transport pipe at (1,64,0),
-cobblestone transport pipes at (2,64,0) and (3,64,0), source chest
-at (0,64,0), destination chest at (4,64,0). Add a redstone engine
-at (1,65,0), adjacent to the wooden pipe, and power its side with
-redstone. Fill the source chest. Native server ticks should move up
-to 16 items each engine pulse (20 ticks) through those connected pipes.
-As an optional manual diagnostic, run:
-/buildcraft pulse 0 64 0 4 64 0
-The wrench item exists; right-click behavior and animated in-flight
-items are not yet ported. Use a NEW disposable world.
-This development preview is NOT BuildCraft 8.0.0 feature parity and
-requires an actual Minecraft playtest, despite Mojang registry tests.
+BuildCraft 8.0.23 native MJ engine DEVELOPMENT BASELINE ONLY:
+Engine BlockItem, original art and Creative tab still load in H.O.W.L.
+The engine simulates BCCE's original 0.05 MJ/t, redstone heat/cooling,
+MJ buffer and piston stroke on the authoritative server tick and persists
+its state per-world.
+IMPORTANT: there are NO actual BCCE pipe BlockEntities, MJ receivers,
+traveling ItemStacks, moving-item graphics or player-ready item transport.
+The former instant chest-transfer prototype and /buildcraft pulse command
+are no longer registered in game.
+Do not ask players to test chest-to-chest movement from this package.
+There is no player-facing functional transport test yet.
+This developer package is NOT a playable BuildCraft 8.0.23 release.
+No player test should be requested until actual pipe gameplay ships.
 EOF
 # Inspect the actual entrypoint without constructing a second runtime mods
 # directory inside the package. The launcher will place this JAR in game/mods.

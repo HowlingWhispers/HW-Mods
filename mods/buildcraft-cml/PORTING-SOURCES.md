@@ -30,6 +30,12 @@ Run `bash scripts/prepare-buildcraft-bcce.sh` to reconstruct BCCE's complete eff
 
 All textures, sounds, recipes, models, GUIs, world data, ticks, mechanics and balancing remain parity targets. Original code is preferred wherever game and loader APIs permit. When direct compilation is impossible, adapt compatibility boundaries while preserving behavior. Do not substitute virtual cargo, vanilla glass or command-driven pulses as a release.
 
+## Engine fidelity now landed
+
+`buildcraft/api/v2/energy/MjAmount.java` was copied unmodified from the pinned 8.0.23 BCCE shared API. `BuildCraftRedstoneEngine` adapts BCCE `TileEngineRedstone_BC8` (modern family) and `TileEngineBase_BC8` (NeoForge platform) to a loader-neutral MJ endpoint, preserving 50,000 micro-MJ/t, the 1 MJ buffer, heat thresholds, halved piston speed and stroke-midpoint pulses. Snapshot state is atomically/checksum-saved per real Minecraft world, and loader runtime ticks loaded engine blocks, no surrogate chests.
+
+H.O.W.L.'s native Block and BlockItem bridge still constructs generic blocks; it does not yet provide BuildCraft-compatible `EntityBlock`/`BlockEntityType`, real pipe flow packets, or client rendered item motion. MJ receiver integration is consequently intentionally disabled. Do not ship a fake substitute for these APIs.
+
 ## Next native H.O.W.L. prerequisites
 
 1. Snapshot 3 native block/item registration verified in a live client, including the BuildCraft Creative tab and block-item states.
