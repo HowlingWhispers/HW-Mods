@@ -70,7 +70,7 @@ BUILD="$(mktemp -d)"
 trap 'rm -rf "$BUILD"' EXIT
 
 set +e
-timeout 120s javac --release 25 -proc:none -Xmaxerrs 70 -J-Xmx1536m \
+timeout 120s javac --release 25 -proc:none -Xmaxerrs 250 -J-Xmx1536m \
   -sourcepath "$STAGED:$BRIDGE:$ORIGINAL" -cp "$CLASSPATH" -d "$BUILD" \
   "$STAGED/buildcraft/transport/block/BlockPipeHolder.java" \
   "$STAGED/buildcraft/transport/tile/TilePipeHolder.java" \
@@ -88,7 +88,7 @@ else
     echo "JAVAC_EXIT=$RESULT"
     echo "OFFICIAL_MOJANG_LIBRARIES=$(find "$LIBROOT" -name '*.jar' | wc -l)"
     echo 'TARGET=official Mojang Minecraft 26.4 Snapshot 3'
-    echo 'SOURCE=original BCCE 8.0.23 plus 3 reversible compatibility edits'
+    echo 'SOURCE=original BCCE 8.0.23 with audited reversible Snapshot 3 staging adaptations'
     echo 'BLOCK_SOUND_CLASSES:'
     jar tf "$CLIENT" | grep -i 'sound' | grep -i 'block' | head -n 12 || true
     echo 'BLOCK_PROPERTIES_SOUND_METHODS:'
@@ -98,6 +98,16 @@ else
     javap -p -classpath "$CLASSPATH" net.minecraft.core.registries.BuiltInRegistries 2>/dev/null |
       grep -i 'sound' | head -n 12 || true
     echo "NEOFORGE_MISSING=$(grep -c 'package net.neoforged' "$ERRORS" || true)"
+    echo 'NEOFORGE_PACKAGE_BREAKDOWN:'
+    # Count distinct missing external NeoForge packages, not individual symbols.
+    # This is diagnostic only: failure still means NOT_COMPILED.
+    grep -oE 'package net\\.neoforged[.[:alnum:]_]+ does not exist' "$ERRORS" |
+      sed -E 's/^package (.*) does not exist$/\\1/' |
+      sort | uniq -c | sort -rn || true
+    echo 'NEOFORGE_AFFECTED_SOURCE_FILES:'
+    grep -E '^[^[:space:]]+\\.java:[0-9]+: error: package net\\.neoforged' "$ERRORS" |
+      sed -E 's/:[0-9]+: error:.*$//' |
+      sed -E "s#^$BASE/##" | sort -u || true
     echo "IMPORT_ERRORS=$(grep -c 'error: package .* does not exist' "$ERRORS" || true)"
     echo "MISSING_SYMBOLS=$(grep -c 'error: cannot find symbol' "$ERRORS" || true)"
     echo 'FIRST_COMPILER_ERRORS:'
@@ -105,7 +115,7 @@ else
       print
       if (++n >= 55) exit
     }' "$ERRORS"
-    echo 'NEXT=port original BCCE NeoForge capability/render base dependencies'
+    echo 'NEXT=port original BCCE client extension, item/fluid handler and registry dependencies without replacing gameplay'
   } > "$REPORT"
   echo 'BLOCKED: original BCCE pipe holders do not yet compile against HOWL.'
 fi
