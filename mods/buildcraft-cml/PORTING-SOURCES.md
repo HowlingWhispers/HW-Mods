@@ -123,3 +123,21 @@ holder is a genuine vanilla block entity *identity*, not an implementation
 of BCCE `TilePipeHolder`. Do not enable cargo extraction, public Nightly
 or Stable until persistent, real Minecraft ItemStacks run through the original
 pipe flows and survive chunk unload/reload.
+
+## Authorized first human smoke gate (2026-10-09)
+
+A disposable **Creative/placement/ticker/reload** human smoke test is
+approved with H.O.W.L. **0.0.33 prerelease** and BuildCraft
+**0.0.1-dev.1**. Validation of Snapshot 3 native registry, ticker ABI,
+Creative menu bridge and archive checksums MUST pass before distributing
+through CodaLauncher's isolated Nightly channel.
+
+Pass criteria for THIS milestone: Creative tab opens, real wooden and
+cobblestone block entities place, Minecraft issues native ticker callbacks
+observable through `/buildcraft status`, and block placement survives exiting
+and re-entering a new throwaway world.
+
+This **does not** authorize promising working BCCE chest extraction, MJ
+receivers, travelling items, original NBT/save payload, wrench behavior,
+visual item animation, or one-to-one feature completeness. Do not send
+a player to test those functions yet. Keep old Stable world saves separate.
