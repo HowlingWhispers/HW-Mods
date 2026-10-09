@@ -94,6 +94,9 @@ def verify(upstream: Path, effective: Path) -> None:
         "bridge/src/main/java/buildcraft/lib/compat/howl/NativeLoadedContainerLookup.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/ModelData.java",
         "bridge/src/main/java/buildcraft/lib/compat/howl/ModelProperty.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/FluidAction.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/storage/IItemHandler.java",
+        "bridge/src/main/java/buildcraft/lib/compat/howl/storage/IItemHandlerModifiable.java",
     }
     assert active_java == allowed_java, (
         "Unexpected game code outside original BCCE: " + str(active_java ^ allowed_java)

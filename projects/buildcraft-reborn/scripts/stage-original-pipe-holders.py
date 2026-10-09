@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""Mechanically adapt ONLY BCCE's original pipe-holder constructors to H.O.W.L.
+"""Mechanically adapt BCCE's original pipe-holder dependency closure to H.O.W.L.
 
 No new pipe implementation: start with BCCE's own layered effective sources,
-then change only the native Minecraft constructor/registry seams. Every
+then change the native Minecraft and platform API seams. Every
 adaptation is reversible and tested byte-for-byte against upstream.
 """
 from pathlib import Path
 import difflib
 import hashlib
 import json
+import shutil
 
 ROOT = Path(__file__).resolve().parents[3]
 PROJECT = ROOT / "projects/buildcraft-reborn"
@@ -54,7 +55,24 @@ CHANGES = {
             '.sound(net.minecraft.resources.ResourceKey.create('
             'net.minecraft.core.registries.Registries.BLOCK_SOUND_SET, '
             'Identifier.parse("minecraft:stone")))'
-        )
+        ),
+        (
+            'this.spawnDestroyParticles(world, player, pos, state);',
+            'this.spawnDestroyParticles(world, pos, state);'
+        ),
+        (
+            'return super.getExplosionResistance(state, level, pos, explosion);',
+            'return super.getExplosionResistance();'
+        ),
+        (
+            'public void playerDestroy(Level world, Player player, BlockPos pos, BlockState state, BlockEntity be,',
+            'public void playerDestroy(ServerLevel world, net.minecraft.server.level.ServerPlayer player, BlockPos pos, BlockState state, BlockEntity be,'
+        ),
+        (
+            '((TilePipeHolder) BlockEntity).update();',
+            '((TilePipeHolder) BlockEntity).ensureNativeLoaded();\n'
+            '\t\t\t\t((TilePipeHolder) BlockEntity).update();'
+        ),
     ],
     TILE: [
         (
@@ -72,13 +90,35 @@ CHANGES = {
             'return level.getCapability(capability, neighbourPos, targetSide);',
             'return buildcraft.lib.compat.howl.OriginalCapabilityLookup.get('
             'level, neighbourPos, targetSide, capability);'
-        )
+        ),
+        (
+            'level.invalidateCapabilities(worldPosition);',
+            '// H.O.W.L. capability reads are uncached; the original neighbour notifications below refresh topology.',
+            2
+        ),
+        (
+            'BCTransportBlocks.pipeHolder.get()',
+            'getBlockState().getBlock() /* native holder */',
+            2
+        ),
+        (
+            'import buildcraft.transport.client.model.ModelPipe;',
+            '// Model snapshots are produced by the original TilePipeHolderModelData helper.'
+        ),
+        (
+            'import buildcraft.transport.BCTransportBlocks;',
+            '// Holder registration comes from the native H.O.W.L. type and current block state.'
+        ),
     ],
     "transport/pipe/Pipe.java": [
         (
             'PipePluggable oPlug = level.getCapability(PipeApi.CAP_PLUG, nPos, facing.getOpposite());',
             'PipePluggable oPlug = buildcraft.lib.compat.howl.OriginalCapabilityLookup.get('
             'level, nPos, facing.getOpposite(), PipeApi.CAP_PLUG);'
+        ),
+        (
+            'holder.getPipeWorld().random.nextLong()',
+            'holder.getPipeWorld().getRandom().nextLong()'
         )
     ],
     "transport/pipe/flow/PipeFlowItems.java": [
@@ -149,12 +189,73 @@ CHANGES = {
             'net.minecraft.core.registries.Registries.BLOCK_SOUND_SET, '
             'net.minecraft.resources.Identifier.parse("minecraft:metal")))'
         )
-    ]
+    ],
+    "lib/block/BlockBCTile_Neptune.java": [
+        (
+            'return super.onDestroyedByPlayer(state, level, pos, player, toolStack, willHarvest, fluid);',
+            'return level.isClientSide() ? level.setBlock(pos, fluid.createLegacyBlock(), 11) : level.removeBlock(pos, false);'
+        ),
+        (
+            'state.getBlock().getCloneItemStack(\n'
+            '                blockEntity.getLevel(), blockEntity.getBlockPos(), state, false, null\n'
+            '            )',
+            'state.getCloneItemStack(blockEntity.getLevel(), blockEntity.getBlockPos(), false)'
+        ),
+        (
+            'super.onNeighborChange(state, level, pos, neighbor);',
+            '// The inherited NeoForge default callback has no body; the original tile hook above owns invalidation.'
+        ),
+        (
+            'public void wasExploded(Level world, BlockPos pos, Explosion explosion)',
+            'public void wasExploded(net.minecraft.server.level.ServerLevel world, BlockPos pos, Explosion explosion)'
+        ),
+        (
+            'tile.update();',
+            'tile.ensureNativeLoaded();\n\t\t\t\ttile.update();'
+        ),
+    ],
+    "lib/compat/minecraft/persistence/BCBlockEntity.java": [
+        (
+            '    protected void readCommonData(BCValueInput input) {}',
+            '    private boolean nativeLoaded;\n\n'
+            '    /** Run the original load hook once, immediately before the first native world tick. */\n'
+            '    public final void ensureNativeLoaded() {\n'
+            '        if (!nativeLoaded && level != null && !isRemoved()) {\n'
+            '            nativeLoaded = true;\n'
+            '            onLoad();\n'
+            '        }\n'
+            '    }\n\n'
+            '    public void onLoad() { requestModelDataUpdate(); }\n'
+            '    // Original NeoForge base implementation is empty. Chunk-unload dispatch still needs a native hook.\n'
+            '    public void onChunkUnloaded() {}\n\n'
+            '    public void requestModelDataUpdate() {\n'
+            '        if (level != null && level.isClientSide()) {\n'
+            '            BlockState state = getBlockState();\n'
+            '            level.sendBlockUpdated(worldPosition, state, state, net.minecraft.world.level.block.Block.UPDATE_CLIENTS);\n'
+            '        }\n'
+            '    }\n\n'
+            '    @Override\n'
+            '    public void setRemoved() {\n'
+            '        nativeLoaded = false;\n'
+            '        super.setRemoved();\n'
+            '    }\n\n'
+            '    protected void readCommonData(BCValueInput input) {}'
+        ),
+    ],
+    "lib/misc/ChunkUtil.java": [
+        ('pos.x, pos.z', 'pos.x(), pos.z()'),
+        ('chunk.getPos().x == x && chunk.getPos().z == z',
+         'chunk.getPos().x() == x && chunk.getPos().z() == z'),
+    ],
 }
 
 # Rebind NeoForge capability/model import types to native H.O.W.L.
 # compatibility descriptors. Original BCCE method bodies remain unchanged.
 NEOFORGE_IMPORTS = {
+    "import net.neoforged.neoforge.items.IItemHandler;":
+        "import buildcraft.lib.compat.howl.storage.IItemHandler;",
+    "import net.neoforged.neoforge.items.IItemHandlerModifiable;":
+        "import buildcraft.lib.compat.howl.storage.IItemHandlerModifiable;",
     "import net.neoforged.neoforge.capabilities.BlockCapability;":
         "import buildcraft.lib.compat.howl.BlockCapability;",
     "import net.neoforged.neoforge.model.data.ModelData;":
@@ -169,6 +270,10 @@ NEOFORGE_IMPORTS = {
 
 def main():
     assert not (ROOT / "mods/buildcraft-cml").exists(), "Retired source must stay deleted"
+    assert SOURCE.is_dir(), "Materialize the pinned original source before staging"
+    # A removed adaptation must never survive in the compiler's preferred sourcepath.
+    if DEST.exists():
+        shutil.rmtree(DEST)
     report = {
         "status": "STAGED_NOT_COMPILED",
         "origin": "BCCE-team/BuildCraft@23c6af379676ce5262c5c0cb6f1f331edc9b12c6",
@@ -185,21 +290,30 @@ def main():
             if before in original:
                 assert original.count(before) == 1
                 edits.append((before, after))
+        # Retain the original simulation enum across item and fluid method signatures.
+        # This is a type migration, never a replacement extraction or fluid algorithm.
+        action_type = "net.neoforged.neoforge.fluids.capability.IFluidHandler.FluidAction"
+        if action_type in original:
+            edits.append((action_type, "buildcraft.lib.compat.howl.FluidAction", original.count(action_type)))
         if not edits:
             continue
         staged_count += 1
         revised = original
-        for before, after in edits:
-            assert revised.count(before) == 1, (
-                f"{relative}: expected exactly one original BCCE anchor"
+        for edit in edits:
+            before, after = edit[:2]
+            count = edit[2] if len(edit) == 3 else 1
+            assert revised.count(before) == count, (
+                f"{relative}: expected {count} original BCCE anchors, found {revised.count(before)}"
             )
-            revised = revised.replace(before, after, 1)
+            revised = revised.replace(before, after, count)
         # Guard that the adaptation is reversible: NO other source logic
         # may change, even whitespace, without a reviewed new patch.
         restored = revised
-        for before, after in reversed(edits):
-            assert restored.count(after) == 1
-            restored = restored.replace(after, before, 1)
+        for edit in reversed(edits):
+            before, after = edit[:2]
+            count = edit[2] if len(edit) == 3 else 1
+            assert restored.count(after) == count, (relative, after)
+            restored = restored.replace(after, before, count)
         assert restored == original, "Adaptation changed original gameplay code"
         # Preserve important original BCCE methods and flow semantics.
         if relative == BLOCK:
@@ -248,7 +362,7 @@ def main():
     assert staged_count == len(report["files"])
     print(f"PASS: {staged_count} original BCCE source classes staged via reversible "
           "capability/model imports and constructor/sound compatibility seams.")
-    print("Original BCCE transport method bodies are unchanged.")
+    print("Original travelling-item routing and pipe algorithms are retained; API seams are listed in ADAPTATIONS.json.")
     print("STAGED_ONLY: NeoForge dependency closure + Minecraft compilation still required.")
 
 if __name__ == "__main__":

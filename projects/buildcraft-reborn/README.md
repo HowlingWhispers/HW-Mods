@@ -1,152 +1,66 @@
 # BuildCraft Reborn for H.O.W.L.
 
-**New project, new identity:** `hw_buildcraft_reborn` · **port version:** `0.0.1-dev.1`.
+Port the original **BCCE 8.0.23** to **Minecraft 26.4 Snapshot 3** on
+**H.O.W.L.** The exact upstream commit is pinned in `UPSTREAM.lock.json`.
+NeoForge is a source dependency being migrated away from, not the target loader.
 
-This is an independent **source-first port** of the already functioning
-[BuildCraft Community Edition](https://github.com/BCCE-team/BuildCraft)
-**8.0.23**, pinned to the exact commit in `UPSTREAM.lock.json`. Its
-original BuildCraft Java packages, source structure, textures and mechanics
-are the authority. We are **not recreating** their pipes or engines.
+**Not playable. The complete original pipe build still fails. No Nightly or
+installable JAR is produced.**
 
-## Deliberate separation
+## Source and build
 
-- Project root: `projects/buildcraft-reborn/` (NOT `mods/buildcraft-cml/`).
-- Reserved future mod ID: `hw_buildcraft_reborn` (NOT `buildcraft_cml`).
-- Reserved JAR name: `hw-buildcraft-reborn-<version>.jar` (NOT
-  `buildcraft-cml-0.1.0-dev.jar`).
-- Isolated full-original-source materialization: `dist/buildcraft-reborn/`.
-- Dedicated CI workflow: `.github/workflows/buildcraft-reborn.yml`.
-- Neither CodaLauncher nor H.O.W.L.'s mod catalog installs this project yet.
-- `vendor/bcce-8.0.23/` contains **byte-for-byte original BCCE source**
-  for the first real pipe, engine, renderer and registry systems. The
-  `scripts/prepare-source.sh` script materializes the **entire** original
-  upstream source from its OWN layered-source tool for further porting.
-- The deleted `mods/buildcraft-cml/` experiment is never referenced as a
-  source dependency. There are no copied `PipeNetwork` or placeholder
-  `BuildCraftRedstoneEngine` implementations here.
+Work belongs only in `projects/buildcraft-reborn/` on `main`. Keep the retired
+prototype deleted. The vendor files remain byte-identical to upstream;
+`stage-original-pipe-holders.py` applies audited, reversible API changes to
+BCCE's own layered source. It clears old staged files before each run.
+The actual `BlockPipeHolder`, `TilePipeHolder`, `PipeFlowItems`, `PipeBehaviourWood`,
+travelling items, engines, models and textures remain the implementations to port.
 
-## First genuine executable upstream regression
-
-The original **BCCE `DelayedList`** scheduler used by
-`PipeFlowItems`, and **`ItemTransportProfile`** API2 record now compile
-unchanged in their original Java packages. A dedicated Java 21 test verifies
-original delayed ordering, exactly-once completion, empty/negative delays,
-concurrent queue behavior, and original item-profile validation:
+With Java 25 and the current H.O.W.L. SDK checkout alongside HW-Mods:
 
 ```bash
 bash projects/buildcraft-reborn/scripts/prepare-source.sh
-bash projects/buildcraft-reborn/scripts/test-original-flow-core.sh
+bash projects/buildcraft-reborn/scripts/compile-original-pipes.sh
 ```
 
-This is **original executable BuildCraft library code**, not a custom
-transport engine or player-ready pipe. It doesn't yet create block entities,
-move real Minecraft ItemStacks, consume MJ or render animations. Compilation
-of `TilePipeHolder` and `BlockPipeHolder` is still pending their NeoForge
-and Minecraft 26.4 compatibility adapters.
+`HW_CODALOADER_API_DIR` can point to the SDK's `src/main/java` directory.
+The compiler includes both original holders, their entire dependency closure,
+and the H.O.W.L. entrypoint. Mojang metadata, client and libraries are verified
+against their published hashes. There is no NeoForge JAR on the classpath.
+A failed compilation returns a nonzero exit code. The existing CI probe now
+uses the same strict build gate; diagnostic collection cannot make CI green.
+Full errors are written to `dist/buildcraft-reborn/original-pipes-javac-errors.txt`.
 
-## Status
+## Implemented compatibility changes
 
-**Source import only. NOT a playable Minecraft mod, NOT a compilation of the
-original BuildCraft for Snapshot 3, and NOT a distributable H.O.W.L. JAR.**
+- Native keyed holder constructors, the original block sound IDs and native ticker.
+- Snapshot 3 particle, pick-stack, player-destroy, explosion and chunk-coordinate signatures.
+- Native first-tick dispatch to the original `onLoad()` before `update()`;
+  the original pipe still calls its own `pipe.onTick()`.
+- Original handler signatures use BCCE's existing `ItemStorage` and
+  `MutableItemStorage` contracts. Original simulation semantics retain the
+  `EXECUTE`/`SIMULATE` values. No new inventory discovery or transport network.
+- Existing stateless capability reads retain original providers and sided lookups;
+  original topology notifications remain after pipe installation and plug changes.
 
-The original Minecraft 1.21.11 NeoForge source is the reference. Next we
-adapt the original `BlockPipeHolder`, `TilePipeHolder`, `PipeFlowItems`,
-`TravellingItem`, original engine classes, and both renderers against
-Minecraft 26.4 Snapshot 3 and H.O.W.L. Nothing is called "playable" until
-original item motion and piston animation work with save/reload checks.
-
-## Rebuild the exact original reference (Linux/macOS/CI)
+## Validation and remaining work
 
 ```bash
-bash projects/buildcraft-reborn/scripts/prepare-source.sh
+bash projects/buildcraft-reborn/scripts/test-original-persistence.sh
 ```
 
-This fetches the **exact** upstream commit, verifies its official 8.0.23
-version and license, materializes the 1.21.11-neoforge target with BCCE's
-own `scripts/source_layout.py`, and compares all vendored files against
-that pinned original byte-for-byte. It never calls any old BuildCraft
-project script.
+The original `BCBlockEntity`, ValueIO helpers and `ChunkUtil` compile against
+Snapshot 3. Native Mojang registry bootstrap and save/load/save tests pass for
+the original flat pipe-holder layout and nested `bc_legacy` machine layout.
+This tests the persistence superclass, not pipe placement, extraction or cargo.
 
-Original sources retain the upstream MPL-2.0 license. See
-`vendor/bcce-8.0.23/LICENSE.txt` and `UPSTREAM.lock.json`.
+The full build remains blocked by the original dependency closure: fluid
+carriers/handlers used by `Tank` and `TankManager`, native transaction and
+capability seams, networking, module registration and client rendering.
+Native chunk-unload dispatch and cancellable player breaking also remain
+unwired; inherited compatibility method declarations are not evidence that
+Minecraft calls those hooks. Do not package until those are connected.
 
-## Original item-port compatibility check
-
-The original `buildcraft.api.v2.item.ItemPort`, `ItemMatcher`,
-`ItemTransferResult`, `ItemTransferPolicy`, and `OperationMode` are
-now vendored unchanged. CI compiles these exact BCCE sources against the
-**SHA-1-verified Mojang Minecraft 26.4 Snapshot 3 client JAR**, using Java
-25. It checks that the interfaces still reference Minecraft's real
-`ItemStack`, not a mock or custom inventory transfer type:
-
-```bash
-bash projects/buildcraft-reborn/scripts/prepare-source.sh
-bash projects/buildcraft-reborn/scripts/test-original-item-api.sh
-```
-
-A successful compile proves only the **item-transfer interface ABI** can be
-used on this Minecraft target. It does not establish that pipe block entities,
-NeoForge capabilities, world save/reload, energy receivers, renderer or
-inventory transactions work yet. No mod JAR is produced.
-
-## Original pipe holders: first reversible source adaptation
-
-The port now stages **the actual 8.0.23 `BlockPipeHolder` and
-`TilePipeHolder` Java files**, with just three tightly scoped,
-reversible changes:
-
-1. Original block constructor accepts the Mojang Snapshot 3
-   registry-keyed `BlockBehaviour.Properties`. Original geometry,
-   collision, waterlogging and on-interact methods remain unchanged.
-2. Original `BlockPipeHolder.getTicker()` resolves the port's own native
-   `hw_buildcraft_reborn:pipe_holder` type rather than NeoForge registry
-   objects, retaining its call to `TilePipeHolder.update()`.
-3. Original `TilePipeHolder` constructor resolves that same native type,
-   preserving all original pipe state, NBT persistence, pluggables, wires,
-   `PipeFlowItems` and other lifecycle logic.
-
-```bash
-python3 projects/buildcraft-reborn/scripts/stage-original-pipe-holders.py
-bash projects/buildcraft-reborn/scripts/probe-original-pipe-compilation.sh
-```
-
-An isolated compiler probe attempts to build both staged original BCCE
-classes with Minecraft's actual Snapshot 3 classes and BCCE's layered source.
-If NeoForge/BuildCraft library dependencies are unresolved, CI produces
-`pipe-holder-compiler-report.txt` with **NOT_COMPILED**, along with the
-exact javac error log. **A green diagnostic workflow is not a green mod
-compilation**. This project remains non-installable until the original
-classes compile and load.
-
-No old custom pipe gameplay, fake `BlockEntity` payload or released mod
-jar is present.
-
-## H.O.W.L. entrypoint wired to original BCCE constructors (source only)
-
-The exact registration source now lives at
-`bridge/src/main/java/dev/howlingwhispers/buildcraftreborn/BuildCraftRebornMod.java`.
-It registers a **single original `BlockPipeHolder`** with the new ID
-`hw_buildcraft_reborn:pipe_holder`, passes Mojang's keyed block
-Properties into that original constructor, and supplies the actual
-`TilePipeHolder` constructor as the native block-entity factory.
-It intentionally does **not** register the H.O.W.L. generic tick callback:
-the original BCCE `BlockPipeHolder.getTicker` already calls
-`TilePipeHolder.update`.
-
-The original BCCE ported classes are **not yet compiling**. At the
-last verified probe the remaining failures include unported NeoForge
-capabilities, model-data support and the removed Minecraft
-`SoundType` API, plus missing annotation dependencies. The bridge
-is therefore source only and has **no mod metadata**, launcher
-installation, or release. A native registry bridge test alone is
-not evidence of working BCCE gameplay.
-
-## Snapshot 3 original BCCE stone and metal block sounds
-
-Minecraft 26.4 replaces the old `SoundType` block API with
-registry-keyed `BlockSoundSet` entries. The staging script now
-maps **original stone** pipe sounds to `minecraft:stone` and the
-original BCCE base metal block sound to `minecraft:metal`.
-No sound effect is deleted. This modifies the original class's
-registry references only, not its geometry, item routing or ticking.
-The old unmodified BCCE source remains vendored for review.
+The acceptance test remains real BuildCraft pipes between two vanilla chests,
+original powered extraction, visible travelling stacks, and no duplication or
+loss. Compile the original mechanics and run that test before publishing.
