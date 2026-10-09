@@ -6,6 +6,12 @@ on:
       - main
   pull_request:
   workflow_dispatch:
+    inputs:
+      publish_buildcraft_nightly:
+        description: 'Publish the experimental BuildCraft Nightly after a meaningful gameplay change and review'
+        type: boolean
+        required: false
+        default: false
   schedule:
     # Daily experimental artifact refresh. Builds are also published after main changes.
     - cron: "0 3 * * *"
@@ -210,9 +216,11 @@ jobs:
             --target "$GITHUB_SHA" --title "HW Essentials 0.2.0" \
             --notes-file release-notes.md --prerelease
   publish-buildcraft-nightly:
-    name: Publish verified opt-in BuildCraft Nightly
+    name: Publish explicitly approved BuildCraft Nightly
     needs: validate-in-development
-    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    # Compilation and source parity checks cannot prove native Minecraft gameplay.
+    # A regular source or documentation commit must not release another prototype.
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.publish_buildcraft_nightly == true
     runs-on: ubuntu-latest
     permissions:
       contents: write
