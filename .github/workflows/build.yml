@@ -230,9 +230,12 @@ jobs:
   publish-buildcraft-nightly:
     name: Publish explicitly approved BuildCraft Nightly
     needs: validate-in-development
-    # Compilation and source parity checks cannot prove native Minecraft gameplay.
-    # A regular source or documentation commit must not release another prototype.
-    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.publish_buildcraft_nightly == true
+    # Human smoke publish requires explicit authorization plus successful build.
+    # Ordinary pushes never publish. Stable cannot consume these artifacts.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.publish_buildcraft_nightly == true) ||
+       (github.event_name == 'push' && contains(github.event.head_commit.message, '[approve-buildcraft-smoke]')))
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -242,6 +245,14 @@ jobs:
         with:
           name: HW-Mods-development-${{ github.sha }}
           path: dist
+      - name: Require the compatible H.O.W.L. 0.0.33 Nightly runtime
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh api repos/HowlingWhispers/HW-CodaLoader/releases/tags/v0.0.33 \
+            --jq '[.prerelease, any(.assets[]; .name == "CodaLoader-v0.0.33-win64.zip"), any(.assets[]; .name == "update-manifest.json")] | all' \
+            | grep -Fx true
       - name: Publish public checksum-pinned prerelease
         env:
           GH_TOKEN: ${{ github.token }}
@@ -260,42 +271,38 @@ jobs:
             exit 0
           fi
           cat > nightly-notes.md <<'EOF'
-          # H.O.W.L. BuildCraft Nightly (EXPERIMENTAL)
+          # H.O.W.L. BuildCraft Nightly: HUMAN SMOKE TEST
 
-          Opt-in **single-player-only** test. Does not replace Stable.
-          Use a NEW disposable world in a separate CodaLauncher Nightly profile.
+          **Minecraft 26.4 Snapshot 3 | H.O.W.L. 0.0.33 prerelease |
+          BuildCraft H.O.W.L. port 0.0.1-dev.1 | Source: BCCE 8.0.23.**
 
-          **BCCE H.O.W.L. port 0.1.2-dev · H.O.W.L. 0.0.29**
+          This is a limited **native pipe / Creative inventory / reload** test
+          for an actual player, NOT a playable item transport release.
 
-          - Switch the upstream source and unchanged artwork to BuildCraft
-            Community Edition 8.0.23 at commit 23c6af379676ce5262c5c0cb6f1f331edc9b12c6.
-            Uses H.O.W.L.; no Forge/NeoForge runtime is installed.
-            This is the initial transport preview, not the complete BCCE port.
+          Install through the CodaLauncher **Nightly** channel, choose BuildCraft
+          **Install/Update** in Add-ons, and create a **disposable** Creative world.
+          Stable remains separate and must not be used with this save.
 
-          - Fixed pipe-placement disconnects and rendering crashes by initializing
-            native block-state network IDs and face shape caches.
-          - Fixed conflicting texture atlas registrations. Pipe dimensions, engine
-            face textures and UVs now use the original BuildCraft 8.0.0 artwork.
-          - Fixed the crash when opening creative inventory with BuildCraft:
-            the extra tab now uses a valid Minecraft tab sprite index.
-          - Native BCCE 8.0.23 MJ/heat/piston simulation is now active; the
-            former instant chest-transfer mock is disabled. Original pipe
-            block entities, in-pipe packets and MJ receiver hookups are NOT
-            implemented. Do not request a player gameplay test for this build.
-          - Original BuildCraft pipe, engine and wrench textures are included
-            in the modern texture atlases. Unsupported legacy Forge models
-            are excluded from the active resource pack.
-          - Installed through CodaLauncher's normal Nightly update flow.
-            BuildCraft remains one JAR in the active profile's mods folder.
+          1. Confirm the BuildCraft Creative tab and its wood/cobblestone item
+             pipes, redstone engine and wrench open without an inventory crash.
+          2. Place chest -> wooden pipe -> cobblestone pipes -> chest; add a
+             redstone engine next to the wooden pipe and power it with a lever.
+          3. Type `/buildcraft status` and check the native pipe-holder tick
+             count rises after a few seconds. Record route diagnostics.
+          4. Exit to title, re-enter the same disposable world, confirm the
+             pipes and engine remain placed. Check `/buildcraft status` again.
+          5. Send a screenshot and CodaLauncher **COPY CURRENT LOG** contents.
+             If it crashes or corrupts a test save, STOP and report the log.
 
-          Includes native placeholder-level block/item registrations with
-          original BuildCraft artwork and the MJ engine-state compatibility
-          slice. No genuine BCCE pipe transport, wrench functionality, or
-          item animations yet. Do not publish as a player-ready release.
+          The Minecraft-native `BlockEntityType` and tick hook are now
+          registered; the original BCCE `TilePipeHolder` NBT, `PipeFlowItems`,
+          `TravellingItem`, MJ pipe receiver and wrench logic are NOT yet
+          hooked up. **Items will not travel between chests in this test.**
+          Do not use valuable worlds.
 
-          Automated checks cover the actual Snapshot 3 renderer bytecode,
-          native registry bootstrap, transport and original texture packaging.
-          Live creative-inventory and gameplay confirmation is still required.
+          Original BCCE art and API2 MJ contracts are preserved. Build validation
+          includes H.O.W.L. native bytecode and Minecraft Snapshot 3 headless
+          bootstrap; final in-game behavior requires this human smoke test.
           EOF
           gh release create "$TAG" "$ZIP" "$HASH" --prerelease \
             --target "$GITHUB_SHA" \
