@@ -14,7 +14,13 @@ Unreleased prototypes are **development-only**, not optional player mods. World-
 
 - `mods/hw-quiet-underground/` — HW Quiet Underground 1.0.0 — **development-only** Snapshot 3 world generation. A guarded pre-generation provisioner exists, but the Minecraft new-world hook remains to be implemented and tested.
 - `mods/hw-essentials/` — HW Essentials 0.2.0 — `/sethome`, `/home`, `/back`, `/homes`, `/delhome`, `/hwessentials`
-- `mods/buildcraft-cml/` — BuildCraft CML **0.0.1-dev.1** — **development-only** genuine BCCE 8.0.23 redstone engine MJ/heat/piston port, real Native Creative block registration and live pipe-route surveying. Native pipe BlockEntities, moving ItemStacks, wrench actions and machine parity remain to be implemented. The older JAR filename is kept temporarily for CodaLauncher compatibility.
+
+## Retired BuildCraft prototype
+
+The previous BuildCraft CML prototype was intentionally **deleted** from
+`main`, including its source, tests, build scripts, and Nightly publisher.
+It is not a source for a new BuildCraft port. See `RETIRED-BUILDCRAFT.md`
+before introducing any future BuildCraft project.
 
 ## Building
 
@@ -30,14 +36,13 @@ Output: `dist/hw-essentials-0.2.0.jar` + `.sha256`
 
 ```bash
 ./scripts/test-hw-essentials.sh
-./scripts/test-buildcraft-cml.sh
 python3 scripts/build-hw-quiet-underground.py
 python3 tests/test-provision-quiet-underground.py
 ```
 
 ## Distribution
 
-Official mod JAR releases are installed as **required, automatically managed** first-party content. BuildCraft CML and Quiet Underground remain development-only and are tested by CI but are not yet published in the player bundle.
+Official mod JAR releases are installed as **required, automatically managed** first-party content. Quiet Underground remains development-only and is validated separately in CI. The obsolete BuildCraft Nightly must not be distributed.
 
 The shared command API (`CodaMod`, `CodaContext`, `CodaCommand`, `CodaCommandContext`, `CodaPosition`, `CodaCommands`) and Minecraft hooks remain in **HW-CodaLoader**.
 

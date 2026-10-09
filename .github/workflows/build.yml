@@ -6,15 +6,6 @@ on:
       - main
   pull_request:
   workflow_dispatch:
-    inputs:
-      publish_buildcraft_nightly:
-        description: 'Publish the experimental BuildCraft Nightly after a meaningful gameplay change and review'
-        type: boolean
-        required: false
-        default: false
-  schedule:
-    # Daily experimental artifact refresh. Builds are also published after main changes.
-    - cron: "0 3 * * *"
 
 permissions:
   contents: read
@@ -67,103 +58,22 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-  validate-in-development:
-    name: Validate BuildCraft + Quiet Underground prototypes
+  validate-quiet-underground:
+    name: Validate Quiet Underground independently
     runs-on: ubuntu-latest
     steps:
-      - name: Check out HW-Mods
-        uses: actions/checkout@v4
-      - name: Check out matching H.O.W.L. API
-        uses: actions/checkout@v4
-        with:
-          repository: HowlingWhispers/HW-CodaLoader
-          path: HW-CodaLoader
-      - name: Verify local Mojang metadata bootstrap hotfix is in this Nightly
-        run: |
-          grep -F 'Reusing cached Minecraft version metadata; no manifest request.' \
-            HW-CodaLoader/src/main/java/dev/howlingwhispers/codaloader/bootstrap/MinecraftBootstrap.java
-      - name: Set up Java 21
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-      - name: Test BuildCraft transport and persistence
-        run: bash scripts/test-buildcraft-cml.sh
-      - name: Materialize authentic BCCE 8.0.23 reference
-        run: |
-          bash scripts/prepare-buildcraft-bcce.sh
-          python3 tests/test-buildcraft-bcce-reference.py
-      - name: Assert original BCCE API2 MJ sources are byte-identical
-        run: |
-          BCCE="dist/buildcraft-upstream/bcce-23c6af379676ce5262c5c0cb6f1f331edc9b12c6/source-shared/src/main/java"
-          for java in \
-            buildcraft/api/v2/OperationMode.java \
-            buildcraft/api/v2/energy/MjPort.java \
-            buildcraft/api/v2/energy/MjTransferResult.java \
-            buildcraft/api/v2/energy/MjTransferPolicy.java \
-            buildcraft/api/v2/energy/MjPortRole.java
-          do
-            cmp "$BCCE/$java" "mods/buildcraft-cml/src/$java"
-          done
-      - name: Compile BuildCraft development mod against H.O.W.L. API
-        env:
-          HW_CODALOADER_API_DIR: ${{ github.workspace }}/HW-CodaLoader/src/main/java
-        run: |
-          bash scripts/build-buildcraft-cml.sh
-          bash scripts/test-buildcraft-integration.sh
-          jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'PipeNetworkStore.class'
-          jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'BuildCraftTransportRuntime.class'
-          # Selected BCCE source is pinned to an immutable Git commit.
-          grep -F 'UPSTREAM: BUILDCRAFT COMMUNITY EDITION' <(unzip -p dist/buildcraft-cml-0.1.0-dev.jar META-INF/buildcraft-upstream/SOURCE.txt)
-          test -f dist/buildcraft-upstream/bcce-23c6af379676ce5262c5c0cb6f1f331edc9b12c6/source-families/modern/src/main/java/buildcraft/core/blockEntity/TileEngineRedstone_BC8.java
-          # Authentic upstream BuildCraft originals, not fabricated placeholders.
-          for entry in \
-            assets/buildcrafttransport/textures/pipes/wood_item_clear.png \
-            assets/buildcrafttransport/textures/pipes/cobblestone_item.png \
-            assets/buildcraftcore/textures/items/wrench.png \
-            assets/buildcraftcore/models/item/engine_redstone.json \
-            META-INF/buildcraft-upstream/LICENSE.txt \
-            META-INF/buildcraft-upstream/SOURCE.txt
-          do
-            jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -Fx "$entry"
-          done
-          unzip -p dist/buildcraft-cml-0.1.0-dev.jar META-INF/buildcraft-upstream/SOURCE.txt |
-            grep -F 'Pinned commit: 23c6af379676ce5262c5c0cb6f1f331edc9b12c6'
-          unzip -p dist/buildcraft-cml-0.1.0-dev.jar coda.mod.json | jq -e '.id == "buildcraft_cml" and .version == "0.0.1-dev.1" and (.description | length > 0) and (.changeSummary | length > 0)'
-      - name: Build isolated single-player BuildCraft playtest ZIP
-        env:
-          HW_CODALOADER_ROOT: ${{ github.workspace }}/HW-CodaLoader
-        run: bash scripts/build-buildcraft-playtest.sh
-      - name: Verify the packaged creative-inventory crash fix
-        run: |
-          grep -F 'CodaCreativeInventoryTransformer.install(instrumentation);' \
-            HW-CodaLoader/src/main/java/dev/howlingwhispers/codaloader/bootstrap/CodaAgent.java
-          mkdir -p out/creative-inventory-tests
-          javac --release 21 -cp HW-CodaLoader/dist/CodaLoader.jar \
-            -d out/creative-inventory-tests \
-            HW-CodaLoader/tests/src/dev/howlingwhispers/codaloader/bootstrap/CreativeInventoryTest.java
-          java -cp out/creative-inventory-tests:HW-CodaLoader/dist/CodaLoader.jar \
-            dev.howlingwhispers.codaloader.bootstrap.CreativeInventoryTest
-      - name: Validate and package Quiet Underground worldgen
+      - uses: actions/checkout@v4
+      - name: Package and validate Quiet Underground
         run: |
           python3 scripts/build-hw-quiet-underground.py
           python3 tests/test-provision-quiet-underground.py
-          unzip -p dist/hw-quiet-underground-1.0.0.zip pack.mcmeta | python3 -c 'import json,sys; assert json.load(sys.stdin)["pack"]["min_format"] == 123'
-      - name: Keep prototypes outside player releases
-        run: |
-          mkdir -p dist
-          printf '%s\\n' 'DEVELOPMENT ONLY: not a playable BuildCraft release or automatically enabled H.O.W.L. worldgen.' > dist/DEVELOPMENT-ONLY.txt
-      - name: Upload developer test artifacts
-        uses: actions/upload-artifact@v4
+          python3 tests/test-hw-quiet-underground.py
+          unzip -p dist/hw-quiet-underground-1.0.0.zip pack.mcmeta |
+            python3 -c 'import json,sys; assert json.load(sys.stdin)["pack"]["min_format"] == 123'
+      - uses: actions/upload-artifact@v4
         with:
-          name: HW-Mods-development-${{ github.sha }}
+          name: hw-quiet-underground-${{ github.sha }}
           path: |
-            dist/DEVELOPMENT-ONLY.txt
-            dist/buildcraft-reference/1.21.11-neoforge/HOWL-SOURCE-MANIFEST.json
-            dist/buildcraft-cml-0.1.0-dev.jar
-            dist/buildcraft-cml-0.1.0-dev.jar.sha256
-            dist/HOWL-BuildCraft-Singleplayer-Playtest.zip
-            dist/HOWL-BuildCraft-Singleplayer-Playtest.zip.sha256
             dist/hw-quiet-underground-1.0.0.zip
             dist/hw-quiet-underground-1.0.0.zip.sha256
           if-no-files-found: error
@@ -227,85 +137,3 @@ jobs:
           gh release create "$TAG" "$MOD_JAR" "dist/hw-essentials-0.2.0.jar.sha256" \
             --target "$GITHUB_SHA" --title "HW Essentials 0.2.0" \
             --notes-file release-notes.md --prerelease
-  publish-buildcraft-nightly:
-    name: Publish explicitly approved BuildCraft Nightly
-    needs: validate-in-development
-    # Human smoke publish requires explicit authorization plus successful build.
-    # Ordinary pushes never publish. Stable cannot consume these artifacts.
-    if: >-
-      github.ref == 'refs/heads/main' &&
-      ((github.event_name == 'workflow_dispatch' && inputs.publish_buildcraft_nightly == true) ||
-       (github.event_name == 'push' && contains(github.event.head_commit.message, '[approve-buildcraft-smoke]')))
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-    steps:
-      - name: Download tested BuildCraft playtest ZIP
-        uses: actions/download-artifact@v4
-        with:
-          name: HW-Mods-development-${{ github.sha }}
-          path: dist
-      - name: Require the compatible H.O.W.L. 0.0.33 Nightly runtime
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          gh api repos/HowlingWhispers/HW-CodaLoader/releases/tags/v0.0.33 \
-            --jq '[.prerelease, any(.assets[]; .name == "CodaLoader-v0.0.33-win64.zip"), any(.assets[]; .name == "update-manifest.json")] | all' \
-            | grep -Fx true
-      - name: Publish public checksum-pinned prerelease
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        shell: bash
-        run: |
-          set -euo pipefail
-          ZIP=dist/HOWL-BuildCraft-Singleplayer-Playtest.zip
-          HASH=dist/HOWL-BuildCraft-Singleplayer-Playtest.zip.sha256
-          test -s "$ZIP"
-          test -s "$HASH"
-          sha256sum -c "$HASH"
-          TAG="nightly-buildcraft-$(date -u +%Y%m%d)-${GITHUB_SHA:0:10}"
-          if gh release view "$TAG" >/dev/null 2>&1; then
-            echo "This verified nightly already exists."
-            exit 0
-          fi
-          cat > nightly-notes.md <<'EOF'
-          # H.O.W.L. BuildCraft Nightly: HUMAN SMOKE TEST
-
-          **Minecraft 26.4 Snapshot 3 | H.O.W.L. 0.0.33 prerelease |
-          BuildCraft H.O.W.L. port 0.0.1-dev.1 | Source: BCCE 8.0.23.**
-
-          This is a limited **native pipe / Creative inventory / reload** test
-          for an actual player, NOT a playable item transport release.
-
-          Install through the CodaLauncher **Nightly** channel, choose BuildCraft
-          **Install/Update** in Add-ons, and create a **disposable** Creative world.
-          Stable remains separate and must not be used with this save.
-
-          1. Confirm the BuildCraft Creative tab and its wood/cobblestone item
-             pipes, redstone engine and wrench open without an inventory crash.
-          2. Place chest -> wooden pipe -> cobblestone pipes -> chest; add a
-             redstone engine next to the wooden pipe and power it with a lever.
-          3. Type `/buildcraft status` and check the native pipe-holder tick
-             count rises after a few seconds. Record route diagnostics.
-          4. Exit to title, re-enter the same disposable world, confirm the
-             pipes and engine remain placed. Check `/buildcraft status` again.
-          5. Send a screenshot and CodaLauncher **COPY CURRENT LOG** contents.
-             If it crashes or corrupts a test save, STOP and report the log.
-
-          The Minecraft-native `BlockEntityType` and tick hook are now
-          registered; the original BCCE `TilePipeHolder` NBT, `PipeFlowItems`,
-          `TravellingItem`, MJ pipe receiver and wrench logic are NOT yet
-          hooked up. **Items will not travel between chests in this test.**
-          Do not use valuable worlds.
-
-          Original BCCE art and API2 MJ contracts are preserved. Build validation
-          includes H.O.W.L. native bytecode and Minecraft Snapshot 3 headless
-          bootstrap; final in-game behavior requires this human smoke test.
-          EOF
-          gh release create "$TAG" "$ZIP" "$HASH" --prerelease \
-            --target "$GITHUB_SHA" \
-            --title "BuildCraft Nightly $TAG" \
-            --notes-file nightly-notes.md
-          echo "Nightly published: $TAG"
