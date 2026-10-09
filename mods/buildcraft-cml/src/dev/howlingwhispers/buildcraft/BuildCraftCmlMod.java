@@ -49,6 +49,12 @@ public final class BuildCraftCmlMod implements CodaMod {
                     }
                     command.reply("BuildCraft 0.0.1-dev.1: "
                             + ENGINES.inspect(command.position(), command.worldDirectory()));
+                    var last = BuildCraftNativePipeTickObserver.lastObserved();
+                    command.reply("Native pipe-holder ticks this session: "
+                            + BuildCraftNativePipeTickObserver.ticksObserved()
+                            + (last == null ? " (none observed yet)"
+                                : " (latest: " + last.dimension() + " " + last.position() + ")")
+                            + ". This does not indicate moving items.");
                 });
         // Do not expose the obsolete /buildcraft pulse chest teleportation
         // command. Its JVM fixture remains separately testable, but genuine

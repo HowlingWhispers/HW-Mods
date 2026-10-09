@@ -48,19 +48,29 @@ HW Quiet Underground also ships as a checked world datapack inside Nightly.
 The H.O.W.L. Create World screen hook attempts to select it automatically
 BEFORE the new world is generated. Existing world saves are not modified.
 This is experimental and still requires a live Minecraft confirmation.
+H.O.W.L. BuildCraft 0.0.1-dev.1; source BCCE 8.0.23.
+Requires H.O.W.L. 0.0.33 (Nightly prerelease).
+HUMAN SMOKE TEST: place native pipes, check the Creative inventory and
+verify Minecraft native tile ticking via /buildcraft status. Leave and
+reopen the disposable world; blocks and ticker functionality should remain.
+Report the current log and screenshots if anything crashes.
 BuildCraft 8.0.23 native MJ engine DEVELOPMENT BASELINE ONLY:
 Engine BlockItem, original art and Creative tab still load in H.O.W.L.
 The engine simulates BCCE's original 0.05 MJ/t, redstone heat/cooling,
 MJ buffer and piston stroke on the authoritative server tick and persists
 its state per-world.
-IMPORTANT: there are NO actual BCCE pipe BlockEntities, MJ receivers,
-traveling ItemStacks, moving-item graphics or player-ready item transport.
+IMPORTANT: genuine Minecraft pipe BlockEntity identities and native tick
+callbacks are registered, but BCCE TilePipeHolder state/flows are not yet
+attached. There are NO MJ pipe receivers, travelling ItemStacks, moving-item
+graphics or functional chest-to-chest item transport.
 The former instant chest-transfer prototype and /buildcraft pulse command
 are no longer registered in game.
 Do not ask players to test chest-to-chest movement from this package.
 There is no player-facing functional transport test yet.
 This developer package is NOT a playable BuildCraft 8.0.23 release.
-No player test should be requested until actual pipe gameplay ships.
+A HUMAN SMOKE TEST of Creative placement, block entity ticking and save/reload
+is permitted on a disposable Nightly world. Do not claim playable cargo
+movement. See mods/buildcraft-cml/PLAYTEST-README.txt in source for steps.
 EOF
 # Inspect the actual entrypoint without constructing a second runtime mods
 # directory inside the package. The launcher will place this JAR in game/mods.
