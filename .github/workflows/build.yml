@@ -91,26 +91,23 @@ jobs:
           bash scripts/test-buildcraft-integration.sh
           jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'PipeNetworkStore.class'
           jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -F 'BuildCraftTransportRuntime.class'
-          # Authentic original BuildCraft 8.0.0 stable artifacts, not the
-          # newer unreleased development branch or any fan recreation.
-          grep -F 'BuildCraft 8.0.0' <(unzip -p dist/buildcraft-cml-0.1.0-dev.jar META-INF/buildcraft-upstream/SOURCE.txt)
-          test -s dist/buildcraft-upstream/8.0.0/buildcraft-all-8.0.0-sources.jar
-          test -s dist/buildcraft-upstream/8.0.0/buildcraft-all-8.0.0.jar
+          # Selected BCCE source is pinned to an immutable Git commit.
+          grep -F 'UPSTREAM: BUILDCRAFT COMMUNITY EDITION' <(unzip -p dist/buildcraft-cml-0.1.0-dev.jar META-INF/buildcraft-upstream/SOURCE.txt)
+          test -f dist/buildcraft-upstream/bcce-b1b166d29da797abf6df3e0618a3bd62f14bc41e/source-families/modern/src/main/java/buildcraft/core/blockEntity/TileEngineRedstone_BC8.java
           # Authentic upstream BuildCraft originals, not fabricated placeholders.
           for entry in \
             assets/buildcrafttransport/textures/pipes/wood_item_clear.png \
             assets/buildcrafttransport/textures/pipes/cobblestone_item.png \
             assets/buildcraftcore/textures/items/wrench.png \
             assets/buildcraftcore/models/item/engine_redstone.json \
-            META-INF/buildcraft-upstream/LICENSE.BUILDCRAFT \
-            META-INF/buildcraft-upstream/LICENSE-NEW \
+            META-INF/buildcraft-upstream/LICENSE.txt \
             META-INF/buildcraft-upstream/SOURCE.txt
           do
             jar tf dist/buildcraft-cml-0.1.0-dev.jar | grep -Fx "$entry"
           done
           unzip -p dist/buildcraft-cml-0.1.0-dev.jar META-INF/buildcraft-upstream/SOURCE.txt |
-            grep -F 'Release: 8.0.0 (official stable'
-          unzip -p dist/buildcraft-cml-0.1.0-dev.jar coda.mod.json | jq -e '.id == "buildcraft_cml"'
+            grep -F 'Pinned commit: b1b166d29da797abf6df3e0618a3bd62f14bc41e'
+          unzip -p dist/buildcraft-cml-0.1.0-dev.jar coda.mod.json | jq -e '.id == "buildcraft_cml" and .version == "0.1.2-dev" and (.description | length > 0) and (.changeSummary | length > 0)'
       - name: Build isolated single-player BuildCraft playtest ZIP
         env:
           HW_CODALOADER_ROOT: ${{ github.workspace }}/HW-CodaLoader
@@ -243,6 +240,17 @@ jobs:
           Opt-in **single-player-only** test. Does not replace Stable.
           Use a NEW disposable world in a separate CodaLauncher Nightly profile.
 
+          **BCCE H.O.W.L. port 0.1.2-dev · H.O.W.L. 0.0.29**
+
+          - Switch the upstream source and unchanged artwork to BuildCraft
+            Community Edition 8.0.23 at commit b1b166d29da797abf6df3e0618a3bd62f14bc41e.
+            Uses H.O.W.L.; no Forge/NeoForge runtime is installed.
+            This is the initial transport preview, not the complete BCCE port.
+
+          - Fixed pipe-placement disconnects and rendering crashes by initializing
+            native block-state network IDs and face shape caches.
+          - Fixed conflicting texture atlas registrations. Pipe dimensions, engine
+            face textures and UVs now use the original BuildCraft 8.0.0 artwork.
           - Fixed the crash when opening creative inventory with BuildCraft:
             the extra tab now uses a valid Minecraft tab sprite index.
           - Original BuildCraft pipe, engine and wrench textures are included

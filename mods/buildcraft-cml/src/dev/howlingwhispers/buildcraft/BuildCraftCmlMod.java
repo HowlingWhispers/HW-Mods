@@ -4,8 +4,8 @@ import dev.howlingwhispers.codaloader.api.CodaContext;
 import dev.howlingwhispers.codaloader.api.CodaMod;
 
 /**
- * Native H.O.W.L. BuildCraft port, using original BuildCraft as reference.
- * Development-only: the actual block and inventory adapter is not yet shipped.
+ * Native H.O.W.L. BuildCraft port, using BCCE modern source as reference.
+ * Development-only: initial native transport adapter, not full BCCE parity.
  */
 public final class BuildCraftCmlMod implements CodaMod {
     private static final BuildCraftTransportRuntime TRANSPORT = new BuildCraftTransportRuntime();
@@ -18,7 +18,7 @@ public final class BuildCraftCmlMod implements CodaMod {
 
     @Override
     public void onInitialize(CodaContext context) {
-        // ORIGINAL BuildCraft 8.0.0 item identities and art; H.O.W.L. only
+        // BCCE item identities and original BuildCraft art; H.O.W.L. only
         // adapts the Minecraft 26.4 Snapshot 3 registry lifecycle.
         context.registerBlock("buildcrafttransport:wood_item", 0.7f);
         context.registerBlock("buildcrafttransport:cobblestone_item", 1.4f);
@@ -38,6 +38,6 @@ public final class BuildCraftCmlMod implements CodaMod {
         context.registerCommand("buildcraft", "BuildCraft chest/pipe single-player test",
                 BuildCraftGlassPipeDemo::execute);
         System.out.println("[BuildCraft CML] Server-tick transport bridge registered. "
-                + "Original BuildCraft 8.0 native pipe and redstone engine pulse loop registered.");
+                + "BCCE-source H.O.W.L. native pipe and redstone engine pulse loop registered.");
     }
 }
