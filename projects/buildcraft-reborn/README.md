@@ -88,3 +88,35 @@ A successful compile proves only the **item-transfer interface ABI** can be
 used on this Minecraft target. It does not establish that pipe block entities,
 NeoForge capabilities, world save/reload, energy receivers, renderer or
 inventory transactions work yet. No mod JAR is produced.
+
+## Original pipe holders: first reversible source adaptation
+
+The port now stages **the actual 8.0.23 `BlockPipeHolder` and
+`TilePipeHolder` Java files**, with just three tightly scoped,
+reversible changes:
+
+1. Original block constructor accepts the Mojang Snapshot 3
+   registry-keyed `BlockBehaviour.Properties`. Original geometry,
+   collision, waterlogging and on-interact methods remain unchanged.
+2. Original `BlockPipeHolder.getTicker()` resolves the port's own native
+   `hw_buildcraft_reborn:pipe_holder` type rather than NeoForge registry
+   objects, retaining its call to `TilePipeHolder.update()`.
+3. Original `TilePipeHolder` constructor resolves that same native type,
+   preserving all original pipe state, NBT persistence, pluggables, wires,
+   `PipeFlowItems` and other lifecycle logic.
+
+```bash
+python3 projects/buildcraft-reborn/scripts/stage-original-pipe-holders.py
+bash projects/buildcraft-reborn/scripts/probe-original-pipe-compilation.sh
+```
+
+An isolated compiler probe attempts to build both staged original BCCE
+classes with Minecraft's actual Snapshot 3 classes and BCCE's layered source.
+If NeoForge/BuildCraft library dependencies are unresolved, CI produces
+`pipe-holder-compiler-report.txt` with **NOT_COMPILED**, along with the
+exact javac error log. **A green diagnostic workflow is not a green mod
+compilation**. This project remains non-installable until the original
+classes compile and load.
+
+No old custom pipe gameplay, fake `BlockEntity` payload or released mod
+jar is present.

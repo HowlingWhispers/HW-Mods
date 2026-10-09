@@ -32,6 +32,21 @@ jobs:
         run: bash projects/buildcraft-reborn/scripts/test-original-flow-core.sh
       - name: Compile original BCCE item transfer API against real Minecraft 26.4
         run: bash projects/buildcraft-reborn/scripts/test-original-item-api.sh
+      - name: Stage original BCCE pipe holders with 3 reversible native constructor patches
+        run: python3 projects/buildcraft-reborn/scripts/stage-original-pipe-holders.py
+      - name: Probe exact pipe holder compiler blockers against Snapshot 3
+        run: bash projects/buildcraft-reborn/scripts/probe-original-pipe-compilation.sh
+      - name: Upload full original BCCE compilation diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: buildcraft-reborn-original-pipe-compiler-report
+          path: |
+            dist/buildcraft-reborn/pipe-holder-compiler-report.txt
+            dist/buildcraft-reborn/pipe-holder-javac-errors.txt
+            dist/buildcraft-reborn/staged-snapshot3/ADAPTATIONS.json
+          if-no-files-found: warn
+          retention-days: 14
       - name: Confirm no old BuildCraft build or release is active
         run: |
           test ! -e mods/buildcraft-cml

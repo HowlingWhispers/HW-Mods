@@ -47,3 +47,30 @@ The next step must connect those unchanged classes to the original
 `TilePipeHolder`, `PipeFlowItems`, and real Minecraft containers
 through H.O.W.L.'s new native factory API, while retaining BCCE
 save/load and renderer behavior.
+
+## Stage 1 original pipe constructor adaptation (in progress)
+
+Original BCCE `BlockPipeHolder` and `TilePipeHolder` are staged
+into `dist/buildcraft-reborn/staged-snapshot3/` with only these known
+constructor/registry seams patched, each reversible byte-for-byte:
+
+- `BlockPipeHolder()` -> `BlockPipeHolder(nativeProperties)`
+  while retaining original map color, sound, strength, waterlogging,
+  bounding boxes and ticking methods
+- NeoForge `BCTransportBlocks.PIPE_HOLDER_BE.get()` comparison in
+  `BlockPipeHolder.getTicker` -> native registry lookup by the new
+  `hw_buildcraft_reborn:pipe_holder` ID
+- NeoForge `BCTransportBlocks.PIPE_HOLDER_BE.get()` base constructor
+  argument in `TilePipeHolder` -> the same native registry lookup
+
+Original `getTicker` still calls original `TilePipeHolder.update`,
+and the tile still calls original `pipe.onTick()`. This does not
+reimplement either one. Original persistence and pluggable methods
+remain unchanged.
+
+The staged classes still require compilation of upstream BCCE library
+bases plus removal/adaptation of NeoForge-only references before they
+can run. The explicit compiler probe gives **NOT_COMPILED** status
+and saves all javac errors rather than silently treating import or
+factory tests as proof of original pipe gameplay. Neither a playable
+JAR nor any package for CodaLauncher is created.
