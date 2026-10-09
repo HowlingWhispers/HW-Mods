@@ -5,7 +5,9 @@ import dev.howlingwhispers.codaloader.api.CodaBlockPos;
 import dev.howlingwhispers.codaloader.api.CodaInventoryView;
 import dev.howlingwhispers.codaloader.api.CodaServerTickContext;
 import dev.howlingwhispers.codaloader.api.CodaWorldView;
+import dev.howlingwhispers.buildcraft.BuildCraftEngineStore.Engine;
 
+import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -13,20 +15,17 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * First server-authoritative BuildCraft 8.0 transport gameplay slice.
+ * Experimental native Snapshot 3 engine-driven chest transport adapter.
  *
- * Redstone-powered engine next to wooden extraction pipe, followed by
- * connected cobblestone transport pipes. Original art and real native blocks,
- * never virtual/glass placeholders. ItemStacks are moved by the loaded vanilla
- * chest/barrel adapter. Bounded to 16 pipes and 16 items per engine pulse.
+ * Placeable blocks and original textures exist, but instant chest transfer is
+ * NOT equivalent to BCCE's MJ engine, travelling-item tile entities or pipe
+ * routing. Keep this adapter development-only until those originals are ported.
  *
- * Next ports still needed: source-compatible pipe TileEntity packet motion,
- * engine temperature/energy states, persistence of powered engine tracking,
- * wrench interactions and in-pipe animations. Nothing is replicated to a
- * separate virtual chest.
+ * Installed engine positions are now indexed per Minecraft WORLD SAVE. This
+ * index is not an alternative source of truth: each loaded engine is checked
+ * against the real block before acting; missing/unloaded positions never tick.
  */
 public final class BuildCraftEngineRuntime {
-    private record Engine(String dimension, CodaBlockPos position) {}
     private static final String WOOD = "buildcrafttransport:wood_item";
     private static final String COBBLE = "buildcrafttransport:cobblestone_item";
     private static final String ENGINE = "buildcraftcore:engine_redstone";
@@ -38,40 +37,65 @@ public final class BuildCraftEngineRuntime {
 
     private final Set<Engine> engines = new HashSet<>();
     private String activeSession = "";
+    private Path activeWorld;
+    private boolean dirty;
     private int lastMoved;
 
     public synchronized void onPlacement(CodaBlockPlacements.Placement placed) {
-        if (ENGINE.equals(placed.blockId()))
-            engines.add(new Engine(placed.dimension(), placed.position()));
+        // Native placement notifications are server-authoritative and only
+        // emitted after Minecraft verifies the placed block identity.
+        if (ENGINE.equals(placed.blockId()) &&
+                engines.add(new Engine(placed.dimension(), placed.position())))
+            dirty = true;
     }
 
     /**
-     * Server callback only. Never loads chunks, never generates terrain, never
-     * writes unless ALL pipe positions and endpoints are checked first.
+     * Each server is a separate session. Load the index BEFORE transferring,
+     * and atomically save pending placements/removals before the first pulse.
+     * An unreadable/corrupt index raises an error; no world is mutated.
      */
     public synchronized void onServerTick(CodaServerTickContext tick) throws Exception {
-        if (!activeSession.equals(tick.sessionId())) {
-            // Never let a previous world's engine list affect a new world.
-            engines.clear();
-            activeSession = tick.sessionId();
-        }
-        if (tick.tick() % 20 != 0 || tick.world().isEmpty()) return;
+        if (tick.world().isEmpty()) return;
         CodaWorldView world = tick.world().get();
-        List<Engine> snapshots = List.copyOf(engines);
+        if (!activeSession.equals(tick.sessionId())) {
+            // Read before replacing state. Failure leaves the prior save intact
+            // and prevents this session from pulsing an unverified engine.
+            Path root = world.worldDirectory().orElse(null);
+            Set<Engine> loaded = root == null
+                    ? Set.of() : BuildCraftEngineStore.load(root);
+            engines.clear();
+            engines.addAll(loaded);
+            activeWorld = root;
+            activeSession = tick.sessionId();
+            lastMoved = 0;
+            dirty = false;
+        }
+
+        // No transfer proceeds if a placement cannot be made durable.
+        if (dirty && activeWorld != null) {
+            BuildCraftEngineStore.save(activeWorld, engines);
+            dirty = false;
+        }
+        if (tick.tick() % 20 != 0) return;
         int moved = 0;
-        for (Engine engine : snapshots) {
+        for (Engine engine : List.copyOf(engines)) {
             if (!world.isChunkLoaded(engine.dimension(), engine.position())) continue;
             if (!world.isBlock(engine.dimension(), engine.position(), ENGINE)) {
                 engines.remove(engine);
+                dirty = true;
                 continue;
             }
             if (!world.hasNeighborSignal(engine.dimension(), engine.position())) continue;
             moved += pulseEngine(world, engine);
         }
+        if (dirty && activeWorld != null) {
+            BuildCraftEngineStore.save(activeWorld, engines);
+            dirty = false;
+        }
         lastMoved = moved;
         if (moved > 0)
-            System.out.println("[BuildCraft] Original redstone engine pulsed " + moved
-                    + " native Minecraft item(s) through placed BuildCraft pipes.");
+            System.out.println("[BuildCraft H.O.W.L. preview] Moved " + moved
+                    + " native item(s) between loaded chests (not BCCE pipe packets).");
     }
 
     public synchronized int lastMoved() { return lastMoved; }
@@ -80,14 +104,12 @@ public final class BuildCraftEngineRuntime {
         String dim = engine.dimension();
         for (CodaBlockPos wood : adjacent(engine.position())) {
             if (!world.isChunkLoaded(dim, wood) || !world.isBlock(dim, wood, WOOD)) continue;
-            // Extraction requires a nonempty source container *next to wood*.
             for (CodaBlockPos source : adjacent(wood)) {
                 var found = world.inventory(dim, source);
                 if (found.isEmpty() || !hasItems(found.get())) continue;
                 CodaBlockPos destination = findTarget(world, dim, wood, source);
-                if (destination != null) {
+                if (destination != null)
                     return world.transfer(dim, source, destination, ITEMS_PER_PULSE);
-                }
             }
         }
         return 0;
@@ -105,8 +127,6 @@ public final class BuildCraftEngineRuntime {
             for (CodaBlockPos next : adjacent(step.pos())) {
                 if (next.equals(source) || next.equals(wood)) continue;
                 if (!world.isChunkLoaded(dim, next)) continue;
-                // Only the full checked path of actual BuildCraft blocks is
-                // allowed. A full destination simply stalls, never voids cargo.
                 var possible = world.inventory(dim, next);
                 if (possible.isPresent()) return next;
                 if (step.pipes() >= MAX_HOPS || !visited.add(next)) continue;
