@@ -36,3 +36,19 @@ See [PORTING-SOURCES.md](PORTING-SOURCES.md) for source ownership, acceptance ga
 ## Release acceptance
 
 The first genuine playtest must have actual original BuildCraft blocks/items registered and a native engine-powered wooden pipe visibly transport items between real chests, surviving save/reload without loss or duplication. Creative inventory crashes, renderer/atlas errors and placeholder glass-pipe commands are release blockers. Follow with the remaining original modules before calling the port complete.
+
+
+## Current road to the first real player test (0.0.1-dev.1)
+
+The port now surveys **actual loaded Snapshot 3 blocks** to find a redstone
+engine adjacent to a wooden extraction pipe, a source inventory, a connected
+cobblestone pipe chain, and a second inventory. Use `/buildcraft status` near
+your placed engine to inspect the result; scans run every 100 server ticks.
+The survey refuses broken routes, unloaded chunks, glass stand-ins and
+unpowered-engine readiness claims. It does **not** extract or transport
+items. BuildCraft is NOT yet ready for a cargo gameplay test.
+
+Next mandatory boundary: native H.O.W.L. block-entity state and Minecraft
+ItemStack transactions, then traveling pipe packets and rendering, with
+lossless save/reload and a real single-player smoke test. This work stays
+development-only rather than pretending the old chest-transfer shortcut works.

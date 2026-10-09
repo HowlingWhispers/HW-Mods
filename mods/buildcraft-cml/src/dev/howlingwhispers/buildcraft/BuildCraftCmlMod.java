@@ -33,6 +33,15 @@ public final class BuildCraftCmlMod implements CodaMod {
         context.registerBlockPlacement(ENGINES::onPlacement);
         context.registerServerTick("real_engine_transport", ENGINES::onServerTick);
         context.registerServerTick("pipe_transport", TRANSPORT::onServerTick);
+        context.registerCommand("buildcraft", "Inspect nearby native BuildCraft pipes and engines",
+                (command, arguments) -> {
+                    if (!arguments.isEmpty() && !arguments.equals(java.util.List.of("status"))) {
+                        command.reply("Usage: /buildcraft [status]");
+                        return;
+                    }
+                    command.reply("BuildCraft 0.0.1-dev.1: "
+                            + ENGINES.inspect(command.position(), command.worldDirectory()));
+                });
         // Do not expose the obsolete /buildcraft pulse chest teleportation
         // command. Its JVM fixture remains separately testable, but genuine
         // player transport requires BCCE pipe block entities and MJ ports.
