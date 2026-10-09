@@ -12,7 +12,7 @@ import java.util.List;
 
 /**
  * Source-only bridge between REAL upstream BCCE BlockPipeHolder/TilePipeHolder
- * and H.O.W.L.'s native registry factories. No old PipeNetwork, no custom
+ * and H.O.W.L.'s native registry factories. No synthetic network, no custom
  * item transport, no placeholder blocks, no JSON mod metadata or JAR yet.
  *
  * DO NOT PACKAGE until this bridge and all upstream dependencies compile
