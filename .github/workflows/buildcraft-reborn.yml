@@ -83,6 +83,9 @@ jobs:
           javap -classpath "$CLASS_DIR" \
             buildcraft.lib.compat.howl.OriginalCapabilityLookup |
             grep -F 'get(net.minecraft.world.level.Level, net.minecraft.core.BlockPos'
+          javap -classpath "$CLASS_DIR" \
+            buildcraft.lib.compat.howl.NativeLoadedContainerLookup |
+            grep -F 'buildcraft.api.v2.item.ItemPort get(net.minecraft.world.level.Level, net.minecraft.core.BlockPos, net.minecraft.core.Direction)'
       - name: Upload full original BCCE compilation diagnostics
         if: always()
         uses: actions/upload-artifact@v4
