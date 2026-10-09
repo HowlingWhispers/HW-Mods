@@ -1,5 +1,6 @@
 package dev.howlingwhispers.buildcraftreborn;
 
+import buildcraft.lib.compat.howl.ActiveModNamespace;
 import buildcraft.transport.block.BlockPipeHolder;
 import buildcraft.transport.tile.TilePipeHolder;
 import dev.howlingwhispers.codaloader.api.CodaContext;
@@ -31,23 +32,25 @@ public final class BuildCraftRebornMod implements CodaMod {
         // The upstream BuildCraft implementation uses ONE BlockPipeHolder
         // for many pipe variants. Never invent cobblestone/wood replacement
         // blocks here: BCCE's own ItemPipeHolder supplies actual pipe variants.
-        context.registerBlock(HOLDER_ID, 0.25f);
-        context.registerBlockEntityType(HOLDER_ID, List.of(HOLDER_ID));
-
-        // Stage script preserves BlockPipeHolder's original geometry,
-        // waterlogging, interactions and EntityBlock.getTicker().
-        // H.O.W.L. supplies only Mojang's required keyed Properties.
-        context.registerNativeKeyedBlockFactory(HOLDER_ID,
-                nativeProperties -> new BlockPipeHolder(
-                        (BlockBehaviour.Properties) nativeProperties));
-
-        // This constructs the ORIGINAL BCCE TilePipeHolder. Its original
-        // writeData/readData, Pipe.onTick, pluggables and wire manager are
-        // retained. The NeoForge dependency closure must be ported before
-        // this source is legal to ship.
-        context.registerNativeBlockEntityFactory(HOLDER_ID,
-                (pos, state) -> new TilePipeHolder(
-                        (BlockPos) pos, (BlockState) state));
+        try (var scope = ActiveModNamespace.enter(context.modId())) {
+            context.registerBlock(HOLDER_ID, 0.25f);
+            context.registerBlockEntityType(HOLDER_ID, List.of(HOLDER_ID));
+    
+            // Stage script preserves BlockPipeHolder's original geometry,
+            // waterlogging, interactions and EntityBlock.getTicker().
+            // H.O.W.L. supplies only Mojang's required keyed Properties.
+            context.registerNativeKeyedBlockFactory(HOLDER_ID,
+                    nativeProperties -> new BlockPipeHolder(
+                            (BlockBehaviour.Properties) nativeProperties));
+    
+            // This constructs the ORIGINAL BCCE TilePipeHolder. Its original
+            // writeData/readData, Pipe.onTick, pluggables and wire manager are
+            // retained. The NeoForge dependency closure must be ported before
+            // this source is legal to ship.
+            context.registerNativeBlockEntityFactory(HOLDER_ID,
+                    (pos, state) -> new TilePipeHolder(
+                            (BlockPos) pos, (BlockState) state));
+        }
         // No H.O.W.L. custom registerBlockEntityTick: original
         // BlockPipeHolder.getTicker calls original TilePipeHolder.update().
     }
