@@ -59,7 +59,7 @@ jobs:
               m = json.loads(z.read('coda.mod.json'))
               assert m['schema'] == 1
               assert m['id'] == 'coda_wolf'
-              assert m['version'] == '0.1.1-dev'
+              assert m['version'] == '0.1.2-dev'
               assert m['minecraft'] == '26.4-snapshot-3'
               assert m['entrypoint'] == 'dev.howlingwhispers.codawolf.CodaWolfMod'
               assert 'dev/howlingwhispers/codawolf/CodaWolfMod.class' in z.namelist()
@@ -95,17 +95,19 @@ jobs:
             exit 0
           fi
           cat > out/codawolf-release-notes.md <<'EOF'
-          # H.O.W.L. Coda Wolf 0.1.1-dev (EXPERIMENTAL)
+          # H.O.W.L. Coda Wolf 0.1.2-dev (EXPERIMENTAL)
 
           A mortal, already-tamed Coda wolf for Minecraft Java 26.4 Snapshot 3.
           Default: defensive. Respawns after successful bed sleep when death is
           detected. Owner/world identity is persisted.
 
-          Manifest version is now 0.1.1-dev. The legacy managed JAR filename
+          Manifest version is now 0.1.2-dev. The legacy managed JAR filename
           stays unchanged during this compatibility transition.
 
           This release is NOT gameplay verified. Wolf spawning, death events,
           and in-game Coda-only icy fur rendering still need a live Snapshot 3 playtest.
+          Corrected Snapshot 3 day/night clock access for sleep-based revival
+          using Level.getOverworldClockTime() instead of removed getDayTime().
           Coda's verified wolf UUID selects an icy-white/cyan texture in an exclusive\n          resource pack. Ordinary vanilla wolves remain unchanged.\n          Use a disposable world. AI vision and voice are not
           implemented yet.
 
