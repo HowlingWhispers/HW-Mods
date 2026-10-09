@@ -2,7 +2,8 @@
 # BCCE is the selected source. Forge/NeoForge binaries never run in H.O.W.L.
 set -euo pipefail
 RELEASE="8.0.23"
-COMMIT="b1b166d29da797abf6df3e0618a3bd62f14bc41e"
+# Exact commit tagged 8.0.23 upstream. Keep in sync with prepare-buildcraft-bcce.sh.
+COMMIT="23c6af379676ce5262c5c0cb6f1f331edc9b12c6"
 PROJECT="https://github.com/BCCE-team/BuildCraft"
 OUTPUT_DIR="${1:?Usage: bash scripts/import-buildcraft-upstream-assets.sh OUTPUT_DIRECTORY}"
 CACHE_ROOT="${HW_BUILDCRAFT_UPSTREAM_CACHE:-dist/buildcraft-upstream}"

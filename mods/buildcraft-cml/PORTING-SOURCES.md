@@ -1,34 +1,44 @@
-# BuildCraft Community Edition for H.O.W.L.
+# Authoritative BCCE porting sources and boundaries
 
-The user-selected upstream is [BCCE-team/BuildCraft](https://github.com/BCCE-team/BuildCraft),
-version **8.0.23**, pinned to commit
-`b1b166d29da797abf6df3e0618a3bd62f14bc41e` (2026-10-08).
-The previous original BuildCraft 8.0.0 baseline has been superseded.
+## Immutable upstream baseline
 
-Use the modern **1.21.11** source family and shared API v2 as the reference.
-Forge/NeoForge registration, inventories, networking and rendering must be
-adapted to **H.O.W.L. / Minecraft 26.4 Snapshot 3**. The BCCE JAR cannot run
-unchanged. Do not add a second mod loader or downgrade Minecraft.
+- **Repository:** https://github.com/BCCE-team/BuildCraft
+- **Official tag:** [8.0.23](https://github.com/BCCE-team/BuildCraft/releases/tag/8.0.23)
+- **Tag commit:** `23c6af379676ce5262c5c0cb6f1f331edc9b12c6`
+- **Main reference:** `1.21.11-neoforge` effective sources from BCCE's own `scripts/source_layout.py`
+- **Behavioral reference:** BCCE's `1.19.2-forge` gameplay target
+- **H.O.W.L. target:** `26.4-snapshot-3` (no Forge/NeoForge runtime)
 
-The importer checks the exact Git commit and clean cached checkout, verifies
-upstream version metadata, copies resource layers in BCCE's precedence order,
-and bundles its MPL-2.0 license and pinned source URL in the mod JAR.
-Imported PNG files are unchanged. Pipes, wrench and engine images match the
-original BuildCraft 8.0.0 assets byte for byte. Snapshot 3 models must use unique
-atlas assignments and the original dimensions, face textures and UVs.
+The previous source cache referenced `b1b166d29da797abf6df3e0618a3bd62f14bc41e`, which is **three commits after the official 8.0.23 tag**. Those commits modified build wrappers/validation, not gameplay, but all new source locks use the release's exact commit to remove ambiguity.
 
-The current H.O.W.L. transport adapter remains an early prototype. BCCE's
-modern engine, wooden-pipe extraction, renderer and persistence code are the
-reference for the next gameplay ports; cached source does not mean those
-classes are already running under H.O.W.L.
+The source is pulled into a **disposable or verified-clean cache** at `dist/buildcraft-upstream/bcce-<commit>`. The prepare script verifies commit identity, clean state, version metadata, module presence and original license. It refuses an unexpected or altered cache rather than guessing.
 
-First in-game checkpoint: place wooden/cobblestone pipes and a powered
-redstone engine, open the BuildCraft creative tab, and transfer real items
-between chests without duplication or loss. Then port connected rendering,
-engine MJ/temperature and animations, wrench actions and save/reload behavior.
-Recipes, the remaining pipes, fluids, quarry, machinery, builders and robotics
-still require native ports and gameplay verification.
+Run `bash scripts/prepare-buildcraft-bcce.sh` to reconstruct BCCE's complete effective modern source under `dist/buildcraft-reference/1.21.11-neoforge`. The generated `HOWL-SOURCE-MANIFEST.json` reports provenance and module counts. CI checks this reference.
 
-Retain BCCE and original BuildCraft per-file copyright notices, preserve
-MPL-2.0 obligations and provide corresponding modified source. Neither
-upstream project endorses this unofficial H.O.W.L. port.
+## Preserve these eight upstream modules
+
+| Original module | Primary functional responsibility |
+| --- | --- |
+| `buildcraft/lib` | Common types, plumbing, shared mechanics and BCCE API integration |
+| `buildcraft/core` | Core blocks, tools, services and lifecycle |
+| `buildcraft/energy` | Engines, MJ and energy movement |
+| `buildcraft/transport` | Real pipes, extraction, routing, fluid/item transport |
+| `buildcraft/factory` | Machines, pumps and factory components |
+| `buildcraft/silicon` | Gates, assembly and logic |
+| `buildcraft/builders` | Quarries, builders, schematics |
+| `buildcraft/robotics` | Original robot mechanisms |
+
+All textures, sounds, recipes, models, GUIs, world data, ticks, mechanics and balancing remain parity targets. Original code is preferred wherever game and loader APIs permit. When direct compilation is impossible, adapt compatibility boundaries while preserving behavior. Do not substitute virtual cargo, vanilla glass or command-driven pulses as a release.
+
+## Next native H.O.W.L. prerequisites
+
+1. Snapshot 3 native block/item registration verified in a live client, including the BuildCraft Creative tab and block-item states.
+2. Authoritative block entity lifecycle and persistence (create, tick, save, reload, unload, remove).
+3. Full transactional inventory, fluid and MJ transport adapters, respecting slot limits, components and rollback.
+4. Renderer/model/atlas and machine UI APIs with stable network synchronization.
+5. Port BCCE modules in their dependency order. Validate real engine-powered transport first.
+6. Stress tests and one-to-one comparisons against original BCCE, then Nightly before Stable.
+
+**No compatibility claim from a compile-only fixture, source materialization or successful asset import.** Test directly in Minecraft; preserve separate test worlds and never rewrite existing saves without a backup/migration plan.
+
+MPL-2.0 notices and per-file attribution are mandatory. Corresponding modified source must remain available under the applicable license terms. The unofficial H.O.W.L. port is not endorsed by the original BuildCraft or BCCE teams.
