@@ -106,6 +106,21 @@ CHANGES = {
             '                        }'
         ),
     ],
+    "transport/internal/pipe/PipeDefinition.java": [
+        (
+            'import net.neoforged.fml.ModContainer;\\nimport net.neoforged.fml.ModLoadingContext;',
+            'import buildcraft.lib.compat.howl.ActiveModNamespace;'
+        ),
+        (
+            'ModContainer mod = ModLoadingContext.get().getActiveContainer();\\n'
+            '            if (mod == null) {\\n'
+            '                throw new IllegalStateException(\\n'
+            '                    "Cannot interact with PipeDefinition outside of an actively scoped mod!");\\n'
+            '            }\\n'
+            '            return mod.getModId();',
+            'return ActiveModNamespace.get();'
+        )
+    ],
     "lib/block/BlockBCBase_Neptune.java": [
         (
             'import net.minecraft.world.level.block.SoundType;',
