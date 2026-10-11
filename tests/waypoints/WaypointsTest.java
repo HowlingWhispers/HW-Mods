@@ -48,6 +48,13 @@ public final class WaypointsTest {
         refuses(() -> WaypointStore.name("../escape"));
         refuses(() -> WaypointStore.name("a".repeat(25)));
         refuses(() -> WaypointStore.note("a".repeat(81)));
+        Path capWorld = root.resolve("limit-check");
+        for (int i = 0; i < WaypointStore.CAP; i++) store.set(capWorld, "point_" + i, origin, "", false);
+        refuses(() -> store.set(capWorld, "point_over", origin, "", false));
+        check(store.all(capWorld).size() == 200, "capacity persists exactly 200 points");
+        store.set(world, "quote", origin, "say \"hello\"\nnext\\path", false);
+        check(store.all(world).get("quote").note().equals("say \"hello\"\nnext\\path"), "JSON strings round-trip safely");
+        store.delete(world, "quote");
         store.set(world, "Farm", farm, "wheat + carrots", false);
         check(store.all(world).get("farm").position().equals(farm), "position and facing persist");
         check(new WaypointStore().all(world).get("farm").note().equals("wheat + carrots"), "notes survive restart");
@@ -111,11 +118,14 @@ public final class WaypointsTest {
         refuses(() -> command(p, "go", "farm"));
         refuses(() -> command(p, "back"));
         check(p.teleports == 4, "other dimensions refused");
-        p.position = origin;
-        command(p, "set", "near", "--replace");
+        p.position = new CodaPosition(origin.dimension(), 100, 64, 0, 0, 0);
         command(p, "set", "far");
+        p.position = new CodaPosition(origin.dimension(), 5, 64, 0, 0, 0);
+        command(p, "set", "near");
+        p.position = origin;
         command(p, "list");
-        check(p.last().indexOf("farm [") < p.last().indexOf("far [") || p.last().contains("farm ["), "list contains distances");
+        check(p.last().indexOf("near [") >= 0 && p.last().indexOf("far [") > p.last().indexOf("near ["),
+                "list is sorted by distance");
         command(p, "del", "farm");
         refuses(() -> command(p, "where", "farm"));
         refuses(() -> command(p, "list", "0"));
