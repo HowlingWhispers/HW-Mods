@@ -1,0 +1,9 @@
+{
+  "schema": 1,
+  "id": "hw_waypoints",
+  "name": "HW Waypoints",
+  "version": "0.1.0-dev.1",
+  "entrypoint": "dev.howlingwhispers.waypoints.HwWaypointsMod",
+  "minecraft": "26.4-snapshot-3",
+  "depends": []
+}
