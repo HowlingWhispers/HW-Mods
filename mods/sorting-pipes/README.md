@@ -1,13 +1,13 @@
-# H.O.W.L. Sorting Pipes 1.0.1
+# H.O.W.L. Sorting Pipes 1.0.2
 
 Original item-sorting mod for H.O.W.L. (HW-CodaLoader), exactly Minecraft Java
-26.4 Snapshot 3. Requires H.O.W.L. 0.0.39 or newer, with the item-filtering transport API. Run the game with Java 25+.
+26.4 Snapshot 3. Requires H.O.W.L. 0.0.40 or newer, with the item-filtering transport API. Run the game with Java 25+.
 The mod and loader compile for Java 21. No Forge or Fabric is involved.
 
 ## Installation
 
-1. Update H.O.W.L. to 0.0.39 or newer through CodaLauncher.
-2. Put `howl-sorting-pipes-1.0.1.jar` into the active H.O.W.L. Minecraft profile's
+1. Update H.O.W.L. to 0.0.40 or newer through CodaLauncher.
+2. Put `howl-sorting-pipes-1.0.2.jar` into the active H.O.W.L. Minecraft profile's
    `mods` folder. Do not place the compile-only API JAR in `mods`.
 3. Start the profile on 26.4 Snapshot 3. H.O.W.L. reads the mod's declared
    resource pack, installs and enables it automatically before Minecraft's
@@ -30,6 +30,19 @@ single chests or barrels for predictable endpoint stock counts.
 
 ## Blocks and attachments
 
+In-game help is split into short pages:
+
+```
+/howlpipes help setup
+/howlpipes help filters
+/howlpipes help attachments
+```
+
+There is currently no right-click settings screen or mode-cycling tool.
+Whitelist means **only these items may pass**; blacklist means **these items
+may not pass**. Use F3's targeted-block coordinates in the filter command.
+The coordinates always name the pipe being configured, not its chest.
+
 | Block | Purpose |
 |---|---|
 | Extractor Pipe | Pulls one item from its selected adjacent input chest/barrel per pulse. No engine is needed. |
@@ -42,6 +55,9 @@ Copper marks round-robin, gold marks the equalizer, diamond marks sorting,
 oak marks extraction, and iron marks transport. Attachments occupy adjacent
 block spaces; they are not face-mounted covers. Place at most one distribution
 policy beside each extractor. Both policies together pause that extractor.
+An attachment must touch one of the extractor's six faces, not a diagonal
+and not another transport pipe. Placing it activates it automatically;
+removing it returns to the first available matching output.
 
 Round-robin rotates **individual items**, not full stacks. The equalizer
 balances incoming distribution by exact item registry ID. It does not pull
@@ -135,6 +151,12 @@ running game's data-pack loading is absent in this headless check.
 All automated tests pass. A rendered in-game placement/crafting/breaking and
 save/reload playtest is still needed. Automated checks do not establish GUI,
 resource-pack rendering or full world lifecycle correctness.
+
+H.O.W.L. 0.0.40 fixes the native pipe outline: Snapshot 3 measures PipeBlock's
+constructor width in model pixels. The selection shape now matches the six
+pixel body and its connected arms, so aiming at the visible pipe can target
+mining and pick-block. Headless checks test all 64 connection states for each
+pipe, ray targeting, non-collision behavior and normal mining hardness.
 
 ## Source and notices
 

@@ -20,12 +20,41 @@ public final class SortingPipesMod implements CodaMod {
         context.registerCreativeTab(SortingTransport.NS+"pipes","H.O.W.L. Sorting Pipes",SortingTransport.SORT,blocks);
         context.registerServerTick("sorting_pipes",transport::serverTick);
         context.registerCommand("howlpipes","Configure item filters and pipe inputs",this::command);
-        System.out.println("[Sorting Pipes] 1.0.1 for Minecraft 26.4 Snapshot 3 initialized");
+        System.out.println("[Sorting Pipes] 1.0.2 for Minecraft 26.4 Snapshot 3 initialized");
+    }
+    private static void help(CodaCommandContext player,String topic) throws Exception {
+        switch(topic.toLowerCase(Locale.ROOT)) {
+            case "filters" -> {
+                player.reply("FILTERS: whitelist lets ONLY listed items through; blacklist lets everything EXCEPT listed items through. Configure the pipe on the branch you want to control.");
+                player.reply("Example, for a pipe at 3 64 1: /howlpipes filter 3 64 1 whitelist minecraft:iron_ingot");
+                player.reply("To reject dirt and cobblestone: /howlpipes filter 3 64 1 blacklist minecraft:dirt,minecraft:cobblestone");
+                player.reply("Replace the coordinates with your pipe's block coordinates (F3). Exact item IDs only. /howlpipes clear 3 64 1 allows all items; /howlpipes show 3 64 1 shows the saved filter.");
+            }
+            case "attachments", "modes" -> {
+                player.reply("ROUTING: place one attachment touching a FACE of the EXTRACTOR (not a transport pipe). Attachments are separate blocks, not covers. No command is needed to activate them.");
+                player.reply("ROUND ROBIN (copper): sends one item to output A, then B, then C, repeating. Full or incompatible outputs are skipped.");
+                player.reply("EQUALIZER (gold): sends each incoming item to the output holding the fewest of that item. With 20 iron in A and 0 in B, incoming iron goes to B first. It does not move old items between outputs.");
+                player.reply("Use either Round Robin OR Equalizer; both together pause the extractor. Remove the attachment to restore the default first available output. Filters still apply in every mode.");
+            }
+            case "setup" -> {
+                player.reply("SETUP: source chest/barrel -> Extractor Pipe (oak) -> Transport Pipe (iron) -> output chest/barrel. Touching block faces connect; diagonals do not. No engine is needed.");
+                player.reply("With exactly one chest/barrel beside the extractor, input auto selects it. For several, /howlpipes input x y z west selects the chest on the WEST side of that extractor; also north/south/east/up/down.");
+                player.reply("Put Sorting Pipes (diamond) on branches and use /howlpipes help filters. Add one attachment beside the extractor for routing; see /howlpipes help attachments.");
+                player.reply("Items stay in the source until an allowed output has room. Transfers are one item per pulse, not a stack. /howlpipes status helps check idle networks.");
+            }
+            case "overview" -> {
+                player.reply("SORTING PIPES: /howlpipes help setup | /howlpipes help filters | /howlpipes help attachments (or /howlpipes modes).");
+                player.reply("Filters and input sides use commands. Round Robin and Equalizer activate by placing one beside the extractor. There is currently no right-click settings GUI.");
+                player.reply("Commands: /howlpipes status | show x y z | filter x y z whitelist|blacklist item_id[,item_id] | clear x y z | input x y z auto|north|south|east|west|up|down.");
+            }
+            default -> player.reply("Help topics: /howlpipes help setup | /howlpipes help filters | /howlpipes help attachments.");
+        }
     }
     private void command(CodaCommandContext player,List<String> arguments) throws Exception {
         String[] args=arguments.toArray(String[]::new);
-        if (args.length==0 || args[0].equals("help")) {
-            player.reply("/howlpipes status | show x y z | filter x y z whitelist|blacklist item_id[,item_id] | clear x y z | input x y z auto|north|south|east|west|up|down. Attach one round-robin OR equalizer block beside the extractor."); return;
+        if (args.length==0 || args[0].equals("help") || args[0].equals("modes")) {
+            String topic=args.length>1?args[1]:args.length>0&&args[0].equals("modes")?"attachments":"overview";
+            help(player,topic); return;
         }
         if (args[0].equals("status") && args.length==1) { player.reply(transport.status()); return; }
         if (args.length<4) { player.reply("Use /howlpipes help for syntax."); return; }
@@ -60,7 +89,12 @@ public final class SortingPipesMod implements CodaMod {
                 }
                 default -> throw new IllegalArgumentException("Unknown operation; use /howlpipes help");
             }
-            player.reply("Pipe settings saved.");
+            player.reply(switch(args[0]) {
+                case "filter" -> "Filter saved: "+args[4].toLowerCase(Locale.ROOT)+" "+args[5]+". Use /howlpipes show "+args[1]+" "+args[2]+" "+args[3]+" to check it.";
+                case "clear" -> "Filter cleared: this pipe now passes all items. Input direction is unchanged.";
+                case "input" -> "Input saved: "+args[4].toLowerCase(Locale.ROOT)+" (the side of the extractor containing the source chest/barrel).";
+                default -> "Pipe settings saved.";
+            });
         } catch (IllegalArgumentException e) { player.reply("Pipe settings unchanged: "+e.getMessage()); }
     }
 }

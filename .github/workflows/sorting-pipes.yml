@@ -56,8 +56,9 @@ jobs:
           cat > sorting-pipes-release.md <<'EOF'
           H.O.W.L. Sorting Pipes for Minecraft Java 26.4 Snapshot 3.
           Whitelist/blacklist branch filters, round-robin and equalizer blocks, and saved per-world settings.
-          Requires H.O.W.L. 0.0.39+. CodaLauncher checks the required Nightly mod catalog and published SHA-256 before installing/updating.
+          Requires H.O.W.L. 0.0.40+. CodaLauncher checks the required Nightly mod catalog and published SHA-256 before installing/updating.
           Models auto-enable before the first reload; creative mod tabs use native pages inside the inventory frame.
+          Pipe selection now matches the visible body and arms; /howlpipes help has setup, filters and attachments pages.
           Includes the mod JAR, model pack, recipes/block-drops pack, source and checksums.
           Automated routing, conservation, command and loader tests pass; rendered in-game playtesting is pending.
           This release uses the integrated singleplayer ordinary chest/barrel API.
