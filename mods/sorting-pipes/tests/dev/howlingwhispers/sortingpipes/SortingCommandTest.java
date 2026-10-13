@@ -40,7 +40,7 @@ public final class SortingCommandTest {
         command.execute(player,List.of("filter","20","64","0","whitelist","minecraft:diamond"));check(player.reply.contains("loaded chunk"),"Unloaded edit refused");
         command.execute(player,List.of("filter","1000","64","0","whitelist","minecraft:diamond"));check(player.reply.contains("64 blocks"),"Remote edit refused");
         command.execute(player,List.of("clear","0","64","0"));s.reset();s.load(player.dir);check(s.get(key).filter().allows("minecraft:stone"),"Clear restores pass-all filter");
-        check(Files.isRegularFile(game.resolve("resourcepacks/HOWL-Sorting-Pipes-1.0.0.zip")),"Resource pack installed at initialization");
+        check(!Files.exists(game.resolve("resourcepacks")),"Loader owns automatic declared-resource activation before first reload");
         System.out.println("PASS: "+checks+" configuration command checks");
     }
 }

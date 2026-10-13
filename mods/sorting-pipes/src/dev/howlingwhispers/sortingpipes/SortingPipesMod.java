@@ -20,8 +20,7 @@ public final class SortingPipesMod implements CodaMod {
         context.registerCreativeTab(SortingTransport.NS+"pipes","H.O.W.L. Sorting Pipes",SortingTransport.SORT,blocks);
         context.registerServerTick("sorting_pipes",transport::serverTick);
         context.registerCommand("howlpipes","Configure item filters and pipe inputs",this::command);
-        installPack(context.gameDirectory());
-        System.out.println("[Sorting Pipes] 1.0.0 for Minecraft 26.4 Snapshot 3 initialized");
+        System.out.println("[Sorting Pipes] 1.0.1 for Minecraft 26.4 Snapshot 3 initialized");
     }
     private void command(CodaCommandContext player,List<String> arguments) throws Exception {
         String[] args=arguments.toArray(String[]::new);
@@ -63,20 +62,5 @@ public final class SortingPipesMod implements CodaMod {
             }
             player.reply("Pipe settings saved.");
         } catch (IllegalArgumentException e) { player.reply("Pipe settings unchanged: "+e.getMessage()); }
-    }
-    private void installPack(Path game) throws IOException {
-        Path directory=game.resolve("resourcepacks"); Files.createDirectories(directory);
-        Path pack=directory.resolve("HOWL-Sorting-Pipes-1.0.0.zip");
-        try (InputStream input=getClass().getResourceAsStream("/sorting-pipes-resources.zip")) {
-            if (input==null) throw new IOException("Mod resource pack missing");
-            byte[] bytes=input.readAllBytes();
-            if (Files.exists(pack)) {
-                if (!Arrays.equals(Files.readAllBytes(pack),bytes)) System.err.println("[Sorting Pipes] Existing edited pack preserved; enable the supplied pack manually.");
-                return;
-            }
-            Path temporary=Files.createTempFile(directory,"sorting-pipes-",".tmp");
-            try { Files.write(temporary,bytes); Files.move(temporary,pack); }
-            finally { Files.deleteIfExists(temporary); }
-        }
     }
 }

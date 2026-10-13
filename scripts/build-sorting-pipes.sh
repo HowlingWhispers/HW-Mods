@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd "$(dirname "$0")/.."
+rm -rf dist/sorting-pipes mods/sorting-pipes/dist
 bash mods/sorting-pipes/test.sh
 mkdir -p dist/sorting-pipes
 cp mods/sorting-pipes/dist/* dist/sorting-pipes/

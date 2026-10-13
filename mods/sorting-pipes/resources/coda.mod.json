@@ -2,8 +2,9 @@
   "schema": 1,
   "id": "howl_sorting_pipes",
   "name": "H.O.W.L. Sorting Pipes",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoint": "dev.howlingwhispers.sortingpipes.SortingPipesMod",
   "minecraft": "26.4-snapshot-3",
-  "depends": []
+  "depends": [],
+  "resourcePack": "sorting-pipes-resources.zip"
 }

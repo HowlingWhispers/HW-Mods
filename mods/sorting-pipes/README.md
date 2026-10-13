@@ -1,18 +1,20 @@
-# H.O.W.L. Sorting Pipes 1.0.0
+# H.O.W.L. Sorting Pipes 1.0.1
 
 Original item-sorting mod for H.O.W.L. (HW-CodaLoader), exactly Minecraft Java
-26.4 Snapshot 3. Requires H.O.W.L. 0.0.38 or newer, with the item-filtering transport API. Run the game with Java 25+.
+26.4 Snapshot 3. Requires H.O.W.L. 0.0.39 or newer, with the item-filtering transport API. Run the game with Java 25+.
 The mod and loader compile for Java 21. No Forge or Fabric is involved.
 
 ## Installation
 
-1. Update H.O.W.L. to 0.0.38 or newer through CodaLauncher.
-2. Put `howl-sorting-pipes-1.0.0.jar` into the active H.O.W.L. Minecraft profile's
+1. Update H.O.W.L. to 0.0.39 or newer through CodaLauncher.
+2. Put `howl-sorting-pipes-1.0.1.jar` into the active H.O.W.L. Minecraft profile's
    `mods` folder. Do not place the compile-only API JAR in `mods`.
-3. Start the profile on 26.4 Snapshot 3. The mod installs its model pack in the
-   active game's `resourcepacks` folder. Enable **HOWL-Sorting-Pipes-1.0.0** in
-   Options > Resource Packs. The supplied `HOWL-Sorting-Pipes-Resources.zip` is
-   also a manual copy of that pack. Use one copy, not both.
+3. Start the profile on 26.4 Snapshot 3. H.O.W.L. reads the mod's declared
+   resource pack, installs and enables it automatically before Minecraft's
+   first reload. All five block/item models use vanilla textures. No manual
+   resource-pack selection is required. Creative inventory has native page
+   arrows above the tabs; Sorting Pipes appears on the first mod page inside
+   the normal tab grid. Search and player inventory remain accessible there.
 4. For survival recipes and block drops, put `HOWL-Sorting-Pipes-Recipes.zip`
    into the test world's `datapacks` folder before creating/loading it. In an
    existing world with commands enabled, run `/reload`, check `/datapack list`,

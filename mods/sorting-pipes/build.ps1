@@ -23,5 +23,5 @@ if ($LASTEXITCODE -ne 0) { throw 'Java compilation failed' }
 if ($LASTEXITCODE -ne 0) { throw 'Resource generation failed' }
 Copy-Item resources/* build/classes -Recurse -Force
 Copy-Item dist/HOWL-Sorting-Pipes-Resources.zip build/classes/sorting-pipes-resources.zip
-& jar --create --file dist/howl-sorting-pipes-1.0.0.jar -C build/classes .
+& jar --create --file dist/howl-sorting-pipes-1.0.1.jar -C build/classes .
 if ($LASTEXITCODE -ne 0) { throw 'JAR packaging failed' }
