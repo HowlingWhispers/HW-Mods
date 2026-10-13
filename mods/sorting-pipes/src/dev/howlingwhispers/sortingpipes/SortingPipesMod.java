@@ -18,6 +18,7 @@ public final class SortingPipesMod implements CodaMod {
         context.registerBlockEntityType(SortingTransport.HOLDER,blocks.subList(0,3));
         context.registerBlockEntityTick(SortingTransport.HOLDER,transport::pipeTick);
         context.registerCreativeTab(SortingTransport.NS+"pipes","H.O.W.L. Sorting Pipes",SortingTransport.SORT,blocks);
+        context.registerRecipeBookCategory("pipes", "Sorting Pipes", SortingTransport.SORT, blocks);
         context.registerServerTick("sorting_pipes",transport::serverTick);
         context.registerCommand("howlpipes","Configure item filters and pipe inputs",this::command);
         System.out.println("[Sorting Pipes] 1.0.3 for Minecraft 26.4 Snapshot 3 initialized");
