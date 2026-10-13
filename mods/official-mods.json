@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "minecraft": "26.4-snapshot-3",
+  "mods": [
+    {
+      "slug": "howl-sorting-pipes",
+      "modId": "howl_sorting_pipes",
+      "name": "H.O.W.L. Sorting Pipes",
+      "channel": "nightly",
+      "minimumLoader": "0.0.38",
+      "requiredLoaderClass": "dev/howlingwhispers/codaloader/api/CodaItemFilter.class"
+    }
+  ]
+}

@@ -2,3 +2,7 @@ out/
 dist/
 *.jar
 *.sha256
+*.class
+mods/*/build/
+mods/*/dist/
+mods/*/lib/

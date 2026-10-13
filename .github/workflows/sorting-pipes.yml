@@ -1,0 +1,66 @@
+name: Build, test and publish Sorting Pipes
+on:
+  push:
+    branches: [main]
+    paths: ['mods/sorting-pipes/**', 'scripts/build-sorting-pipes.sh', '.github/workflows/sorting-pipes.yml']
+  pull_request:
+    paths: ['mods/sorting-pipes/**', 'scripts/build-sorting-pipes.sh', '.github/workflows/sorting-pipes.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: HowlingWhispers/HW-CodaLoader
+          path: HW-CodaLoader
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build and test against current H.O.W.L. API
+        env:
+          HW_CODALOADER_API_DIR: ${{ github.workspace }}/HW-CodaLoader/src/main/java
+        run: bash scripts/build-sorting-pipes.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sorting-pipes-${{ github.sha }}
+          path: dist/sorting-pipes/*
+          if-no-files-found: error
+  publish:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: sorting-pipes-${{ github.sha }}
+          path: dist/sorting-pipes
+      - name: Publish immutable mod with its download checksums
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          VERSION="$(python3 -c 'import json;print(json.load(open("mods/sorting-pipes/resources/coda.mod.json"))["version"])')"
+          TAG="sorting-pipes-v${VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo 'Immutable Sorting Pipes release exists; source-only changes do not replace it.'
+            exit 0
+          fi
+          cat > sorting-pipes-release.md <<'EOF'
+          H.O.W.L. Sorting Pipes for Minecraft Java 26.4 Snapshot 3.
+          Whitelist/blacklist branch filters, round-robin and equalizer blocks, and saved per-world settings.
+          Requires H.O.W.L. 0.0.38+. CodaLauncher checks the required Nightly mod catalog and published SHA-256 before installing/updating.
+          Includes the mod JAR, model pack, recipes/block-drops pack, source and checksums.
+          Automated routing, conservation, command and loader tests pass; rendered in-game playtesting is pending.
+          This release uses the integrated singleplayer ordinary chest/barrel API.
+          EOF
+          gh release create "$TAG" dist/sorting-pipes/* --draft --prerelease \
+            --target "$GITHUB_SHA" --title "H.O.W.L. Sorting Pipes ${VERSION}" --notes-file sorting-pipes-release.md
+          gh release edit "$TAG" --draft=false
