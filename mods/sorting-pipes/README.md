@@ -1,13 +1,13 @@
-# H.O.W.L. Sorting Pipes 1.0.2
+# H.O.W.L. Sorting Pipes 1.0.3
 
 Original item-sorting mod for H.O.W.L. (HW-CodaLoader), exactly Minecraft Java
-26.4 Snapshot 3. Requires H.O.W.L. 0.0.40 or newer, with the item-filtering transport API. Run the game with Java 25+.
+26.4 Snapshot 3. Requires H.O.W.L. 0.0.41 or newer, with the item-filtering transport API. Run the game with Java 25+.
 The mod and loader compile for Java 21. No Forge or Fabric is involved.
 
 ## Installation
 
-1. Update H.O.W.L. to 0.0.40 or newer through CodaLauncher.
-2. Put `howl-sorting-pipes-1.0.2.jar` into the active H.O.W.L. Minecraft profile's
+1. Update H.O.W.L. to 0.0.41 or newer through CodaLauncher.
+2. Put `howl-sorting-pipes-1.0.3.jar` into the active H.O.W.L. Minecraft profile's
    `mods` folder. Do not place the compile-only API JAR in `mods`.
 3. Start the profile on 26.4 Snapshot 3. H.O.W.L. reads the mod's declared
    resource pack, installs and enables it automatically before Minecraft's
@@ -15,12 +15,33 @@ The mod and loader compile for Java 21. No Forge or Fabric is involved.
    resource-pack selection is required. Creative inventory has native page
    arrows above the tabs; Sorting Pipes appears on the first mod page inside
    the normal tab grid. Search and player inventory remain accessible there.
-4. For survival recipes and block drops, put `HOWL-Sorting-Pipes-Recipes.zip`
-   into the test world's `datapacks` folder before creating/loading it. In an
-   existing world with commands enabled, run `/reload`, check `/datapack list`,
-   and enable the pack if necessary. This pack is required for normal block
-   drops; the mod does not silently modify existing world data packs.
+4. Recipes, block drops and the written guide are declared server data in
+   the mod JAR. H.O.W.L. automatically discovers and selects this data beside
+   vanilla for both new and existing worlds. No manual data-pack install is
+   required. `HOWL-Sorting-Pipes-Recipes.zip` remains available as a standalone
+   copy for inspection; installing a second copy is unnecessary.
 5. Find the five blocks in the **H.O.W.L. Sorting Pipes** creative tab.
+
+## Written guide and advancement unlock
+
+After **Acquire Hardware** (`minecraft:story/smelt_iron`) AND **Isn't It Iron
+Pick** (`minecraft:story/iron_tools`) are complete, each player receives one
+ordinary written **Sorting Pipes Guide**. It covers a first chest-to-chest
+line, input direction, filters, attachments, all five crafting recipes and
+troubleshooting across 21 short pages. The five recipes are also unlocked
+in Minecraft's recipe book. Players who earned both advancements before
+installing this release qualify on their next game tick. The hidden guide
+advancement records the reward per player/world, so ordinary reloads and
+rejoins do not repeatedly give books. Vanilla loot-reward delivery handles a
+full inventory by dropping the reward nearby; keep an inventory slot free.
+
+Minecraft's advancement trees are preserved. Seeing only Husbandry can be
+normal early in a world: eating unlocks Husbandry, and having a crafting
+table in your inventory unlocks the main Minecraft tab. Nether, End and
+Adventure have their own progression triggers. The guide does not grant
+vanilla milestones or replace their roots. If a guide is lost, with commands
+enabled an operator can give a replacement using
+`/loot give @s loot howl_sorting_pipes:guide`.
 
 The first release uses the loader's integrated singleplayer storage bridge:
 ordinary vanilla chest and barrel block entities only. Dedicated servers,
@@ -148,11 +169,13 @@ entities and ItemStacks through the production transfer adapter, inside a
 small test level/chunk shell. It supplies test component defaults because a
 running game's data-pack loading is absent in this headless check.
 
-All automated tests pass. A rendered in-game placement/crafting/breaking and
+Automated checks cover native data-pack discovery, full Mojang registry loading,
+vanilla advancement preservation, both-prerequisite predicates, persisted
+reward completion, written-book components and native font wrapping. A rendered in-game placement/crafting/breaking and
 save/reload playtest is still needed. Automated checks do not establish GUI,
 resource-pack rendering or full world lifecycle correctness.
 
-H.O.W.L. 0.0.40 fixes the native pipe outline: Snapshot 3 measures PipeBlock's
+H.O.W.L. 0.0.40 fixed the native pipe outline: Snapshot 3 measures PipeBlock's
 constructor width in model pixels. The selection shape now matches the six
 pixel body and its connected arms, so aiming at the visible pipe can target
 mining and pick-block. Headless checks test all 64 connection states for each

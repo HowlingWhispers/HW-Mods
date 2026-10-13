@@ -1,5 +1,6 @@
 """Deterministic, original models referencing Minecraft's built-in textures."""
 import json,zipfile,pathlib
+from guidebook import book_components, unlock_advancement
 root=pathlib.Path(__file__).parent; assets={}; namespace='howl_sorting_pipes'
 def put(path,content): assets[path]=json.dumps(content,indent=2).encode()
 def box(lo,hi,texture):
@@ -34,6 +35,8 @@ for name,ingredient,count in [('extractor_pipe','minecraft:oak_planks',4),('tran
     recipe={'type':'minecraft:crafting_shaped','pattern':[' G ','GIG',' G '],'key':{'G':'minecraft:glass','I':ingredient},'result':{'id':f'{namespace}:{name}','count':count}}
     recipes[f'data/{namespace}/recipe/{name}.json']=json.dumps(recipe,indent=2).encode()
 for name in colors:
-    recipes[f'data/{namespace}/loot_table/blocks/{name}.json']=json.dumps({'type':'minecraft:block','pools':[{'rolls':1,'entries':[{'type':'minecraft:item','name':f'{namespace}:{name}'}],'conditions':[{'condition':'minecraft:survives_explosion'}]}]}).encode()
-meta={'pack':{'description':'H.O.W.L. Sorting Pipes recipes and block drops','min_format':123,'max_format':123}}
+    recipes[f'data/{namespace}/loot_table/blocks/{name}.json']=json.dumps({'type':'minecraft:block','pools':[{'rolls':1,'entries':[{'type':'minecraft:item','name':f'{namespace}:{name}','condition':{'type':'minecraft:survives_explosion'}}]}]}).encode()
+recipes[f'data/{namespace}/advancement/guide_unlock.json']=json.dumps(unlock_advancement(),indent=2).encode()
+recipes[f'data/{namespace}/loot_table/guide.json']=json.dumps({'type':'minecraft:advancement_reward','pools':[{'rolls':1,'entries':[{'type':'minecraft:item','name':'minecraft:written_book','modifier':{'type':'minecraft:set_components','components':book_components()}}]}]},indent=2).encode()
+meta={'pack':{'description':'H.O.W.L. Sorting Pipes guide, recipes and block drops','min_format':123,'max_format':123}}
 writezip(root/'dist/HOWL-Sorting-Pipes-Recipes.zip',recipes|{'pack.mcmeta':json.dumps(meta).encode()})

@@ -18,5 +18,6 @@ javac --release 21 -encoding UTF-8 -cp "$API_JAR" -d build/classes "${SOURCES[@]
 python3 generate-resources.py
 cp -R resources/. build/classes/
 cp dist/HOWL-Sorting-Pipes-Resources.zip build/classes/sorting-pipes-resources.zip
-jar --create --file dist/howl-sorting-pipes-1.0.2.jar -C build/classes .
-echo 'Built dist/howl-sorting-pipes-1.0.2.jar'
+cp dist/HOWL-Sorting-Pipes-Recipes.zip build/classes/sorting-pipes-data.zip
+jar --create --file dist/howl-sorting-pipes-1.0.3.jar -C build/classes .
+echo 'Built dist/howl-sorting-pipes-1.0.3.jar'
