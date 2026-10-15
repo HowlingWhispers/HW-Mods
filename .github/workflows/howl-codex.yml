@@ -20,6 +20,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: HowlingWhispers/HW-CodaLoader
+          ref: feat/codex-inventory-panel-api
           path: HW-CodaLoader
       - uses: actions/setup-java@v4
         with:
