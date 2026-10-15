@@ -1,0 +1,66 @@
+name: Codex Snapshot 3 recipe and render API inspection
+on:
+  push:
+    paths:
+      - '.github/workflows/codex-recipe-api.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  inspect-recipe:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Get official 26.4 Snapshot 3 client with hash verification
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p probe
+          curl -fsSL --retry 3 https://piston-meta.mojang.com/mc/game/version_manifest_v2.json -o probe/manifest.json
+          URL="$(jq -r '.versions[] | select(.id == "26.4-snapshot-3") | .url' probe/manifest.json)"
+          test -n "$URL"
+          curl -fsSL --retry 3 "$URL" -o probe/version.json
+          curl -fsSL --retry 3 "$(jq -r '.downloads.client.url' probe/version.json)" -o probe/client.jar
+          echo "$(jq -r '.downloads.client.sha1' probe/version.json)  probe/client.jar" | sha1sum -c
+      - name: Dump exact recipe and graphics signatures
+        shell: bash
+        run: |
+          set -euo pipefail
+          classes=(
+            net.minecraft.client.ClientRecipeBook
+            net.minecraft.client.multiplayer.ClientPacketListener
+            net.minecraft.client.multiplayer.ClientLevel
+            net.minecraft.client.gui.screens.recipebook.RecipeBookComponent
+            net.minecraft.client.gui.screens.recipebook.RecipeCollection
+            net.minecraft.client.gui.screens.recipebook.RecipeBookPage
+            net.minecraft.world.item.crafting.RecipeHolder
+            net.minecraft.world.item.crafting.display.RecipeDisplayEntry
+            net.minecraft.world.item.crafting.display.RecipeDisplay
+            net.minecraft.world.item.crafting.display.RecipeDisplayId
+            net.minecraft.world.item.crafting.display.SlotDisplay
+            net.minecraft.world.item.crafting.display.SlotDisplayContext
+            net.minecraft.world.item.crafting.display.SlotDisplay$ItemSlotDisplay
+            net.minecraft.world.item.crafting.display.SlotDisplay$TagSlotDisplay
+            net.minecraft.client.gui.GuiGraphicsExtractor
+            net.minecraft.client.gui.GuiGraphics
+            net.minecraft.client.gui.components.ItemSlot
+            net.minecraft.client.gui.components.Renderable
+            net.minecraft.client.gui.components.Button
+            net.minecraft.client.Minecraft
+            net.minecraft.client.gui.screens.inventory.AbstractRecipeBookScreen
+          )
+          : > probe/api.txt
+          for cls in "${classes[@]}"; do
+            echo "============== $cls ==============" >> probe/api.txt
+            javap -p -classpath probe/client.jar "$cls" >> probe/api.txt 2>&1 || true
+          done
+          grep -nE 'recipe|Recipe|Display|render|extract|item|Item' probe/api.txt | head -n 250
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codex-recipe-native-api
+          path: probe/api.txt
+          retention-days: 7
