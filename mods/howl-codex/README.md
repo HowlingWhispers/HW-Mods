@@ -1,47 +1,56 @@
-# H.O.W.L. Codex 0.1.0-dev.2: Item browser with recipe/use lookup
+# H.O.W.L. Codex 0.1.0-dev.2 | Nightly
 
-Development-only, original-source NEI/TMI-style item browser for **Minecraft Java
-26.4 Snapshot 3** using the H.O.W.L. inventory-panel API from
-[HW-CodaLoader #16](https://github.com/HowlingWhispers/HW-CodaLoader/pull/16).
+**All player testing is through CodaLauncher Nightly. There are no manual
+downloads, custom launchers, JAR copying or separate test ZIPs.**
 
-## How to use
+Minecraft Java 26.4 Snapshot 3. Requires H.O.W.L. Nightly v0.0.42+
+with `CodaInventoryPanels` from [loader PR #16](https://github.com/HowlingWhispers/HW-CodaLoader/pull/16).
 
-1. Use the matching development loader from `feat/codex-inventory-panel-api`.
-2. Install the Codex JAR only in an **isolated testing profile**.
-3. Start a test world, open the vanilla player inventory with **E**, and press **Codex**.
-4. Type an item name, `@minecraft`, `@howl_sorting_pipes`, or `#minecraft:ingots`.
-5. Select an item. Press **R Known recipes** or **U Known uses** to view
-   server-synchronized recipe displays available to that player.
-6. Choose a recipe/usage for the output item, quantity, type and resolved
-   ingredient alternatives. Use **Back** to return.
+## Player flow
 
-The search-results list and known recipe results now use **native
-`GuiGraphicsExtractor.item(ItemStack, ...)` sprites**. All item stack
-objects come from Minecraft's actual item registry. No custom emoji icons.
-The mod only adds GUI widgets; it does **not** change inventory contents,
-vanilla crafting, advancements, save files or permissions.
+1. Select **Nightly** in CodaLauncher. Nightly Play / Install-Repair
+   automatically checks compatible first-party experimental mods, installs or
+   updates them and verifies checksums in the Nightly profile.
+2. Open a disposable Minecraft test world and press **E**.
+3. Select **Codex** on the vanilla player inventory screen.
+4. Search by name, `@minecraft`, `@howl_sorting_pipes` or `#tag`.
+5. Click an item to inspect its ID and mod owner. Select **R Known recipes**
+   for recipes producing it, or **U Known uses** for recipes consuming it.
+6. Browse synchronized known recipes, outputs, ingredient alternatives and
+   registered Minecraft item sprites.
 
-**Limitations:** Client-visible recipe displays cover the player's known
-recipes, not necessarily every datapack recipe on the server. Unavailable
-tag ingredients and unsupported displays are not guessed. Item registry
-snapshots are built when Codex is first opened; dynamic registry changes
-require reopening the client. The full in-game rendered UI still needs an
-interactive Snapshot 3 playtest before Stable or launcher auto-install.
-No item-give/cheat feature yet. Only the player inventory is supported,
-not chests or creative inventory.
+## Automated release contract
 
-## Build
+CI checks Java compilation, native UI interaction, item-icon rendering, recipe
+and reverse-usage navigation, mod ID/version, Minecraft target, entrypoint and
+direct JAR SHA-256. Then the `main` publish job requires a published v0.0.42
+loader JAR containing the panel API and releases an immutable
+`howl-codex-0.1.0-dev.2.jar` plus `.jar.sha256` asset. CodaLauncher retrieves
+it **automatically** via the Nightly-only required-mod manifest and never puts
+it in Stable.
+
+No CI workflow artifacts are distributed to players. A failed release/build
+does not authorize manual installation; the previous checksum-verified Nightly
+build remains in use.
+
+## Limitations and verification
+
+- Only the vanilla player inventory is supported, not chest/creative screens.
+- Client-visible recipes are limited to known/unlocked, synced displays.
+- Missing ingredient data is never guessed.
+- All actions are read-only; there is no item duplication, item giving or
+  inventory mutation.
+- Tests have passed in simulation and official Mojang Snapshot 3 API probes.
+  Actual rendered in-game interaction is to be verified **in Nightly** before
+  approving the mod for Stable.
+
+Track [HW-Mods #10](https://github.com/HowlingWhispers/HW-Mods/issues/10)
+and [Nightly integration #10](https://github.com/HowlingWhispers/HW-CodaLauncher/issues/10).
+
+## Developer-only CI build
 
 ```bash
 HW_CODALOADER_API_DIR=../HW-CodaLoader/src/main/java bash scripts/build-howl-codex.sh
 ```
 
-This produces `mods/howl-codex/dist/howl-codex-0.1.0-dev.2.jar` and a
-SHA-256. The CI workflow runs pure Java registry/recipe tests, simulated
-GUI interaction tests (including R/U views and icon rendering), and a
-separate descriptor probe against the checksum-verified official Mojang
-26.4 Snapshot 3 client.
-
-Track the mod in [HW-Mods #10](https://github.com/HowlingWhispers/HW-Mods/issues/10)
-and the required loader in
-[HW-CodaLoader #15](https://github.com/HowlingWhispers/HW-CodaLoader/issues/15).
+The command above is for CI and developers only, never for player setup.
