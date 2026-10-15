@@ -9,6 +9,14 @@
       "channel": "nightly",
       "minimumLoader": "0.0.41",
       "requiredLoaderClass": "dev/howlingwhispers/codaloader/api/CodaItemFilter.class"
+    },
+    {
+      "slug": "howl-codex",
+      "modId": "howl_codex",
+      "name": "H.O.W.L. Codex",
+      "channel": "nightly",
+      "minimumLoader": "0.0.42",
+      "requiredLoaderClass": "dev/howlingwhispers/codaloader/api/CodaInventoryPanels.class"
     }
   ]
 }
