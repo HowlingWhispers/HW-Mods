@@ -15,6 +15,7 @@ import java.util.WeakHashMap;
 public final class CodexInventoryPanel implements CodaInventoryPanels.Panel {
     private static final int CELL = 20;
     private static final int GRID_Y = 70;
+    public static final String CODEX_VERSION = "0.1.0-dev.4";
 
     private final Map<Object, State> screens =
             Collections.synchronizedMap(new WeakHashMap<>());
@@ -106,7 +107,7 @@ public final class CodexInventoryPanel implements CodaInventoryPanels.Panel {
             var weak = new WeakReference<>(screen);
 
             state.chrome.add(NativeGui.button(screen,
-                    "H.O.W.L. CODEX (" + items.size() + ")", x, 26, width, () -> {
+                    "Codex v" + CODEX_VERSION, x, 26, width, () -> {
                         Object current = weak.get();
                         if (current == null) return;
                         state.selected = null;
@@ -211,7 +212,7 @@ public final class CodexInventoryPanel implements CodaInventoryPanels.Panel {
                         if (current != null) drawRows(current, state);
                     });
             addRow(screen, state, "Page " + (state.page + 1)
-                    + " | Hover for item names", x, navY + 21, width, () -> {});
+                    + " | " + getCatalog().size() + " items", x, navY + 21, width, () -> {});
         } catch (ReflectiveOperationException | RuntimeException failure) {
             if (!warned) {
                 warned = true;
