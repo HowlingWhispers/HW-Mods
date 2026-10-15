@@ -43,8 +43,8 @@ jobs:
             net.minecraft.world.item.crafting.display.RecipeDisplayId
             net.minecraft.world.item.crafting.display.SlotDisplay
             net.minecraft.world.item.crafting.display.SlotDisplayContext
-            net.minecraft.world.item.crafting.display.SlotDisplay$ItemSlotDisplay
-            net.minecraft.world.item.crafting.display.SlotDisplay$TagSlotDisplay
+            net.minecraft.world.item.crafting.display.SlotDisplay\$ItemSlotDisplay
+            net.minecraft.world.item.crafting.display.SlotDisplay\$TagSlotDisplay
             net.minecraft.client.gui.GuiGraphicsExtractor
             net.minecraft.client.gui.GuiGraphics
             net.minecraft.client.gui.components.ItemSlot
