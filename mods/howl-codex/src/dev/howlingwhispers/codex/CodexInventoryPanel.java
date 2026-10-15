@@ -29,6 +29,7 @@ public final class CodexInventoryPanel implements CodaInventoryPanels.Panel {
         String query = "";
         ItemEntry selected;
         String note = "";
+        WeakReference<Object> client = new WeakReference<>(null);
     }
 
     @Override public void refresh(Object minecraftClient, Object screen) {
@@ -36,6 +37,7 @@ public final class CodexInventoryPanel implements CodaInventoryPanels.Panel {
                 .equals("net.minecraft.client.gui.screens.inventory.InventoryScreen")) return;
         try {
             State state = screens.computeIfAbsent(screen, key -> new State());
+            state.client = new WeakReference<>(minecraftClient);
             if (NativeGui.attached(screen, state.root)) {
                 if (state.open && (state.search == null || !NativeGui.attached(screen, state.search)))
                     show(minecraftClient, screen, state);
@@ -132,20 +134,20 @@ public final class CodexInventoryPanel implements CodaInventoryPanels.Panel {
                         x, y + 44, width, () -> {});
                 addRow(screen, state, "Mod: " + NativeGui.clip(item.modId(), 22),
                         x, y + 66, width, () -> {});
-                addRow(screen, state, "R  Show known recipes", x, y + 92, width, () -> {
+                addRow(screen, state, "R  Known recipes", x, y + 92, width, () -> {
                     Object current = weak.get();
-                    if (current != null) {
-                        if (!NativeGui.searchVanillaRecipes(current, item.name()))
-                            state.note = "Vanilla recipe book not available";
-                        else state.note = "Filtered Minecraft's known recipes";
-                        state.selected = null;
-                        drawRows(current, state, x, width);
-                    }
+                    if (current != null)
+                        RecipeNavigator.open(state.client.get(), current, item, catalog,
+                                false, state.rows, () -> drawRows(current, state, x, width),
+                                x, width, state.visibleRows);
                 });
-                addRow(screen, state, "U  Uses (later version)", x, y + 115, width,
-                        () -> { state.note = "Usage lookup needs the synced recipe adapter";
-                            Object current = weak.get();
-                            if (current != null) drawRows(current, state, x, width); });
+                addRow(screen, state, "U  Known uses", x, y + 115, width, () -> {
+                    Object current = weak.get();
+                    if (current != null)
+                        RecipeNavigator.open(state.client.get(), current, item, catalog,
+                                true, state.rows, () -> drawRows(current, state, x, width),
+                                x, width, state.visibleRows);
+                });
                 addRow(screen, state, NativeGui.clip(state.note.isBlank()
                         ? "Survival-safe | Read only" : state.note, 33),
                         x, y + 139, width, () -> {});
