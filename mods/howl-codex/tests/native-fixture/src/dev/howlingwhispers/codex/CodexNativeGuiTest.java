@@ -46,6 +46,8 @@ public final class CodexNativeGuiTest {
         panel.refresh(client, screen);
         check(screen.children().size() == 1, "Repeated refresh duplicated Codex");
         find(screen, "Codex").click();
+        check(find(screen, "Codex v0.1.0-dev.4") != null,
+                "Codex version must be visible inside the inventory");
         check(!screen.book().isVisible(), "Codex should close vanilla recipe book");
         check(screen.leftPos == (screen.width - screen.imageWidth) / 2,
                 "Closing recipe book failed to recenter inventory");

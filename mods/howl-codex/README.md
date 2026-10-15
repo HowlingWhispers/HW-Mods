@@ -1,4 +1,4 @@
-# H.O.W.L. Codex 0.1.0-dev.3 | Nightly
+# H.O.W.L. Codex 0.1.0-dev.4 | Nightly
 
 **All player testing is through CodaLauncher Nightly. There are no manual
 downloads, custom launchers, JAR copying or separate test ZIPs.**
@@ -12,7 +12,7 @@ with `CodaInventoryPanels` from [loader PR #16](https://github.com/HowlingWhispe
    automatically checks compatible first-party experimental mods, installs or
    updates them and verifies checksums in the Nightly profile.
 2. Open a disposable Minecraft test world and press **E**.
-3. Select **Codex** on the vanilla player inventory screen. Codex closes the vanilla recipe book when needed and places an NEI/TMI-style compact clickable item grid in the free margin beside the inventory, never over its slots.
+3. Select **Codex** on the vanilla player inventory screen. The header must show **Codex v0.1.0-dev.4**, proving which mod JAR Nightly loaded. Codex closes the vanilla recipe book when needed and places an NEI/TMI-style compact clickable item grid in the free margin beside the inventory, never over its slots.
 4. Search by name, `@minecraft`, `@howl_sorting_pipes` or `#tag`.
 5. Hover over each item icon for its full name and registry ID. Click an icon to inspect its ID and mod owner. Select **R Known recipes**
    for recipes producing it, or **U Known uses** for recipes consuming it.
@@ -25,7 +25,7 @@ CI checks Java compilation, native UI interaction, item-icon rendering, recipe
 and reverse-usage navigation, mod ID/version, Minecraft target, entrypoint and
 direct JAR SHA-256. Then the `main` publish job requires a published v0.0.42
 loader JAR containing the panel API and releases an immutable
-`howl-codex-0.1.0-dev.3.jar` plus `.jar.sha256` asset. CodaLauncher retrieves
+`howl-codex-0.1.0-dev.4.jar` plus `.jar.sha256` asset. CodaLauncher retrieves
 it **automatically** via the Nightly-only required-mod manifest and never puts
 it in Stable.
 

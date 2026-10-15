@@ -15,6 +15,7 @@ public final class HowlCodexMod implements CodaMod {
                         + "in the top-right. Search by name, @mod or #tag. "
                         + "Select an item: R shows known recipes, U shows known uses. "
                         + "Development prototype: native item sprites, read-only, no item-give cheats."));
-        System.out.println("[H.O.W.L. Codex] Native inventory prototype registered.");
+        System.out.println("[H.O.W.L. Codex] v" + CodexInventoryPanel.CODEX_VERSION
+                + " native inventory item grid registered.");
     }
 }
