@@ -109,6 +109,62 @@ final class NativeGui {
         }
     }
 
+    /**
+     * When Codex opens beside the inventory, close the vanilla recipe book
+     * through the inventory screen's own handler. This also recenters its
+     * slots instead of leaving the crafting GUI shifted beneath the grid.
+     */
+    static boolean closeRecipeBook(Object screen) {
+        try {
+            Object book = field(screen, "recipeBookComponent");
+            if (!Boolean.TRUE.equals(book.getClass().getMethod("isVisible").invoke(book)))
+                return true;
+            for (Class<?> c = screen.getClass(); c != null; c = c.getSuperclass()) {
+                try {
+                    Method click = c.getDeclaredMethod("onRecipeBookButtonClick");
+                    click.setAccessible(true);
+                    click.invoke(screen);
+                    return !Boolean.TRUE.equals(book.getClass().getMethod("isVisible").invoke(book));
+                } catch (NoSuchMethodException ignored) {}
+            }
+        } catch (ReflectiveOperationException | RuntimeException error) {
+            System.err.println("[H.O.W.L. Codex] Recipe book layout not changed: " + error);
+        }
+        return false;
+    }
+
+    /** Use the actual inventory bounds, not a fixed overlay over the slots. */
+    static int[] sidePanel(Object screen) throws ReflectiveOperationException {
+        int width = dimension(screen, "width");
+        int left;
+        int image;
+        try {
+            left = dimension(screen, "leftPos");
+            image = dimension(screen, "imageWidth");
+        } catch (NoSuchFieldException ignored) {
+            image = 176;
+            left = (width - image) / 2;
+        }
+        int rightGap = width - (left + image);
+        int leftGap = left;
+        // NEI/JEI arrangement: grid in the free right margin by default.
+        if (rightGap >= 130) {
+            int x = left + image + 8;
+            return new int[]{x, Math.min(205, width - x - 6)};
+        }
+        if (leftGap >= 130) {
+            int size = Math.min(205, leftGap - 14);
+            return new int[]{left - 8 - size, size};
+        }
+        return new int[]{-1, 0}; // Never cover vanilla inventory or slots.
+    }
+
+    /** Small Minecraft-native clickable item slot, with 18x18 hitbox. */
+    static Object itemSlot(Object screen, int x, int y, Runnable action)
+            throws ReflectiveOperationException {
+        return button(screen, "", x, y, 18, action);
+    }
+
     /** Hand selected output name to Minecraft's ordinary unlocked recipe UI. */
     static boolean searchVanillaRecipes(Object screen, String itemName) {
         try {
