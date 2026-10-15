@@ -1,0 +1,36 @@
+name: H.O.W.L. Codex development checks
+on:
+  push:
+    paths:
+      - 'mods/howl-codex/**'
+      - 'scripts/build-howl-codex.sh'
+      - '.github/workflows/howl-codex.yml'
+  pull_request:
+    paths:
+      - 'mods/howl-codex/**'
+      - 'scripts/build-howl-codex.sh'
+      - '.github/workflows/howl-codex.yml'
+permissions:
+  contents: read
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: HowlingWhispers/HW-CodaLoader
+          path: HW-CodaLoader
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Compile and unit test against H.O.W.L. API
+        env:
+          HW_CODALOADER_API_DIR: ${{ github.workspace }}/HW-CodaLoader/src/main/java
+        run: bash scripts/build-howl-codex.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: howl-codex-foundation
+          path: mods/howl-codex/dist/*
+          if-no-files-found: error
