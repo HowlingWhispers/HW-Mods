@@ -68,3 +68,50 @@ jobs:
           gh release create "$TAG" dist/sorting-pipes/* --draft --prerelease \
             --target "$GITHUB_SHA" --title "H.O.W.L. Sorting Pipes ${VERSION}" --notes-file sorting-pipes-release.md
           gh release edit "$TAG" --draft=false
+
+  notify-registry:
+    name: Register published Sorting Pipes on H.O.W.L. server
+    needs: publish
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+      - name: Notify server of checksum-verified GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REGISTRY_URL: ${{ vars.HOWL_MOD_REGISTRY_URL }}
+          REGISTRY_TOKEN: ${{ secrets.HOWL_MOD_REGISTRY_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "$REGISTRY_URL" ] || [ -z "$REGISTRY_TOKEN" ]; then
+            echo 'H.O.W.L. registry is not deployed/configured. GitHub immutable release remains active.'
+            exit 0
+          fi
+          VERSION="$(python3 -c 'import json;print(json.load(open("mods/sorting-pipes/resources/coda.mod.json"))["version"])')"
+          TAG="sorting-pipes-v${VERSION}"
+          ASSET="howl-sorting-pipes-${VERSION}.jar"
+          mkdir -p /tmp/howl-registry-verify
+          gh release download "$TAG" --pattern "$ASSET" --pattern "$ASSET.sha256" --dir /tmp/howl-registry-verify
+          (cd /tmp/howl-registry-verify && sha256sum --check "$ASSET.sha256")
+          SHA="$(sha256sum "/tmp/howl-registry-verify/$ASSET" | cut -d ' ' -f 1)"
+          BODY="$(python3 - "$TAG" "$ASSET" "$SHA" <<'PY'
+          import json,sys
+          print(json.dumps({
+            "repository":"HW-Mods",
+            "tag":sys.argv[1],
+            "assetName":sys.argv[2],
+            "sha256":sys.argv[3],
+            "channel":"nightly",
+            "minimumLoader":"0.0.41",
+            "required":True,
+            "displayName":"H.O.W.L. Sorting Pipes",
+            "description":"Sorting and transport pipes with filters, round robin and equalizers"
+          }))
+          PY
+          )"
+          curl --fail-with-body --show-error --silent --retry 2 \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $REGISTRY_TOKEN" \
+            --data "$BODY" "${REGISTRY_URL%/}/v1/publish"
