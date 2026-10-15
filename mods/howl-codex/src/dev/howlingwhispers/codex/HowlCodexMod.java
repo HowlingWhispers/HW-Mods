@@ -13,8 +13,8 @@ public final class HowlCodexMod implements CodaMod {
                 (player, arguments) -> player.reply(
                         "H.O.W.L. Codex: open your player inventory and click Codex "
                         + "in the top-right. Search by name, @mod or #tag. "
-                        + "Select an item to see its ID and known vanilla recipes. "
-                        + "Development prototype: read-only, no item-give cheats."));
+                        + "Select an item: R shows known recipes, U shows known uses. "
+                        + "Development prototype: native item sprites, read-only, no item-give cheats."));
         System.out.println("[H.O.W.L. Codex] Native inventory prototype registered.");
     }
 }
