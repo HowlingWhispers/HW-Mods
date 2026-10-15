@@ -1,0 +1,101 @@
+name: Build, test and publish Codex to Nightly
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'mods/howl-codex/**'
+      - 'scripts/build-howl-codex.sh'
+      - '.github/workflows/howl-codex.yml'
+  pull_request:
+    paths:
+      - 'mods/howl-codex/**'
+      - 'scripts/build-howl-codex.sh'
+      - '.github/workflows/howl-codex.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: HowlingWhispers/HW-CodaLoader
+          ref: main
+          path: HW-CodaLoader
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Build and run item, recipe, UI and native icon fixture tests
+        env:
+          HW_CODALOADER_API_DIR: ${{ github.workspace }}/HW-CodaLoader/src/main/java
+        run: bash scripts/build-howl-codex.sh
+      - name: Verify native mod identity and archive checksum
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-codex/resources/coda.mod.json"))["version"])')"
+          MOD="mods/howl-codex/dist/howl-codex-${VERSION}.jar"
+          test -s "$MOD" && test -s "$MOD.sha256"
+          (cd mods/howl-codex/dist && sha256sum -c "howl-codex-${VERSION}.jar.sha256")
+          unzip -p "$MOD" coda.mod.json | python3 -c 'import json,sys; m=json.load(sys.stdin); assert m["id"] == "howl_codex" and m["minecraft"] == "26.4-snapshot-3" and m["entrypoint"] == "dev.howlingwhispers.codex.HowlCodexMod"'
+          unzip -Z1 "$MOD" | grep -Fx 'dev/howlingwhispers/codex/HowlCodexMod.class'
+          unzip -Z1 "$MOD" | grep -Fx 'dev/howlingwhispers/codex/NativeRecipeCatalog.class'
+          unzip -Z1 "$MOD" | grep -Fx 'dev/howlingwhispers/codex/NativeItemIcons.class'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: codex-verified-${{ github.sha }}
+          path: mods/howl-codex/dist/*
+          if-no-files-found: error
+          retention-days: 14
+
+  publish-nightly:
+    needs: verify
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: codex-verified-${{ github.sha }}
+          path: mods/howl-codex/dist
+      - name: Require published compatible Nightly H.O.W.L. loader
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh release view v0.0.42 --repo HowlingWhispers/HW-CodaLoader >/dev/null
+          mkdir -p loader-check
+          gh release download v0.0.42 --repo HowlingWhispers/HW-CodaLoader \
+            -p 'CodaLoader-v0.0.42-win64.zip' -D loader-check
+          unzip -p loader-check/CodaLoader-v0.0.42-win64.zip CodaLoader.jar > loader-check/CodaLoader.jar
+          jar tf loader-check/CodaLoader.jar | grep -Fx \
+            'dev/howlingwhispers/codaloader/api/CodaInventoryPanels.class'
+          unzip -p loader-check/CodaLoader.jar codaloader/runtime-version.json |
+            python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["version"]=="0.0.42" and d["minecraft"]=="26.4-snapshot-3"'
+      - name: Publish immutable direct Codex JAR and SHA-256 for Nightly
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-codex/resources/coda.mod.json"))["version"])')"
+          TAG="codex-v${VERSION}"
+          FILE="mods/howl-codex/dist/howl-codex-${VERSION}.jar"
+          (cd mods/howl-codex/dist && sha256sum -c "howl-codex-${VERSION}.jar.sha256")
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo "Immutable Codex Nightly $TAG already exists."
+            exit 0
+          fi
+          gh release create "$TAG" "$FILE" "$FILE.sha256" \
+            --title "H.O.W.L. Codex ${VERSION} (Nightly only)" \
+            --notes 'Experimental item, recipe, usage and icon browser. Minecraft 26.4 Snapshot 3; requires Nightly H.O.W.L. 0.0.42+. Automatically delivered by the Nightly official-mod catalog; never Stable. Use a disposable world.' \
+            --target "$GITHUB_SHA" --prerelease
