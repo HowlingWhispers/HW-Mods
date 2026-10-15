@@ -128,8 +128,10 @@ public final class CodexInventoryPanel implements CodaInventoryPanels.Panel {
                     Object current = weak.get();
                     if (current != null) drawRows(current, state, x, width);
                 });
-                addRow(screen, state, NativeGui.clip(item.name(), 30),
-                        x, y + 22, width, () -> {});
+                Object selectedIcon = NativeItemIcons.add(screen, item.id(), x + 3, y + 23);
+                if (selectedIcon != null) state.rows.add(selectedIcon);
+                addRow(screen, state, NativeGui.clip(item.name(), 28),
+                        x + 22, y + 22, width - 22, () -> {});
                 addRow(screen, state, NativeGui.clip(item.id(), 31),
                         x, y + 44, width, () -> {});
                 addRow(screen, state, "Mod: " + NativeGui.clip(item.modId(), 22),
@@ -162,8 +164,11 @@ public final class CodexInventoryPanel implements CodaInventoryPanels.Panel {
             int line = 0;
             for (ItemEntry item : results) {
                 int position = line++;
-                addRow(screen, state, NativeGui.clip(item.name(), 30),
-                        x, y + position * 20, width, () -> {
+                Object sprite = NativeItemIcons.add(screen, item.id(),
+                        x + 3, y + position * 20 + 1);
+                if (sprite != null) state.rows.add(sprite);
+                addRow(screen, state, NativeGui.clip(item.name(), 28),
+                        x + 22, y + position * 20, width - 22, () -> {
                             state.selected = item;
                             state.note = "";
                             Object current = weak.get();

@@ -89,8 +89,13 @@ final class RecipeNavigator {
         int first = page * rowsPerPage;
         for (int i = first; i < Math.min(recipes.size(), first + rowsPerPage); i++) {
             RecipeEntry recipe = recipes.get(i);
-            row(current, label(recipe.outputItemId()) + " x" + recipe.outputCount(),
-                    116 + (i - first) * 20, () -> { detail = recipe; page = 0; draw(); });
+            int yy = 116 + (i - first) * 20;
+            Object icon = NativeItemIcons.add(current, recipe.outputItemId(), x + 3, yy + 1);
+            if (icon != null) widgets.add(icon);
+            widgets.add(NativeGui.button(current, NativeGui.clip(
+                    label(recipe.outputItemId()) + " x" + recipe.outputCount(), 30),
+                    x + 22, yy, width - 22,
+                    () -> { detail = recipe; page = 0; draw(); }));
         }
         int y = 120 + rowsPerPage * 20;
         widgets.add(NativeGui.button(current, "< Previous", x, y,

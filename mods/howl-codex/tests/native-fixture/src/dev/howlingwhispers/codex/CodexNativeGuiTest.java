@@ -33,6 +33,7 @@ public final class CodexNativeGuiTest {
         check(screen.children().size() == 1, "Repeated refresh duplicated entry");
         find(screen, "Codex").click();
         check(search(screen).getValue().isEmpty(), "Search should begin blank");
+        check(screen.testIconRenderCount() > 0, "Native registered item icons did not render");
         search(screen).setValue("@minecraft iron");
         find(screen, "Iron Ingot").click();
         find(screen, "U  Known uses").click();
