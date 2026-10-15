@@ -107,7 +107,9 @@ final class NativeRecipeCatalog {
         Object stacks = slotType.getMethod("resolveForStacks", contextType)
                 .invoke(slot, context);
         if (!(stacks instanceof Collection<?> list)) return List.of();
-        return list.stream().filter(java.util.Objects::nonNull).toList();
+        List<Object> copied = new ArrayList<>();
+        for (Object value : list) if (value != null) copied.add(value);
+        return copied;
     }
 
     private static String itemId(Object stack) throws ReflectiveOperationException {
