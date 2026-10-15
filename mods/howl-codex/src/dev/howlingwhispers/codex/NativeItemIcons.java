@@ -15,6 +15,11 @@ final class NativeItemIcons {
 
     /** Attach a render-only sprite, never an interactive inventory slot. */
     static Object add(Object screen, String itemId, int x, int y) {
+        return add(screen, itemId, x, y, null);
+    }
+
+    /** Full vanilla item tooltip appears on mouse hover over the slot. */
+    static Object add(Object screen, String itemId, int x, int y, String itemName) {
         try {
             Class<?> identifierType = Class.forName("net.minecraft.resources.Identifier");
             Object identifier = identifierType.getMethod("parse", String.class).invoke(null, itemId);
@@ -44,6 +49,12 @@ final class NativeItemIcons {
             if (stack == null) throw new NoSuchMethodException("ItemStack(Item[, count])");
 
             final Object displayStack = stack;
+            Class<?> component = Class.forName("net.minecraft.network.chat.Component");
+            final Object tooltip = component.getMethod("literal", String.class).invoke(
+                    null, itemName == null ? itemId : itemName + " (" + itemId + ")");
+            final Method tooltipMethod = Class.forName(
+                    "net.minecraft.client.gui.GuiGraphicsExtractor").getMethod(
+                    "setTooltipForNextFrame", component, int.class, int.class);
             Class<?> renderable = Class.forName("net.minecraft.client.gui.components.Renderable");
             Object icon = Proxy.newProxyInstance(renderable.getClassLoader(),
                     new Class<?>[]{renderable}, (proxy, method, args) -> {
@@ -52,6 +63,11 @@ final class NativeItemIcons {
                     graphics.getClass().getMethod("item",
                             itemStackType, int.class, int.class)
                             .invoke(graphics, displayStack, x, y);
+                    int mouseX = ((Number) args[1]).intValue();
+                    int mouseY = ((Number) args[2]).intValue();
+                    if (mouseX >= x && mouseX < x + 18 &&
+                            mouseY >= y && mouseY < y + 18)
+                        tooltipMethod.invoke(graphics, tooltip, mouseX, mouseY);
                     return null;
                 }
                 return switch (method.getName()) {

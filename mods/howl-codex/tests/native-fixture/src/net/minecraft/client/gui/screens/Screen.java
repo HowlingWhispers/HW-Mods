@@ -8,6 +8,7 @@ import net.minecraft.client.gui.components.events.GuiEventListener;
 
 public class Screen {
     public int width = 960, height = 540;
+    public int leftPos = (width - 176) / 2, imageWidth = 176;
     private final List<Object> renderables = new ArrayList<>();
     private final List<GuiEventListener> narratables = new ArrayList<>();
     private final List<GuiEventListener> children = new ArrayList<>();
@@ -28,6 +29,13 @@ public class Screen {
             if (widget instanceof Renderable icon)
                 icon.extractRenderState(graphics, 0, 0, 0);
         return graphics.drawn;
+    }
+    public int testTooltipCount(int mouseX, int mouseY) {
+        var graphics = new GuiGraphicsExtractor();
+        for (Object widget : renderables)
+            if (widget instanceof Renderable icon)
+                icon.extractRenderState(graphics, mouseX, mouseY, 0);
+        return graphics.tooltips;
     }
     public void rebuildWidgets() {
         children.clear(); renderables.clear(); narratables.clear();

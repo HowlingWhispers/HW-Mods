@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "howl_codex",
   "name": "H.O.W.L. Codex",
-  "version": "0.1.0-dev.2",
+  "version": "0.1.0-dev.3",
   "entrypoint": "dev.howlingwhispers.codex.HowlCodexMod",
   "minecraft": "26.4-snapshot-3",
   "depends": []
