@@ -17,6 +17,6 @@ cp "$MOD/resources/coda.mod.json" "$MOD/build/classes/"
 javac --release 21 -encoding UTF-8 -cp "$MOD/build/api:$MOD/build/classes" -d "$MOD/build/tests" "${TEST_SOURCES[@]}"
 java -cp "$MOD/build/api:$MOD/build/classes:$MOD/build/tests" dev.howlingwhispers.codex.CodexIndexTest
 java -cp "$MOD/build/api:$MOD/build/classes:$MOD/build/tests" dev.howlingwhispers.codex.CodexNativeGuiTest
-jar --create --file "$MOD/dist/howl-codex-0.1.0-dev.2.jar" -C "$MOD/build/classes" .
-(cd "$MOD/dist" && sha256sum howl-codex-0.1.0-dev.2.jar > howl-codex-0.1.0-dev.2.jar.sha256)
-echo "Built $MOD/dist/howl-codex-0.1.0-dev.2.jar (development-only)"
+jar --create --file "$MOD/dist/howl-codex-0.1.0-dev.3.jar" -C "$MOD/build/classes" .
+(cd "$MOD/dist" && sha256sum howl-codex-0.1.0-dev.3.jar > howl-codex-0.1.0-dev.3.jar.sha256)
+echo "Built $MOD/dist/howl-codex-0.1.0-dev.3.jar (development-only)"
