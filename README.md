@@ -16,7 +16,7 @@ Unreleased prototypes are **development-only**, not optional player mods. World-
 - `mods/hw-essentials/` — HW Essentials 0.2.0 — `/sethome`, `/home`, `/back`, `/homes`, `/delhome`, `/hwessentials`
 - `mods/hw-waypoints/` — HW Waypoints 0.1.0-dev.1 — **development-only**, world landmarks via `/wp`; not auto-installed until live Snapshot 3 verification.
 
-- `mods/sorting-pipes/` — H.O.W.L. Sorting Pipes 1.0.4 — whitelist/blacklist branch filters, round-robin and equalizer attachments. Requires H.O.W.L. 0.0.41+. Headless Snapshot checks pass; live gameplay validation pending.
+- `mods/sorting-pipes/` — H.O.W.L. Sorting Pipes 1.0.5 — whitelist/blacklist branch filters, round-robin and equalizer attachments. Requires H.O.W.L. 0.0.41+. Headless Snapshot checks pass; live gameplay validation pending.
 
 ## Retired BuildCraft prototype
 

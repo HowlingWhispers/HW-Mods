@@ -28,7 +28,7 @@ public final class SortingPipesMod implements CodaMod {
         }
         context.registerServerTick("sorting_pipes",transport::serverTick);
         context.registerCommand("howlpipes","Configure item filters and pipe inputs",this::command);
-        System.out.println("[Sorting Pipes] 1.0.4 for Minecraft 26.4 Snapshot 3 initialized");
+        System.out.println("[Sorting Pipes] 1.0.5 for Minecraft 26.4 Snapshot 3 initialized");
     }
     private static void help(CodaCommandContext player,String topic) throws Exception {
         switch(topic.toLowerCase(Locale.ROOT)) {

@@ -1,4 +1,4 @@
-# H.O.W.L. Sorting Pipes 1.0.4
+# H.O.W.L. Sorting Pipes 1.0.5
 
 Original item-sorting mod for H.O.W.L. (HW-CodaLoader), exactly Minecraft Java
 26.4 Snapshot 3. Requires H.O.W.L. 0.0.41 or newer, with the item-filtering transport API. Run the game with Java 25+.
@@ -11,17 +11,20 @@ The mod and loader compile for Java 21. No Forge or Fabric is involved.
    No separate download or manual JAR placement is needed.
 2. Start the Nightly profile on 26.4 Snapshot 3. H.O.W.L. reads the mod's declared
    resource pack, installs and enables it automatically before Minecraft's
-   first reload. The Transport Pipe core uses the original Pixel Studio blue-metal PNG;
-   its connecting arms and all other blocks retain vanilla textures. No manual
-   resource-pack selection is required. Creative inventory has native page
+   first reload. The Transport Pipe keeps the original gray Pixel Studio item
+   end-cap, derives dark-metal connecting arms, and removes the one-pixel dark
+   rim only along connected faces. Exposed ends stay capped. The 64 core-state
+   combinations are generated from the six existing connection booleans, with
+   no change to transport mechanics. Other pipe kinds retain vanilla artwork.
+   No manual resource-pack selection is required. Creative inventory has native page
    arrows above the tabs; Sorting Pipes appears on the first mod page inside
    the normal tab grid. Search and player inventory remain accessible there.
-4. Recipes, block drops and the written guide are declared server data in
+3. Recipes, block drops and the written guide are declared server data in
    the mod JAR. H.O.W.L. automatically discovers and selects this data beside
    vanilla for both new and existing worlds. No manual data-pack install is
    required. `HOWL-Sorting-Pipes-Recipes.zip` remains available as a standalone
    copy for inspection; installing a second copy is unnecessary.
-5. Find the five blocks in the **H.O.W.L. Sorting Pipes** creative tab.
+4. Find the five blocks in the **H.O.W.L. Sorting Pipes** creative tab.
 
 ## Written guide and advancement unlock
 
@@ -74,7 +77,7 @@ The coordinates always name the pipe being configured, not its chest.
 | Equalizer | Place next to an extractor to prioritize the output with the lowest count of the item currently being delivered. Rotates ties. |
 
 Copper marks round-robin, gold marks the equalizer, diamond marks sorting,
-oak marks extraction, and iron marks transport. Attachments occupy adjacent
+oak marks extraction, and handcrafted dark metal marks transport. Attachments occupy adjacent
 block spaces; they are not face-mounted covers. Place at most one distribution
 policy beside each extractor. Both policies together pause that extractor.
 An attachment must touch one of the extractor's six faces, not a diagonal
@@ -184,8 +187,8 @@ pipe, ray targeting, non-collision behavior and normal mining hardness.
 
 ## Source and notices
 
-The new mod code and model generator are MIT licensed. Models reference
-Minecraft's built-in textures; no Minecraft or BuildCraft artwork is copied
+The new mod code and model generator are MIT licensed. Other models reference
+Minecraft's built-in textures; the transport design derives from user-owned Pixel Studio art. No Minecraft or BuildCraft artwork is copied
 into the mod. Existing loader code retains its repository ownership and
 notices, including its bundled ASM notice. This is an original H.O.W.L. mod,
 not a BuildCraft port.
