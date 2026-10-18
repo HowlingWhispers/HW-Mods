@@ -57,6 +57,7 @@ jobs:
           H.O.W.L. Sorting Pipes for Minecraft Java 26.4 Snapshot 3.
           Whitelist/blacklist branch filters, round-robin and equalizer blocks, and saved per-world settings.
           Requires H.O.W.L. 0.0.41+. CodaLauncher checks the required Nightly mod catalog and published SHA-256 before installing/updating.
+          Transport Pipe center now uses the supplied Pixel Studio blue-metal PNG; connecting arms are unchanged.
           Models auto-enable before the first reload; creative mod tabs use native pages inside the inventory frame.
           Pipe selection now matches the visible body and arms; /howlpipes help has setup, filters and attachments pages.
           The written guide unlocks once after Acquire Hardware and Isn’t It Iron Pick, including players who already earned both.
