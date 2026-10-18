@@ -1,31 +1,44 @@
 """Deterministic, original models referencing Minecraft's built-in textures."""
 import json,zipfile,pathlib
 from guidebook import book_components, unlock_advancement
+from pipe_art import DIRECTIONS, make_art, core_model, arm_model
 root=pathlib.Path(__file__).parent; assets={}; namespace='howl_sorting_pipes'
 def put(path,content): assets[path]=json.dumps(content,indent=2).encode()
 def box(lo,hi,texture):
     return {'from':lo,'to':hi,'faces':{d:{'texture':'#'+texture} for d in ['north','south','east','west','up','down']}}
 colors={'extractor_pipe':'oak_planks','transport_pipe':'iron_block','sorting_pipe':'diamond_block','round_robin':'copper_block','equalizer':'gold_block'}
-# The original Pixel Studio PNG has a 6x6 opaque design centered in 16x16 UV space.
-# The existing 5..11 core cube samples exactly that area on each face.
-center_path=root/'textures/block/pipe_center.png'
-center_png=center_path.read_bytes()
-if not (center_png[:8]==bytes([137,80,78,71,13,10,26,10])
-        and center_png[12:16]==b'IHDR'
-        and int.from_bytes(center_png[16:20],'big')==16
-        and int.from_bytes(center_png[20:24],'big')==16
-        and center_png[24]==8 and center_png[25]==6):
-    raise ValueError('Pipe center texture must be a 16x16 RGBA PNG')
-assets[f'assets/{namespace}/textures/block/pipe_center.png']=center_png
+# Sample the handcrafted item-pipe center to derive seamless dark-metal joints.
+# No player-created PNG is overwritten; variants are generated at build time.
+center_png=(root/'textures/block/pipe_center.png').read_bytes()
+for filename, content in make_art(center_png).items():
+    assets[f'assets/{namespace}/textures/block/{filename}']=content
 for name,texture in colors.items():
     base=f'assets/{namespace}/'
     if name.endswith('_pipe'):
-        core_texture=f'{namespace}:block/pipe_center' if name=='transport_pipe' else 'minecraft:block/'+texture
-        put(base+f'models/block/{name}_core.json',{'textures':{'body':core_texture,'particle':'minecraft:block/'+texture},'elements':[box([5,5,5],[11,11,11],'body')]})
         segments={'east':([11,5,5],[16,11,11]),'west':([0,5,5],[5,11,11]),'up':([5,11,5],[11,16,11]),'down':([5,0,5],[11,5,11]),'south':([5,5,11],[11,11,16]),'north':([5,5,0],[11,11,5])}
-        parts=[{'apply':{'model':f'{namespace}:block/{name}_core'}}]
+        parts=[]
+        if name=='transport_pipe':
+            # Every one of the 64 connection states gets exactly one core.
+            # Only face edges actually joining an arm have their dark rim removed.
+            for bits in range(64):
+                connected={direction for i,direction in enumerate(DIRECTIONS) if bits&(1<<i)}
+                suffix='' if bits==0 else f'_{bits:02x}'
+                put(base+f'models/block/{name}_core{suffix}.json',core_model(connected,namespace))
+                parts.append({'when':{direction:str(direction in connected).lower() for direction in DIRECTIONS},
+                              'apply':{'model':f'{namespace}:block/{name}_core{suffix}'}})
+        else:
+            put(base+f'models/block/{name}_core.json',
+                {'textures':{'body':'minecraft:block/'+texture,'particle':'minecraft:block/'+texture},
+                 'elements':[box([5,5,5],[11,11,11],'body')]})
+            parts.append({'apply':{'model':f'{namespace}:block/{name}_core'}})
         for face,(lo,hi) in segments.items():
-            put(base+f'models/block/{name}_{face}.json',{'textures':{'body':'minecraft:block/'+texture},'elements':[box(lo,hi,'body')]})
+            if name=='transport_pipe':
+                axis='x' if face in ('east','west') else 'y' if face in ('up','down') else 'z'
+                model=arm_model(axis,lo,hi,namespace)
+            else:
+                model={'textures':{'body':'minecraft:block/'+texture},
+                       'elements':[box(lo,hi,'body')]}
+            put(base+f'models/block/{name}_{face}.json',model)
             parts.append({'when':{face:'true'},'apply':{'model':f'{namespace}:block/{name}_{face}'}})
         put(base+f'blockstates/{name}.json',{'multipart':parts})
         put(base+f'models/item/{name}.json',{'parent':f'{namespace}:block/{name}_core'})
