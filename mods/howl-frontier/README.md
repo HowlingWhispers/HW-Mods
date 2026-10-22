@@ -1,6 +1,6 @@
-# H.O.W.L. Frontier 0.1.1
+# H.O.W.L. Frontier 0.1.2
 
-A new settlement play mode for Minecraft Java 26.4 Snapshot 3 and H.O.W.L. 0.0.44+.
+A new settlement play mode for Minecraft Java 26.4 Snapshot 3 and H.O.W.L. 0.0.45+.
 **Published for CodaLauncher 0.7.32+ on Windows Nightly.** This first milestone implements the camp and starter workers;
 it does not yet implement the wider Deepworld, industry or ecology expansions.
 
@@ -89,3 +89,21 @@ Mojang GameTest world to exercise native actors, navigation, food, tools, planti
 and inventory delivery. Its integrated-server identity is a fixture, not a real
 client. Rendered Nightly placement, sleeping and world save/reload remain separate
 acceptance checks. Do not call automated tests a completed player playtest.
+
+## Player-shaped settlers and skins
+
+Back up an existing closed Frontier world before this entity migration. To roll
+back, restore that complete backup. Use a new Frontier world for initial testing.
+
+Frontier 0.1.2 uses Mojang's player-shaped NPC entity. Settlers keep their jobs,
+hunger, loyalty, native equipment and an eight-slot carried inventory. They are
+NPCs and do not join the server as online players. They cannot become zombie villagers.
+
+Use `/frontier settlers` for an ID, then `/frontier name <id-prefix> <MinecraftUsername>`.
+The name selects that account's skin through Minecraft's native asynchronous profile
+lookup and cache. Unknown/unavailable accounts use Minecraft's default skin.
+Existing loaded living Frontier villagers migrate with their UUID, health and items.
+For a settler converted by an earlier release, stand within eight blocks and use
+`/frontier recover <id-prefix>`. Only a unique matching named/tagged Frontier zombie
+can be repaired. Normal zombie villagers are unaffected. No missing/unloaded settler
+is respawned. Rendered skins and animations still need a Nightly gameplay check.

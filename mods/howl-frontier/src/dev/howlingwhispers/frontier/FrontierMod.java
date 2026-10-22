@@ -11,6 +11,8 @@ public final class FrontierMod implements CodaMod {
     @Override public void onInitialize(CodaContext context)throws Exception{
         CodaWorldView.class.getMethod("living",String.class);
         CodaCommandContext.class.getMethod("targetBlock");
+        CodaLivingWorld.class.getMethod("rename",UUID.class,String.class);
+        CodaLivingWorld.class.getMethod("recover",UUID.class,String.class,CodaBlockPos.class);
         Path marker=context.gameDirectory().resolve("config/howl-play-mode.txt");
         boolean enabled=Files.isRegularFile(marker)&&!Files.isSymbolicLink(marker)&&Files.size(marker)<64
                 &&Files.readString(marker).trim().equals("frontier");
@@ -19,12 +21,12 @@ public final class FrontierMod implements CodaMod {
             player.withWorld(view->{
                 sim.open(view,null);
                 if(!player.position().dimension().equals("minecraft:overworld"))throw new IllegalArgumentException("Frontier camps currently belong in the Overworld");
-                var world=view.living("minecraft:overworld").orElseThrow(()->new IllegalStateException("H.O.W.L. 0.0.44 single-player living-world API is required"));
+                var world=view.living("minecraft:overworld").orElseThrow(()->new IllegalStateException("H.O.W.L. 0.0.45 single-player living-world API is required"));
                 try{command(player,world,args);}catch(IllegalArgumentException e){player.reply("Frontier: "+e.getMessage());}
             });
         });
         if(enabled){context.registerServerTick("frontier",sim::tick);context.registerBlockPlacement(sim::placed);}
-        System.out.println("[Frontier] 0.1.1, mode="+(enabled?"Frontier":"inactive")+", H.O.W.L. "+context.loaderVersion());
+        System.out.println("[Frontier] 0.1.2, mode="+(enabled?"Frontier":"inactive")+", H.O.W.L. "+context.loaderVersion());
     }
     private void command(CodaCommandContext player,CodaLivingWorld world,List<String> args)throws Exception{
         String op=args.isEmpty()?"help":args.getFirst();
@@ -32,6 +34,7 @@ public final class FrontierMod implements CodaMod {
             player.reply("FRONTIER: place a lit campfire to establish camp. Build sheltered beds within 16 blocks. Travellers arrive gradually when beds are free.");
             player.reply("Look at a chest or barrel and use /frontier stockpile. No coordinates needed.");
             player.reply("/frontier bed x y z | ignorebed x y z | status | settlers");
+            player.reply("/frontier name <id> <MinecraftUsername> | recover <id> (stand near an old zombified settler)");
             player.reply("/frontier job <id> idle|lumberjack|miner|farmer | work <id> x y z [north|south|east|west]");
             player.reply("Stock food and tools in a single chest/barrel. Lumberjack: mark a small tree's lowest log and supply an axe + sapling. Miner: mark the first feet-height tunnel block, supply a pickaxe. Farmer: mark the centre crop of a planted 9x9 field.");
             player.reply("Food shortages cause weaker loyalty to leave. Loyal settlers can stay until they starve. No progression while their entities are unloaded.");return;
@@ -70,6 +73,25 @@ public final class FrontierMod implements CodaMod {
                     sim.camp.ignoredBeds.remove(p);sim.camp.beds.add(p);
                 }
                 sim.save();player.reply("Camp "+op+" saved at "+p);
+            }
+            case "name","recover" -> {
+                if(args.size()!=(op.equals("name")?3:2))throw new IllegalArgumentException("Use /frontier "+op+" <settler-id>"+(op.equals("name")?" <MinecraftUsername>":""));
+                List<Settler> matches=sim.camp.settlers.stream().filter(s->!s.terminal()&&s.id.toString().startsWith(args.get(1))).toList();
+                if(args.get(1).length()<4||matches.size()!=1)throw new IllegalArgumentException("Use a unique ID prefix from /frontier settlers");
+                Settler s=matches.getFirst();
+                if(op.equals("name")){
+                    String next=args.get(2);
+                    if(!next.matches("[A-Za-z0-9_]{3,16}"))throw new IllegalArgumentException("Use a Minecraft username: 3-16 letters, numbers or underscores");
+                    if(!world.rename(s.id,next))throw new IllegalArgumentException("This settler must be alive and loaded nearby before renaming");
+                    String before=s.name;s.name=next;
+                    try{sim.save();}catch(Exception failure){s.name=before;try{world.rename(s.id,before);}catch(Exception undo){failure.addSuppressed(undo);}throw failure;}
+                    player.reply("Settler renamed to "+next+". Their skin follows this Minecraft username; unknown accounts use a default skin.");
+                }else{
+                    if(sim.camp.settlers.stream().filter(other->!other.terminal()&&other.name.equals(s.name)).count()!=1)throw new IllegalArgumentException("Recovery needs a unique saved settler name");
+                    var at=player.position();var feet=new CodaBlockPos((int)Math.floor(at.x()),(int)Math.floor(at.y()),(int)Math.floor(at.z()));
+                    if(!world.recover(s.id,s.name,feet))throw new IllegalArgumentException("Stand within 8 blocks of the named Frontier zombie villager. Existing settlers and ambiguous matches are refused");
+                    player.reply(s.name+" recovered as a player-shaped settler. Their saved job, hunger and loyalty are retained.");
+                }
             }
             case "job","work" -> {
                 if(args.size()<3)throw new IllegalArgumentException("Use /frontier "+op+" <settler-id> ...");
