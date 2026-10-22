@@ -14,6 +14,7 @@ public final class CoreTest {
         lifecycle();
         hungerAndLoyalty();
         settlementRules();
+        facing();
         finish("core territory, lifecycle and settlement checks");
     }
 
@@ -134,5 +135,13 @@ public final class CoreTest {
         var s = new Settler(UUID.randomUUID(), c.nextName());
         s.state = RESIDENT;
         c.settlers.put(s.id, s);
+    }
+
+    static void facing() {
+        check(FrontierJobs.facing(0).equals("south") && FrontierJobs.facing(90).equals("west") && FrontierJobs.facing(180).equals("north")
+                && FrontierJobs.facing(270).equals("east") && FrontierJobs.facing(-90).equals("east") && FrontierJobs.facing(-170).equals("north"), "Minecraft yaw maps to compass directions");
+        check(FrontierJobs.saplingFor("minecraft:oak_log").equals("minecraft:oak_sapling") && FrontierJobs.saplingFor("minecraft:mangrove_log").equals("minecraft:mangrove_propagule")
+                && FrontierJobs.saplingFor("minecraft:warped_stem") == null, "Each log maps to its sapling");
+        check(!FrontierJobs.isLog("minecraft:stripped_oak_log") && FrontierJobs.isLog("minecraft:cherry_log"), "Stripped logs are never trees");
     }
 }

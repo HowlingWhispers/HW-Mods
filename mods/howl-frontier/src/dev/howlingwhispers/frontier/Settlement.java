@@ -25,6 +25,10 @@ final class Settlement {
     int namesIssued;
     final LinkedHashMap<UUID, Settler> settlers = new LinkedHashMap<>();
     final LinkedHashSet<CodaBlockPos> beds = new LinkedHashSet<>();
+    /** Where miners dig: the first feet-level block of a two-high tunnel, its direction, and blocks cleared. */
+    CodaBlockPos mineEntrance;
+    String mineDirection = "north";
+    int mineProgress;
     /** Bed heads the player keeps for themselves. Settlers never claim these. */
     final LinkedHashSet<CodaBlockPos> keptBeds = new LinkedHashSet<>();
 

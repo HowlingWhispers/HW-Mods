@@ -30,7 +30,20 @@ Hunger drops by one point every ten seconds of play. A meal restores 40. Less lo
 settlers leave during a shortage; loyal ones stay and can starve. If nobody is left,
 a new pioneer comes. Nothing happens while the settlement's area is not loaded.
 
-Jobs (gathering, mining, farming) and building are being rebuilt; see DESIGN.md.
+## Jobs
+
+Residents pick a job from the tools in the stockpile and fetch the tool themselves:
+
+| Tool in the stockpile | Job | What they do |
+| --- | --- | --- |
+| Axe | Lumberjack | Cut natural trees in your land (up to 6 logs tall), replant a sapling from the stockpile |
+| Hoe (with crops on farmland) | Farmer | Harvest ripe wheat, carrots, potatoes and beetroot, replant with real seeds |
+| Pickaxe (after `/frontier mine`) | Miner | Dig a 2-high tunnel up to 32 blocks from where you set the mine |
+
+Work happens in daylight, only inside your land, and only with real items. Lumberjacks never
+cut log houses or trees with player-placed leaves. Miners stop at water, lava, sand, gravel,
+the edge of your land, and anything that is not stone, dirt or ore. Workers unload when they
+carry a lot; a full stockpile is reported and nothing is lost. Building comes later.
 
 ## Commands
 
@@ -40,6 +53,8 @@ Jobs (gathering, mining, farming) and building are being rebuilt; see DESIGN.md.
 | `/frontier settlers [all]` | Settlers with short IDs; `all` includes dead, departed and retired |
 | `/frontier stockpile` | Set the chest or barrel you are looking at |
 | `/frontier keepbed` | Keep the bed you are looking at for yourself (again to share it) |
+| `/frontier job <id> <lumberjack\|farmer\|miner\|labourer>` | Choose a settler's job; `labourer` lets them pick |
+| `/frontier mine` | Start a mine at the block you look at, tunnelling the way you face |
 | `/frontier name <id> <username>` | Rename a settler; their skin follows that Minecraft account |
 | `/frontier retire <id>` | Remove a settler who is lost (refused while they are alive and nearby) |
 | `/frontier reset`, then `reset confirm` | Start over. Settlers leave; your buildings and items stay |

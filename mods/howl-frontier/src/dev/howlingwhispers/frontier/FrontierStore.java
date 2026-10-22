@@ -80,6 +80,9 @@ final class FrontierStore {
             p.setProperty(k + "arrivalTimer", "" + c.arrivalTimer);
             p.setProperty(k + "pioneerCommitted", "" + c.pioneerCommitted);
             p.setProperty(k + "namesIssued", "" + c.namesIssued);
+            put(p, k + "mineEntrance", c.mineEntrance);
+            p.setProperty(k + "mineDirection", c.mineDirection);
+            p.setProperty(k + "mineProgress", "" + c.mineProgress);
             positions(p, k + "beds", c.beds);
             positions(p, k + "keptBeds", c.keptBeds);
             p.setProperty(k + "settlers", "" + c.settlers.size());
@@ -91,6 +94,7 @@ final class FrontierStore {
                 p.setProperty(sk + "state", s.state.name());
                 p.setProperty(sk + "profession", s.profession.name());
                 p.setProperty(sk + "pioneer", "" + s.pioneer);
+                p.setProperty(sk + "jobChosen", "" + s.jobChosen);
                 put(p, sk + "bed", s.bed);
                 put(p, sk + "arrivalPoint", s.arrivalPoint);
                 p.setProperty(sk + "hunger", "" + s.hunger);
@@ -123,6 +127,11 @@ final class FrontierStore {
             c.arrivalTimer = integer(p, k + "arrivalTimer", 0, Settlement.ARRIVAL_INTERVAL);
             c.pioneerCommitted = bool(p, k + "pioneerCommitted");
             c.namesIssued = integer(p, k + "namesIssued", 0, 1_000_000);
+            // Added in 0.2.3: optional, so 0.2.0-0.2.2 worlds keep loading.
+            c.mineEntrance = inside(t, position(p.getProperty(k + "mineEntrance", "")), "mine entrance");
+            c.mineDirection = p.getProperty(k + "mineDirection", "north");
+            if (!Set.of("north", "south", "east", "west").contains(c.mineDirection)) throw new IllegalArgumentException("invalid mine direction");
+            c.mineProgress = optionalInteger(p, k + "mineProgress", 0, 0, FrontierJobs.MAX_TUNNEL * 2);
             readPositions(p, k + "beds", t, c.beds);
             readPositions(p, k + "keptBeds", t, c.keptBeds);
             int count = integer(p, k + "settlers", 0, Settlement.MAX_RECORDS);
@@ -139,6 +148,7 @@ final class FrontierStore {
                 s.state = Settler.State.valueOf(required(p, sk + "state"));
                 s.profession = Settler.Profession.valueOf(required(p, sk + "profession"));
                 s.pioneer = bool(p, sk + "pioneer");
+                s.jobChosen = p.getProperty(sk + "jobChosen") != null && bool(p, sk + "jobChosen");
                 s.bed = inside(t, position(required(p, sk + "bed")), "settler bed");
                 s.arrivalPoint = inside(t, position(required(p, sk + "arrivalPoint")), "arrival point");
                 if (s.arrivalPoint == null) throw new IllegalArgumentException("settler without an arrival point");
@@ -188,6 +198,9 @@ final class FrontierStore {
         int n = Integer.parseInt(required(p, key));
         if (n < min || n > max) throw new IllegalArgumentException("invalid " + key);
         return n;
+    }
+    private static int optionalInteger(Properties p, String key, int fallback, int min, int max) {
+        return p.getProperty(key) == null ? fallback : integer(p, key, min, max);
     }
     private static double percent(Properties p, String key) {
         double d = Double.parseDouble(required(p, key));

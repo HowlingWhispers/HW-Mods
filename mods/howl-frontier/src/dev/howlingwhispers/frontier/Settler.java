@@ -40,6 +40,8 @@ final class Settler {
     String name;
     State state = State.COMMITTED;
     Profession profession = Profession.LABOURER;
+    /** True when the owner chose the profession; false lets the settler pick one from the stockpile's tools. */
+    boolean jobChosen;
     boolean pioneer;
     CodaBlockPos bed;
     /** Where the settler entered the territory, and where they leave from. */
@@ -50,6 +52,10 @@ final class Settler {
     // Runtime only: rebuilt each session, never saved.
     String activity = "Arriving";
     int retryTicks;
+    /** Walking to the stockpile to unload. */
+    boolean delivering;
+    /** The tree base or crop this settler is working on. */
+    CodaBlockPos target;
 
     Settler(UUID id, String name) {
         this.id = Objects.requireNonNull(id);

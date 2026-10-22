@@ -31,6 +31,8 @@ final class FrontierCommands {
             case "name" -> name(player, world, c, args);
             case "retire" -> retire(player, world, c, args);
             case "reset" -> reset(player, c, args);
+            case "job" -> job(player, c, args);
+            case "mine" -> mine(player, world, c);
             default -> throw new IllegalArgumentException("Unknown command. Use /frontier help");
         }
     }
@@ -43,6 +45,9 @@ final class FrontierCommands {
                 + label(" (solid roof 2-6 blocks above) inside your land."));
         player.reply(warn("/frontier status") + label(", ") + warn("settlers [all]") + label(", ") + warn("stockpile") + label(" (look at a chest), ")
                 + warn("keepbed") + label(" (look at your bed)"));
+        player.reply(label("Jobs: settlers pick one from the stockpile's tools. ") + value("Axe") + label(" = lumberjack, ") + value("hoe")
+                + label(" = farmer (crops on farmland), ") + value("pickaxe") + label(" = miner (after ") + warn("/frontier mine") + label(")."));
+        player.reply(warn("/frontier job <id> <lumberjack|farmer|miner|labourer>") + label(", ") + warn("mine") + label(" (look where the tunnel starts, face its direction)"));
         player.reply(warn("/frontier name <id> <username>") + label(", ") + warn("retire <id>") + label(", ") + warn("reset") + label(", ")
                 + warn("camp") + label(" (look at a lit campfire)"));
     }
@@ -86,6 +91,13 @@ final class FrontierCommands {
         player.reply(field("Beds", value(c.beds.size() + " sheltered")) + label(", ") + (free > 0 ? good(free + " free") : warn("0 free"))
                 + (c.keptBeds.isEmpty() ? "" : label(", ") + value(c.keptBeds.size() + " kept for you")));
         player.reply(field("Arrivals", arrival(sim.arrivalStatus)));
+        Map<Settler.Profession, Integer> jobs = new EnumMap<>(Settler.Profession.class);
+        for (var s : c.settlers.values()) if (s.resident()) jobs.merge(s.profession, 1, Integer::sum);
+        List<String> parts = new ArrayList<>();
+        for (var e : jobs.entrySet()) parts.add(e.getValue() + " " + e.getKey().name().toLowerCase(Locale.ROOT) + (e.getValue() > 1 ? "s" : ""));
+        player.reply(field("Work", parts.isEmpty() ? muted("nobody yet") : value(String.join(", ", parts)))
+                + SEP + label("mine ") + (c.mineEntrance == null ? muted("not set")
+                : value(text(c.mineEntrance) + " facing " + c.mineDirection + ", " + c.mineProgress / 2 + " blocks dug")));
         String problem = FrontierSimulation.stockpileProblem(world, c);
         player.reply(field("Stockpile", problem != null ? bad(problem)
                 : sim.hasFood(view, c) ? good(text(c.stockpile) + ", has food") : warn(text(c.stockpile) + ", no food in it")));
@@ -232,6 +244,57 @@ final class FrontierCommands {
         }
         sim.arrivalStatus = "No settlement yet: place and light a campfire";
         player.reply(done("Settlement reset. Place and light a campfire, or look at a lit one and use /frontier camp, to start again."));
+    }
+
+    private void job(CodaCommandContext player, Settlement c, List<String> args) throws Exception {
+        requireOwner(player, c);
+        if (args.size() != 3) throw new IllegalArgumentException("Use /frontier job <id> <lumberjack|farmer|miner|labourer>");
+        Settler s = one(c, args.get(1), false);
+        if (!s.resident()) throw new IllegalArgumentException(s.name + " is not a resident yet");
+        Settler.Profession next;
+        try {
+            next = Settler.Profession.valueOf(args.get(2).toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException unknown) {
+            throw new IllegalArgumentException("Jobs are lumberjack, farmer, miner and labourer");
+        }
+        var before = s.profession;
+        boolean chosenBefore = s.jobChosen;
+        s.profession = next;
+        s.jobChosen = next != Settler.Profession.LABOURER;
+        s.target = null;
+        try {
+            sim.save();
+        } catch (Exception failure) {
+            s.profession = before;
+            s.jobChosen = chosenBefore;
+            throw failure;
+        }
+        player.reply(done(next == Settler.Profession.LABOURER
+                ? s.name + " will pick a job from the stockpile's tools."
+                : s.name + " is now a " + next.name().toLowerCase(Locale.ROOT) + "."));
+    }
+
+    private void mine(CodaCommandContext player, CodaLivingWorld world, Settlement c) throws Exception {
+        requireOwner(player, c);
+        var start = lookedAt(player, "where the tunnel should start");
+        if (!c.territory().contains(start)) throw new IllegalArgumentException("The mine must start inside your land (" + c.territory().describe() + ")");
+        String facing = FrontierJobs.facing(player.position().yaw());
+        var before = c.mineEntrance;
+        String directionBefore = c.mineDirection;
+        int progressBefore = c.mineProgress;
+        c.mineEntrance = start;
+        c.mineDirection = facing;
+        c.mineProgress = 0;
+        try {
+            sim.save();
+        } catch (Exception failure) {
+            c.mineEntrance = before;
+            c.mineDirection = directionBefore;
+            c.mineProgress = progressBefore;
+            throw failure;
+        }
+        player.reply(done("Mine set at " + text(start) + ", tunnelling " + facing + ". Miners dig a 2-high tunnel, up to "
+                + FrontierJobs.MAX_TUNNEL + " blocks or the edge of your land."));
     }
 
     // ---- helpers ----------------------------------------------------------------------------
