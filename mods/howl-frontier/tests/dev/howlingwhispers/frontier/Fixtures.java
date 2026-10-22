@@ -32,6 +32,13 @@ final class Fixtures {
         long clock = 6000;
         UUID broken;
         Predicate<CodaBlockPos> flooded = p -> false;
+        /** Terrain: the solid surface block's height per column (default flat at 63). */
+        java.util.function.IntBinaryOperator ground = (x, z) -> 63;
+        /** Columns with tall grass standing on the surface. */
+        java.util.function.BiPredicate<Integer, Integer> grass = (x, z) -> false;
+        /** Spots where the real game would refuse a spawn for collision reasons the rule cannot see. */
+        Predicate<CodaBlockPos> collides = p -> false;
+        final List<CodaBlockPos> refusedSpawns = new ArrayList<>();
 
         World() { blocks.put(CAMP, Fixtures.block("minecraft:campfire", Map.of("lit", "true"), false)); }
 
@@ -49,14 +56,32 @@ final class Fixtures {
         public Optional<Block> block(CodaBlockPos p) {
             if (!loaded) return Optional.empty();
             if (flooded.test(p)) return Optional.of(new Block("minecraft:water", Map.of(), false, true));
-            return Optional.of(blocks.getOrDefault(p, p.y() == 63 ? Fixtures.block("minecraft:grass_block", Map.of(), true) : Fixtures.block("minecraft:air", Map.of(), false)));
+            var placed = blocks.get(p);
+            if (placed != null) return Optional.of(placed);
+            int surface = ground.applyAsInt(p.x(), p.z());
+            if (p.y() <= surface) return Optional.of(Fixtures.block("minecraft:grass_block", Map.of(), true));
+            if (p.y() == surface + 1 && grass.test(p.x(), p.z())) return Optional.of(Fixtures.block("minecraft:short_grass", Map.of(), false));
+            return Optional.of(Fixtures.block("minecraft:air", Map.of(), false));
         }
         public Optional<Actor> actor(UUID id) {
             if (id.equals(broken)) throw new IllegalStateException("simulated broken entity");
             return loaded ? Optional.ofNullable(actors.get(id)) : Optional.empty();
         }
+        /** Mirrors CodaLoader 0.0.45 MinecraftLivingWorld.standable(): the real game refuses anything else. */
+        boolean loaderStandable(CodaBlockPos p) {
+            var feet = block(p);
+            var head = block(new CodaBlockPos(p.x(), p.y() + 1, p.z()));
+            var floor = block(new CodaBlockPos(p.x(), p.y() - 1, p.z()));
+            return feet.isPresent() && head.isPresent() && floor.isPresent() && feet.get().air() && head.get().air()
+                    && floor.get().solid() && !floor.get().fluid()
+                    && !Set.of("minecraft:magma_block", "minecraft:campfire", "minecraft:soul_campfire", "minecraft:cactus").contains(floor.get().id());
+        }
         public boolean spawn(UUID id, String name, CodaBlockPos p) {
             if (!spawnAllowed || actors.containsKey(id)) return false;
+            if (!loaderStandable(p) || collides.test(p)) {
+                refusedSpawns.add(p);
+                return false;
+            }
             spawned++;
             put(id, p, 20);
             names.put(id, name);
