@@ -14,6 +14,7 @@ VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/reso
 mapfile -d '' TESTS < <(find "$MOD/tests" -name '*.java' -print0)
 javac --release 21 -encoding UTF-8 -cp "$MOD/build/api:$MOD/build/classes" -d "$MOD/build/tests" "${TESTS[@]}"
 java -cp "$MOD/build/api:$MOD/build/classes:$MOD/build/tests" dev.howlingwhispers.frontier.FrontierTest
+java -cp "$MOD/build/api:$MOD/build/classes:$MOD/build/tests" dev.howlingwhispers.frontier.FrontierCommandTest
 jar --create --file "$MOD/dist/howl-frontier-${VERSION}.jar" -C "$MOD/build/classes" .
 (cd "$MOD/dist" && sha256sum "howl-frontier-${VERSION}.jar" > "howl-frontier-${VERSION}.jar.sha256")
 python3 - "$MOD/dist/howl-frontier-${VERSION}.jar" <<'PY'

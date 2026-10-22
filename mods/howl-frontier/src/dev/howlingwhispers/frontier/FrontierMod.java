@@ -10,6 +10,7 @@ public final class FrontierMod implements CodaMod {
     private final FrontierSimulation sim=new FrontierSimulation();
     @Override public void onInitialize(CodaContext context)throws Exception{
         CodaWorldView.class.getMethod("living",String.class);
+        CodaCommandContext.class.getMethod("targetBlock");
         Path marker=context.gameDirectory().resolve("config/howl-play-mode.txt");
         boolean enabled=Files.isRegularFile(marker)&&!Files.isSymbolicLink(marker)&&Files.size(marker)<64
                 &&Files.readString(marker).trim().equals("frontier");
@@ -18,18 +19,19 @@ public final class FrontierMod implements CodaMod {
             player.withWorld(view->{
                 sim.open(view,null);
                 if(!player.position().dimension().equals("minecraft:overworld"))throw new IllegalArgumentException("Frontier camps currently belong in the Overworld");
-                var world=view.living("minecraft:overworld").orElseThrow(()->new IllegalStateException("H.O.W.L. 0.0.43 single-player living-world API is required"));
+                var world=view.living("minecraft:overworld").orElseThrow(()->new IllegalStateException("H.O.W.L. 0.0.44 single-player living-world API is required"));
                 try{command(player,world,args);}catch(IllegalArgumentException e){player.reply("Frontier: "+e.getMessage());}
             });
         });
         if(enabled){context.registerServerTick("frontier",sim::tick);context.registerBlockPlacement(sim::placed);}
-        System.out.println("[Frontier] 0.1.0-dev.1, mode="+(enabled?"Frontier":"inactive")+", H.O.W.L. "+context.loaderVersion());
+        System.out.println("[Frontier] 0.1.0-dev.2, mode="+(enabled?"Frontier":"inactive")+", H.O.W.L. "+context.loaderVersion());
     }
     private void command(CodaCommandContext player,CodaLivingWorld world,List<String> args)throws Exception{
         String op=args.isEmpty()?"help":args.getFirst();
         if(op.equals("help")){
             player.reply("FRONTIER: place a lit campfire to establish camp. Build sheltered beds within 16 blocks. Travellers arrive gradually when beds are free.");
-            player.reply("/frontier stockpile x y z | bed x y z | ignorebed x y z | status | settlers");
+            player.reply("Look at a chest or barrel and use /frontier stockpile. No coordinates needed.");
+            player.reply("/frontier bed x y z | ignorebed x y z | status | settlers");
             player.reply("/frontier job <id> idle|lumberjack|miner|farmer | work <id> x y z [north|south|east|west]");
             player.reply("Stock food and tools in a single chest/barrel. Lumberjack: mark a small tree's lowest log and supply an axe + sapling. Miner: mark the first feet-height tunnel block, supply a pickaxe. Farmer: mark the centre crop of a planted 9x9 field.");
             player.reply("Food shortages cause weaker loyalty to leave. Loyal settlers can stay until they starve. No progression while their entities are unloaded.");return;
@@ -43,15 +45,25 @@ public final class FrontierMod implements CodaMod {
                 if(sim.camp.settlers.isEmpty())player.reply("No settlers yet. Build beds under roofs near your campfire. The first bed scan can take about one minute.");
                 for(var s:sim.camp.settlers)if(!s.terminal())player.reply(s.id.toString().substring(0,8)+" | "+s.name+" | "+s.fate+" | "+s.job+" | food "+(int)s.hunger+" | loyalty "+(int)s.loyalty+" | "+s.activity);
             }
-            case "stockpile","bed","ignorebed" -> {
+            case "stockpile" -> {
+                CodaBlockPos p;
+                if(args.size()==1){
+                    var target=player.targetBlock().orElseThrow(()->new IllegalArgumentException("Look at a chest or barrel within reach, then use /frontier stockpile"));
+                    if(!target.dimension().equals(player.position().dimension()))throw new IllegalArgumentException("Look at a chest or barrel in this world");
+                    p=target.position();
+                }else if(args.size()==4){p=position(args,1);near(player,p,32);}
+                else throw new IllegalArgumentException("Look at a chest or barrel and use /frontier stockpile");
+                if(!within(p,sim.camp.camp,24))throw new IllegalArgumentException("Choose a stockpile within 24 blocks of the campfire");
+                var block=world.block(p).orElseThrow(()->new IllegalArgumentException("Look at a loaded chest or barrel within reach"));
+                if(!Set.of("minecraft:chest","minecraft:barrel").contains(block.id()))throw new IllegalArgumentException("Look at an ordinary single chest or barrel, then use /frontier stockpile");
+                if(block.id().equals("minecraft:chest")&&!block.properties().getOrDefault("type","single").equals("single"))throw new IllegalArgumentException("Use a single chest or barrel for the stockpile");
+                sim.camp.stockpile=p;sim.save();player.reply("Camp stockpile set. Put food and worker tools in this container.");
+            }
+            case "bed","ignorebed" -> {
                 if(args.size()!=4)throw new IllegalArgumentException("Use /frontier "+op+" x y z");
                 CodaBlockPos p=position(args,1);near(player,p,32);
-                if(!within(p,sim.camp.camp,op.equals("stockpile")?24:32))throw new IllegalArgumentException("Keep camp facilities close to the campfire");
-                if(op.equals("stockpile")){
-                    String id=world.block(p).orElseThrow(()->new IllegalArgumentException("Stockpile must be loaded")).id();
-                    if(!Set.of("minecraft:chest","minecraft:barrel").contains(id))throw new IllegalArgumentException("Use an ordinary single chest or barrel");
-                    sim.camp.stockpile=p;
-                }else if(op.equals("ignorebed")){sim.camp.ignoredBeds.add(p);sim.camp.beds.remove(p);for(var s:sim.camp.settlers)if(p.equals(s.bed))s.bed=null;}
+                if(!within(p,sim.camp.camp,32))throw new IllegalArgumentException("Keep camp facilities close to the campfire");
+                if(op.equals("ignorebed")){sim.camp.ignoredBeds.add(p);sim.camp.beds.remove(p);for(var s:sim.camp.settlers)if(p.equals(s.bed))s.bed=null;}
                 else{
                     if(!FrontierSimulation.shelteredBed(world,p))throw new IllegalArgumentException("Use the HEAD of a bed with headroom and a solid roof 2-6 blocks above it");
                     if(sim.camp.beds.size()>=256)throw new IllegalArgumentException("Too many registered beds");

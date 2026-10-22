@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: HowlingWhispers/HW-CodaLoader
-          ref: e96b38693033440db07c1de570e8a38df2b3a907
+          ref: f508a62b68387e575024e1bc8fa15806ce1734bc
           path: build-loader
       - uses: actions/setup-java@v4
         with:
@@ -43,7 +43,7 @@ jobs:
           cp mods/howl-frontier/dist/howl-frontier-*.jar out/frontier-profile/mods/
           printf 'frontier\n' > out/frontier-profile/config/howl-play-mode.txt
           java -jar build-loader/dist/CodaLoader.jar --loader-only out/frontier-profile > out/frontier-init.log
-          grep -F '[Frontier] 0.1.0-dev.1, mode=Frontier, H.O.W.L. 0.0.43' out/frontier-init.log
+          grep -F '[Frontier] 0.1.0-dev.2, mode=Frontier, H.O.W.L. 0.0.44' out/frontier-init.log
           test -f out/frontier-profile/mods/hw-essentials.jar
           test -f out/frontier-profile/mods/coda-wolf-0.1.0-dev.jar
       - uses: actions/upload-artifact@v4
@@ -68,14 +68,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release view v0.0.43 --repo HowlingWhispers/HW-CodaLoader
+          gh release view v0.0.44 --repo HowlingWhispers/HW-CodaLoader
           mkdir -p runtime-check
-          gh release download v0.0.43 --repo HowlingWhispers/HW-CodaLoader --pattern CodaLoader-v0.0.43-win64.zip --pattern update-manifest.json --dir runtime-check
+          gh release download v0.0.44 --repo HowlingWhispers/HW-CodaLoader --pattern CodaLoader-v0.0.44-win64.zip --pattern update-manifest.json --dir runtime-check
           python3 - <<'PYCODE'
           import hashlib,json,pathlib,zipfile
           root=pathlib.Path('runtime-check')
           m=json.loads((root/'update-manifest.json').read_text())
-          assert m['version']=='0.0.43' and m['bundle']=='CodaLoader-v0.0.43-win64.zip'
+          assert m['version']=='0.0.44' and m['bundle']=='CodaLoader-v0.0.44-win64.zip'
           archive=root/m['bundle']
           assert hashlib.sha256(archive.read_bytes()).hexdigest()==m['sha256']
           with zipfile.ZipFile(archive) as z: jar=z.read('CodaLoader.jar')
@@ -83,10 +83,16 @@ jobs:
           (root/'CodaLoader.jar').write_bytes(jar)
           with zipfile.ZipFile(root/'CodaLoader.jar') as z:
               assert 'dev/howlingwhispers/codaloader/api/CodaLivingWorld.class' in z.namelist()
+              assert 'dev/howlingwhispers/codaloader/api/CodaBlockTarget.class' in z.namelist()
               assert 'dev/howlingwhispers/codaloader/bootstrap/MinecraftLivingWorld.class' in z.namelist()
-              assert json.loads(z.read('codaloader/runtime-version.json'))=={'version':'0.0.43','minecraft':'26.4-snapshot-3'}
+              assert json.loads(z.read('codaloader/runtime-version.json'))=={'version':'0.0.44','minecraft':'26.4-snapshot-3'}
           print('PASS: published runtime archive, inner JAR, compatibility classes and exact version verified')
           PYCODE
+          mkdir -p runtime-check/profile/mods runtime-check/profile/config
+          cp dist/frontier/*.jar runtime-check/profile/mods/
+          printf 'frontier\n' > runtime-check/profile/config/howl-play-mode.txt
+          java -jar runtime-check/CodaLoader.jar --loader-only runtime-check/profile > runtime-check/init.log
+          grep -F '[Frontier] 0.1.0-dev.2, mode=Frontier, H.O.W.L. 0.0.44' runtime-check/init.log
           VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/resources/coda.mod.json"))["version"])')"
           TAG="frontier-v${VERSION}"
           if gh release view "$TAG" >/dev/null 2>&1; then
@@ -95,15 +101,14 @@ jobs:
           fi
           (cd dist/frontier && sha256sum --check howl-frontier-*.sha256)
           cat > frontier-release.md <<'NOTES'
-          First H.O.W.L. Frontier settlement milestone for Minecraft Java 26.4 Snapshot 3.
-          Requires H.O.W.L. 0.0.43+ and CodaLauncher 0.7.32+ on Windows.
-          Select Frontier in the launcher, then use Nightly Play / Install-Repair.
-          Frontier uses its own world/mod/config directory. Classic and Stable are preserved.
-          Place a lit campfire, build roofed beds, designate a stocked chest/barrel and welcome settlers.
-          Includes hunger, loyalty, departures, starvation, native bed sleep and starter lumberjack/miner/farmer jobs.
-          Automated camp/survival/save scenarios and running Mojang native-world checks passed.
-          Rendered integrated-client placement and world save/reload need a Nightly playtest in a new world.
-          No manual mod installation or separate testing ZIP is required or supported.
+          Frontier stockpile selection for Minecraft Java 26.4 Snapshot 3.
+          Look at a single chest or barrel within normal block reach and run /frontier stockpile.
+          Coordinates are no longer required. The advanced coordinate form remains available.
+          Selection stops at walls. A miss or invalid container leaves the current stockpile in place.
+          Requires H.O.W.L. 0.0.44+ and CodaLauncher 0.7.32+ on Windows.
+          Choose Frontier, then Nightly Play / Install-Repair for automatic installation.
+          Native targeting, stockpile persistence and matching published-runtime initialization checks passed.
+          Rendered client use remains a Nightly gameplay acceptance check.
           NOTES
           gh release create "$TAG" dist/frontier/* --draft --prerelease --target "$GITHUB_SHA" --title "H.O.W.L. Frontier ${VERSION}" --notes-file frontier-release.md
           gh release edit "$TAG" --draft=false

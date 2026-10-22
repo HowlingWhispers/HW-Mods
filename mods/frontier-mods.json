@@ -7,8 +7,8 @@
       "modId": "howl_frontier",
       "name": "H.O.W.L. Frontier",
       "channel": "nightly",
-      "minimumLoader": "0.0.43",
-      "requiredLoaderClass": "dev/howlingwhispers/codaloader/api/CodaLivingWorld.class"
+      "minimumLoader": "0.0.44",
+      "requiredLoaderClass": "dev/howlingwhispers/codaloader/api/CodaBlockTarget.class"
     }
   ]
 }
