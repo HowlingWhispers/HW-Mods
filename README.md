@@ -6,7 +6,7 @@ Each mod lives in its own folder under `mods/` with its own version, JAR, tests,
 
 ## Official content policy
 
-There are **no optional first-party player mods**. Every officially released H.O.W.L. gameplay mod must be installed and verified automatically. If a required component is missing or damaged, repair it or report a blocked launch; do not quietly leave the player with an incomplete install.
+There are **no optional first-party player mods**. Every gameplay mod declared by the selected H.O.W.L. play mode must be installed and verified automatically. Classic and Frontier have independent required sets. If a required component is missing or damaged, repair it or report a blocked launch; do not quietly leave the player with an incomplete install.
 
 Unreleased prototypes are **development-only**, not optional player mods. World-generation features must become part of the required content for **new worlds** after live tests; never silently rewrite existing saves.
 
@@ -14,7 +14,7 @@ Unreleased prototypes are **development-only**, not optional player mods. World-
 
 - `mods/howl-frontier/` — Frontier 0.1.0-dev.1, a separate settlement play mode.
   Uses `mods/frontier-mods.json` rather than adding experiments to Classic.
-  Source milestone; not yet in Nightly. See its README for starter workers and limits.
+  Published for CodaLauncher 0.7.32+ through its isolated Frontier Nightly mode. See its README for starter workers and limits.
 
 - `mods/hw-quiet-underground/` — HW Quiet Underground 1.0.0 — **development-only** Snapshot 3 world generation. A guarded pre-generation provisioner exists, but the Minecraft new-world hook remains to be implemented and tested.
 - `mods/hw-essentials/` — HW Essentials 0.2.0 — `/sethome`, `/home`, `/back`, `/homes`, `/delhome`, `/hwessentials`
