@@ -63,6 +63,10 @@ jobs:
         with:
           name: frontier-${{ github.sha }}
           path: dist/frontier
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
       - name: Verify published runtime prerequisite and immutable mod release
         env:
           GH_TOKEN: ${{ github.token }}
