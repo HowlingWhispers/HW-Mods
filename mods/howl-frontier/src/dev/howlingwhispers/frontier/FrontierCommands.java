@@ -2,6 +2,7 @@ package dev.howlingwhispers.frontier;
 
 import dev.howlingwhispers.codaloader.api.*;
 import java.util.*;
+import static dev.howlingwhispers.frontier.Chat.*;
 import static dev.howlingwhispers.frontier.FrontierSimulation.text;
 import static dev.howlingwhispers.frontier.Settler.State.*;
 
@@ -35,17 +36,22 @@ final class FrontierCommands {
     }
 
     private void help(CodaCommandContext player) throws Exception {
-        player.reply("FRONTIER: place and light a campfire to found your settlement. Your land starts at 3x3 chunks around it and grows by one ring for every 5 residents.");
-        player.reply("A pioneer arrives without needing a bed. Later settlers each need a sheltered bed (solid roof 2-6 blocks above) inside your land.");
-        player.reply("/frontier status | settlers [all] | stockpile (look at a chest or barrel) | keepbed (look at your own bed)");
-        player.reply("/frontier name <id> <MinecraftUsername> | retire <id> | reset | camp (look at a lit campfire)");
+        player.reply(heading("Frontier") + label(" - found a settlement and grow it"));
+        player.reply(label("Place and light a ") + value("campfire") + label(". Your land starts at ") + value("3x3 chunks")
+                + label(" and grows one ring for every ") + value("5 residents") + label("."));
+        player.reply(label("A ") + value("pioneer") + label(" needs no bed. Later settlers each need a ") + value("sheltered bed")
+                + label(" (solid roof 2-6 blocks above) inside your land."));
+        player.reply(warn("/frontier status") + label(", ") + warn("settlers [all]") + label(", ") + warn("stockpile") + label(" (look at a chest), ")
+                + warn("keepbed") + label(" (look at your bed)"));
+        player.reply(warn("/frontier name <id> <username>") + label(", ") + warn("retire <id>") + label(", ") + warn("reset") + label(", ")
+                + warn("camp") + label(" (look at a lit campfire)"));
     }
 
     private void camp(CodaCommandContext player, CodaLivingWorld world) throws Exception {
         var target = player.targetBlock().orElseThrow(() -> new IllegalArgumentException("Look at a lit campfire within reach, then use /frontier camp"));
         if (!target.dimension().equals("minecraft:overworld")) throw new IllegalArgumentException("Settlements belong in the Overworld");
         sim.establish(world, target.position(), player.playerId());
-        player.reply("Settlement founded and owned by you.");
+        player.reply(done("Settlement founded and owned by you."));
     }
 
     /** Until CodaLoader reports who placed the campfire, the first player to use a command inside the land claims it. */
@@ -58,7 +64,7 @@ final class FrontierCommands {
             c.owner = null;
             throw failure;
         }
-        player.reply("You now own this settlement.");
+        player.reply(done("You now own this settlement."));
     }
 
     private void requireOwner(CodaCommandContext player, Settlement c) throws Exception {
@@ -68,38 +74,55 @@ final class FrontierCommands {
 
     private void status(CodaCommandContext player, CodaWorldView view, CodaLivingWorld world, Settlement c) throws Exception {
         Territory t = c.territory();
-        String owner = c.owner == null ? "nobody yet" : c.owner.equals(player.playerId()) ? "you" : "another player";
-        player.reply("Settlement at " + text(c.campfire) + ", owned by " + owner + " | land " + t.describe()
-                + " | peak " + c.peakResidents() + " residents, next ring at " + Territory.nextRingAt(c.peakResidents()));
-        player.reply("Settlers " + c.population() + "/" + Settlement.MAX_POPULATION + ": " + c.count(RESIDENT) + " resident, "
-                + (c.count(COMMITTED) + c.count(ARRIVING)) + " arriving, " + c.count(LEAVING) + " leaving"
-                + " | sheltered beds " + c.beds.size() + ", free " + c.freeBeds().size() + (c.keptBeds.isEmpty() ? "" : ", kept for you " + c.keptBeds.size()));
-        player.reply("Arrivals: " + sim.arrivalStatus);
+        String owner = c.owner == null ? warn("nobody yet") : c.owner.equals(player.playerId()) ? value("you") : value("another player");
+        player.reply(heading("Settlement") + label(" at ") + value(text(c.campfire)) + SEP + label("owned by ") + owner);
+        player.reply(field("Land", value(t.describe())) + SEP + label("peak ") + value(c.peakResidents())
+                + label(" residents, next ring at ") + value(Territory.nextRingAt(c.peakResidents())));
+        long leaving = c.count(LEAVING);
+        player.reply(field("Settlers", value(c.population() + "/" + Settlement.MAX_POPULATION)) + label(" - ")
+                + good(c.count(RESIDENT) + " resident") + label(", ") + warn((c.count(COMMITTED) + c.count(ARRIVING)) + " arriving")
+                + label(", ") + (leaving > 0 ? bad(leaving + " leaving") : muted("0 leaving")));
+        int free = c.freeBeds().size();
+        player.reply(field("Beds", value(c.beds.size() + " sheltered")) + label(", ") + (free > 0 ? good(free + " free") : warn("0 free"))
+                + (c.keptBeds.isEmpty() ? "" : label(", ") + value(c.keptBeds.size() + " kept for you")));
+        player.reply(field("Arrivals", arrival(sim.arrivalStatus)));
         String problem = FrontierSimulation.stockpileProblem(world, c);
-        player.reply("Stockpile: " + (problem != null ? problem : text(c.stockpile) + ", " + (sim.hasFood(view, c) ? "has food" : "no food in it")));
+        player.reply(field("Stockpile", problem != null ? bad(problem)
+                : sim.hasFood(view, c) ? good(text(c.stockpile) + ", has food") : warn(text(c.stockpile) + ", no food in it")));
         long past = c.count(DEAD) + c.count(DEPARTED) + c.count(RETIRED);
-        if (past > 0) player.reply("Past settlers: " + c.count(DEAD) + " dead, " + c.count(DEPARTED) + " departed, " + c.count(RETIRED) + " retired. /frontier settlers all lists them");
+        if (past > 0) player.reply(field("Past settlers", value(c.count(DEAD) + " dead, " + c.count(DEPARTED) + " departed, " + c.count(RETIRED) + " retired"))
+                + label(". ") + warn("/frontier settlers all") + label(" lists them"));
         if (sim.lastError != null)
-            player.reply("Problem (last seen about " + Math.max(0, (sim.now - sim.lastErrorTick) / 20) + "s ago): " + sim.lastError
-                    + (sim.errorCount > 1 ? " (" + sim.errorCount + " failures this session)" : "") + ". The rest of the settlement keeps running");
+            player.reply(bad("Problem") + label(" (last seen about " + Math.max(0, (sim.now - sim.lastErrorTick) / 20) + "s ago): ") + bad(sim.lastError)
+                    + label((sim.errorCount > 1 ? " (" + sim.errorCount + " failures this session)" : "") + ". The rest of the settlement keeps running"));
     }
 
     private void settlers(CodaCommandContext player, Settlement c, List<String> args) throws Exception {
         boolean all = args.size() == 2 && args.get(1).equalsIgnoreCase("all");
         if (args.size() > 2 || (args.size() == 2 && !all)) throw new IllegalArgumentException("Use /frontier settlers or /frontier settlers all");
         if (c.settlers.isEmpty()) {
-            player.reply("No settlers yet. " + sim.arrivalStatus);
+            player.reply(label("No settlers yet. ") + arrival(sim.arrivalStatus));
             return;
         }
         for (var s : c.settlers.values()) {
             if (!all && s.terminal()) continue;
-            player.reply(s.shortId() + " | " + s.name + (s.pioneer ? " (pioneer)" : "") + " | " + s.state + " | " + s.profession
-                    + " | food " + (int) s.hunger + " | loyalty " + (int) s.loyalty + " | " + s.activity);
+            player.reply(id(s.shortId()) + SEP + WHITE + BOLD + s.name + RESET + (s.pioneer ? GOLD + " (pioneer)" + RESET : "")
+                    + SEP + state(s.state) + SEP + label(s.profession.name())
+                    + SEP + label("food ") + need(s.hunger) + SEP + label("loyalty ") + need(s.loyalty) + SEP + label(s.activity));
         }
         long past = c.count(DEAD) + c.count(DEPARTED) + c.count(RETIRED);
         if (!all && past > 0)
-            player.reply("Not listed: " + c.count(DEAD) + " dead" + names(c, DEAD) + ", " + c.count(DEPARTED) + " departed" + names(c, DEPARTED)
-                    + ", " + c.count(RETIRED) + " retired" + names(c, RETIRED) + ". Use /frontier settlers all");
+            player.reply(label("Not listed: " + c.count(DEAD) + " dead" + names(c, DEAD) + ", " + c.count(DEPARTED) + " departed" + names(c, DEPARTED)
+                    + ", " + c.count(RETIRED) + " retired" + names(c, RETIRED) + ". Use ") + warn("/frontier settlers all"));
+    }
+
+    private static String state(Settler.State state) {
+        return switch (state) {
+            case RESIDENT -> good(state);
+            case COMMITTED, ARRIVING -> warn(state);
+            case LEAVING, DEAD -> bad(state);
+            case DEPARTED, RETIRED -> muted(state);
+        };
     }
 
     private void stockpile(CodaCommandContext player, CodaLivingWorld world, Settlement c) throws Exception {
@@ -118,7 +141,7 @@ final class FrontierCommands {
             c.stockpile = before;
             throw failure;
         }
-        player.reply("Stockpile set. Put food and worker tools in it.");
+        player.reply(done("Stockpile set. Put food and worker tools in it."));
     }
 
     private void keepBed(CodaCommandContext player, CodaLivingWorld world, Settlement c) throws Exception {
@@ -128,14 +151,14 @@ final class FrontierCommands {
         if (!c.territory().contains(head)) throw new IllegalArgumentException("That bed is outside your land, so settlers will not use it anyway");
         if (c.keptBeds.remove(head)) {
             sim.save();
-            player.reply("Settlers may use the bed at " + text(head) + " again.");
+            player.reply(done("Settlers may use the bed at " + text(head) + " again."));
             return;
         }
         c.keptBeds.add(head);
         c.beds.remove(head);
         for (var s : c.settlers.values()) if (head.equals(s.bed)) s.bed = null; // they find another bed
         sim.save();
-        player.reply("The bed at " + text(head) + " is kept for you. Use /frontier keepbed on it again to share it.");
+        player.reply(done("The bed at " + text(head) + " is kept for you. Use /frontier keepbed on it again to share it."));
     }
 
     private void name(CodaCommandContext player, CodaLivingWorld world, Settlement c, List<String> args) throws Exception {
@@ -156,7 +179,7 @@ final class FrontierCommands {
             try { world.rename(s.id, before); } catch (Exception undo) { failure.addSuppressed(undo); }
             throw failure;
         }
-        player.reply("Renamed to " + next + ". Their skin follows that Minecraft account; unknown accounts use the default skin.");
+        player.reply(done("Renamed to " + next + ". Their skin follows that Minecraft account; unknown accounts use the default skin."));
     }
 
     /** For settlers who are gone. Refused while they are alive and loaded, so it can never erase a living settler. */
@@ -180,7 +203,7 @@ final class FrontierCommands {
             sim.state.dismissed.remove(s.id);
             throw failure;
         }
-        player.reply(s.name + " is retired. Their bed is free, and if they ever turn up again they will be removed rather than duplicated.");
+        player.reply(done(s.name + " is retired. Their bed is free, and if they ever turn up again they will be removed rather than duplicated."));
     }
 
     private void reset(CodaCommandContext player, Settlement c, List<String> args) throws Exception {
@@ -190,8 +213,8 @@ final class FrontierCommands {
         if (!confirm) {
             resetRequestedBy = player.playerId();
             resetRequestedAt = sim.now;
-            player.reply("This forgets the settlement and dismisses all " + c.population() + " settlers. Settlers leave with what they carry."
-                    + " Your buildings, chests and inventory are not touched. Type /frontier reset confirm within 30 seconds.");
+            player.reply(warn("This forgets the settlement and dismisses all " + c.population() + " settlers. Settlers leave with what they carry.")
+                    + label(" Your buildings, chests and inventory are not touched. Type ") + warn("/frontier reset confirm") + label(" within 30 seconds."));
             return;
         }
         if (!player.playerId().equals(resetRequestedBy) || sim.now - resetRequestedAt > RESET_WINDOW_TICKS)
@@ -208,7 +231,7 @@ final class FrontierCommands {
             throw failure;
         }
         sim.arrivalStatus = "No settlement yet: place and light a campfire";
-        player.reply("Settlement reset. Place and light a campfire, or look at a lit one and use /frontier camp, to start again.");
+        player.reply(done("Settlement reset. Place and light a campfire, or look at a lit one and use /frontier camp, to start again."));
     }
 
     // ---- helpers ----------------------------------------------------------------------------

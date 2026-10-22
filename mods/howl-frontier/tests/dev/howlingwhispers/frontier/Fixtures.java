@@ -112,7 +112,12 @@ final class Fixtures {
         public boolean equip(UUID id, CodaBlockPos p, Set<String> tools) { return true; }
         public boolean harvest(UUID id, CodaBlockPos p, String expected, CodaBlockPos supplies, Set<String> tools) { return false; }
         public boolean plant(UUID id, CodaBlockPos p, String item, CodaBlockPos supplies) { return false; }
-        public void announce(String text) { announcements.add(text); }
+        final List<String> rawAnnouncements = new ArrayList<>();
+        public void announce(String text) {
+            check(Chat.wellFormed(text), "Announcement has broken formatting: " + text);
+            rawAnnouncements.add(text);
+            announcements.add(Chat.plain(text));
+        }
         @Override public boolean rename(UUID id, String name) {
             if (!actors.containsKey(id)) return false;
             names.put(id, name);
@@ -138,7 +143,9 @@ final class Fixtures {
 
     static final class Player implements CodaCommandContext {
         final View view;
+        /** Replies as the player reads them (formatting removed); {@link #raw} keeps the codes. */
         final List<String> replies = new ArrayList<>();
+        final List<String> raw = new ArrayList<>();
         UUID id = new UUID(0, 1);
         CodaPosition position = new CodaPosition("minecraft:overworld", 2.5, 64, 2.5, 0, 0);
         Optional<CodaBlockTarget> target = Optional.empty();
@@ -148,7 +155,11 @@ final class Fixtures {
         public Path worldDirectory() { return view.root; }
         public CodaPosition position() { return position; }
         @Override public Optional<CodaBlockTarget> targetBlock() { return target; }
-        public void reply(String s) { replies.add(s); }
+        public void reply(String s) {
+            check(Chat.wellFormed(s), "Reply has broken formatting: " + s);
+            raw.add(s);
+            replies.add(Chat.plain(s));
+        }
         public void teleport(CodaPosition p) { throw new AssertionError("Frontier never teleports players"); }
         void look(CodaBlockPos p) { target = Optional.of(new CodaBlockTarget("minecraft:overworld", p)); }
         String last() { return replies.isEmpty() ? "" : replies.getLast(); }

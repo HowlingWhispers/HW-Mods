@@ -23,7 +23,7 @@ public final class FrontierMod implements CodaMod {
                 && Files.readString(marker).trim().equals("frontier");
         context.registerCommand("frontier", "Frontier settlement, settlers and land", (player, args) -> {
             if (!enabled) {
-                player.reply("Choose Frontier in CodaLauncher Nightly before starting this world.");
+                player.reply(Chat.refused("Choose Frontier in CodaLauncher Nightly before starting this world."));
                 return;
             }
             player.withWorld(view -> {
@@ -36,7 +36,7 @@ public final class FrontierMod implements CodaMod {
                             .orElseThrow(() -> new IllegalStateException("H.O.W.L. 0.0.45 single-player living-world support is required"));
                     commands.run(player, view, world, args);
                 } catch (IllegalArgumentException refused) {
-                    player.reply("Frontier: " + refused.getMessage());
+                    player.reply(Chat.refused(refused.getMessage()));
                 }
             });
         });

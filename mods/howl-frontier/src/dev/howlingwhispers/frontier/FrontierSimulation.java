@@ -195,7 +195,7 @@ final class FrontierSimulation {
             state.settlements.remove(c);
             throw failure;
         }
-        world.announce("Settlement founded. Your land is " + c.territory().describe() + " around this campfire. A pioneer will arrive soon. /frontier help");
+        world.announce(Chat.good("Settlement founded.") + Chat.label(" Your land is ") + Chat.value(c.territory().describe()) + Chat.label(" around this campfire. A pioneer will arrive soon. ") + Chat.warn("/frontier help"));
         return c;
     }
 
@@ -385,7 +385,7 @@ final class FrontierSimulation {
             s.moveTo(ARRIVING);
             s.activity = s.pioneer ? "Walking to the campfire" : "Walking into the camp";
             save();
-            world.announce(s.pioneer ? "A pioneer, " + s.name + ", is approaching your campfire." : s.name + " is approaching your settlement.");
+            world.announce(Chat.good(s.pioneer ? "A pioneer, " + s.name + ", is approaching your campfire." : s.name + " is approaching your settlement."));
             return;
         }
         // Refused (something in the way, or the spot changed): never retry the same spot forever.
@@ -423,7 +423,7 @@ final class FrontierSimulation {
             s.moveTo(DEAD);
             s.activity = "Dead";
             save();
-            world.announce(s.name + " has died.");
+            world.announce(Chat.bad(s.name + " has died."));
             return;
         }
         if (s.state == ARRIVING) {
@@ -433,7 +433,7 @@ final class FrontierSimulation {
                 s.activity = "Settling in";
                 noteResidents(world, c);
                 save();
-                world.announce(s.name + " has joined your settlement.");
+                world.announce(Chat.good(s.name + " has joined your settlement."));
             } else if (!(s.bed != null ? navigate(world, s, s.bed, .65) : moveNear(world, s, c.campfire))) {
                 s.activity = "Arrival path blocked: clear a route to the " + (s.bed != null ? "bed at " + text(s.bed) : "campfire");
             }
@@ -444,7 +444,7 @@ final class FrontierSimulation {
             s.hungerTicks -= Settler.HUNGER_STEP_TICKS;
             if (s.hungerStep()) {
                 save();
-                world.announce(s.name + " is leaving because there is not enough food.");
+                world.announce(Chat.warn(s.name + " is leaving because there is not enough food."));
             }
         }
         if (s.hunger == 0) {
@@ -458,7 +458,7 @@ final class FrontierSimulation {
                 s.activity = "Left the settlement";
                 save();
                 world.discard(s.id); // departing settlers take what they carry
-                world.announce(s.name + " has left the settlement.");
+                world.announce(Chat.warn(s.name + " has left the settlement."));
             } else if (!navigate(world, s, s.arrivalPoint, .7)) {
                 s.activity = "Leaving, but the way out is blocked";
             }
@@ -518,7 +518,7 @@ final class FrontierSimulation {
 
     private void noteResidents(CodaLivingWorld world, Settlement c) throws Exception {
         if (c.recordResidents())
-            world.announce("Your settlement reached " + c.peakResidents() + " residents. Your land grew to " + c.territory().describe() + ".");
+            world.announce(Chat.heading("Your land grew!") + Chat.label(" " + c.peakResidents() + " residents unlocked ") + Chat.good(c.territory().describe()) + Chat.label("."));
     }
 
     // ---- Movement -------------------------------------------------------------------------
