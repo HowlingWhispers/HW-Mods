@@ -32,7 +32,23 @@ changing/removing gameplay mods. Settlement writes also retain the previous
 4. The first free bed attracts a traveller after about one minute of loaded camp
    time. Further travellers arrive at five-minute intervals. No food gate prevents
    arrival: beds determine capacity, while food determines whether residents stay.
-5. `/frontier settlers` lists IDs, jobs, hunger, loyalty and current activity.
+5. `/frontier settlers` lists IDs, jobs, hunger, loyalty and current activity, and
+   summarises dead and departed settlers by name. `/frontier settlers all` lists
+   every record.
+6. `/frontier status` explains why the next traveller has not arrived (no
+   sheltered bed, all beds claimed, campfire gone or unlit, camp full, no safe
+   arrival point, unloaded camp), whether the stockpile is usable and has food,
+   and the most recent problem, if any.
+
+## When something goes wrong
+
+A failure in one settler, bed or job is contained: the rest of the camp keeps
+running, the settler shows "Update failed", and `/frontier status` reports what
+failed and how long ago. If this world's `howl_frontier/settlement.properties`
+cannot be read, Frontier pauses the camp and **never replaces or overwrites that
+file**, not even when a new campfire is placed. Close the world, fix or restore
+the file (the previous version is kept as `settlement.previous.properties`), then
+reopen it.
 
 Starter camp capacity is 24. Existing claims remain allocated while a settler is
 unloaded. Missing entity lookups are never treated as death or permission to spawn

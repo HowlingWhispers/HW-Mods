@@ -15,6 +15,8 @@ public final class FrontierTest {
         public boolean rename(UUID id,String name){if(!renameAllowed)return false;names.put(id,name);return true;}
         public boolean recover(UUID id,String name,CodaBlockPos p){if(!recoveryAllowed)return false;recovered=id;return true;}
         int spawned,damage,food=2,delivered,harvests;boolean loaded=true,spawnAllowed=true,path=true,tool=true;long clock=6000;
+        /** Diagnostics fixtures: an entity lookup that always fails, and ground that is flooded. */
+        UUID broken;java.util.function.Predicate<CodaBlockPos> flooded=p->false;
         World(){
             blocks.put(CAMP,b("minecraft:campfire",Map.of("lit","true"),false));
             blocks.put(BED,b("minecraft:red_bed",Map.of("part","head","occupied","false"),false));
@@ -25,9 +27,10 @@ public final class FrontierTest {
         public long clock(){return clock;}
         public Optional<Block> block(CodaBlockPos p){
             if(!loaded)return Optional.empty();
+            if(flooded.test(p))return Optional.of(new Block("minecraft:water",Map.of(),false,true));
             return Optional.of(blocks.getOrDefault(p,b(p.y()==63?"minecraft:grass_block":"minecraft:air",Map.of(),p.y()==63)));
         }
-        public Optional<Actor> actor(UUID id){return loaded?Optional.ofNullable(actors.get(id)):Optional.empty();}
+        public Optional<Actor> actor(UUID id){if(id.equals(broken))throw new IllegalStateException("simulated broken entity");return loaded?Optional.ofNullable(actors.get(id)):Optional.empty();}
         public boolean spawn(UUID id,String name,CodaBlockPos p){if(!spawnAllowed||actors.containsKey(id))return false;spawned++;actors.put(id,new Actor(id,p.x()+.5,p.y(),p.z()+.5,20,false));return true;}
         public boolean walk(UUID id,CodaBlockPos p,double speed){if(!path)return false;Actor a=actors.get(id);actors.put(id,new Actor(id,p.x()+.5,p.y(),p.z()+.5,a.health(),false));return true;}
         public boolean sleep(UUID id,CodaBlockPos p){Actor a=actors.get(id);actors.put(id,new Actor(id,a.x(),a.y(),a.z(),a.health(),true));return true;}

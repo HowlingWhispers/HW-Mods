@@ -20,20 +20,23 @@ public final class FrontierMod implements CodaMod {
             if(!enabled){player.reply("Choose Frontier in CodaLauncher Nightly before starting this world.");return;}
             player.withWorld(view->{
                 sim.open(view,null);
-                if(!player.position().dimension().equals("minecraft:overworld"))throw new IllegalArgumentException("Frontier camps currently belong in the Overworld");
-                var world=view.living("minecraft:overworld").orElseThrow(()->new IllegalStateException("H.O.W.L. 0.0.45 single-player living-world API is required"));
-                try{command(player,world,args);}catch(IllegalArgumentException e){player.reply("Frontier: "+e.getMessage());}
+                try{
+                    sim.requireReadable();
+                    if(!player.position().dimension().equals("minecraft:overworld"))throw new IllegalArgumentException("Frontier camps currently belong in the Overworld");
+                    var world=view.living("minecraft:overworld").orElseThrow(()->new IllegalStateException("H.O.W.L. 0.0.45 single-player living-world API is required"));
+                    command(player,view,world,args);
+                }catch(IllegalArgumentException e){player.reply("Frontier: "+e.getMessage());}
             });
         });
         if(enabled){context.registerServerTick("frontier",sim::tick);context.registerBlockPlacement(sim::placed);}
         System.out.println("[Frontier] 0.1.2, mode="+(enabled?"Frontier":"inactive")+", H.O.W.L. "+context.loaderVersion());
     }
-    private void command(CodaCommandContext player,CodaLivingWorld world,List<String> args)throws Exception{
+    private void command(CodaCommandContext player,CodaWorldView view,CodaLivingWorld world,List<String> args)throws Exception{
         String op=args.isEmpty()?"help":args.getFirst();
         if(op.equals("help")){
             player.reply("FRONTIER: place a lit campfire to establish camp. Build sheltered beds within 16 blocks. Travellers arrive gradually when beds are free.");
             player.reply("Look at a chest or barrel and use /frontier stockpile. No coordinates needed.");
-            player.reply("/frontier bed x y z | ignorebed x y z | status | settlers");
+            player.reply("/frontier bed x y z | ignorebed x y z | status | settlers [all]");
             player.reply("/frontier name <id> <MinecraftUsername> | recover <id> (stand near an old zombified settler)");
             player.reply("/frontier job <id> idle|lumberjack|miner|farmer | work <id> x y z [north|south|east|west]");
             player.reply("Stock food and tools in a single chest/barrel. Lumberjack: mark a small tree's lowest log and supply an axe + sapling. Miner: mark the first feet-height tunnel block, supply a pickaxe. Farmer: mark the centre crop of a planted 9x9 field.");
@@ -43,10 +46,24 @@ public final class FrontierMod implements CodaMod {
         if(sim.camp.camp==null)throw new IllegalArgumentException("Place a lit campfire, or use /frontier camp x y z at an existing one");
         near(player,sim.camp.camp,64);
         switch(op){
-            case "status" -> player.reply("Camp "+sim.camp.camp+" | settlers "+sim.camp.population()+"/"+CAPACITY+" | known sheltered beds "+sim.camp.beds.size()+" | free claims "+sim.camp.freeBeds().size()+" | stockpile "+sim.camp.stockpile+" | next arrival needs "+(sim.camp.arrival/20)+"s of loaded camp time and a free bed.");
+            case "status" -> {
+                var c=sim.camp;
+                player.reply("Camp "+FrontierSimulation.text(c.camp)+" | settlers "+c.population()+"/"+CAPACITY
+                        +" ("+count(Fate.RESIDENT)+" resident, "+(count(Fate.PENDING)+count(Fate.ARRIVING))+" arriving, "+count(Fate.LEAVING)+" leaving)"
+                        +" | sheltered beds "+c.beds.size()+", free "+c.freeBeds().size());
+                player.reply("Arrivals: "+sim.arrivalStatus);
+                String stock=FrontierSimulation.stockpileProblem(world,c.stockpile);
+                player.reply("Stockpile: "+(stock!=null?stock:FrontierSimulation.text(c.stockpile)+", "+(sim.hasFood(view)?"has food":"no food in it")));
+                if(count(Fate.DEAD)+count(Fate.LEFT)>0)player.reply("Past settlers: "+count(Fate.DEAD)+" dead, "+count(Fate.LEFT)+" departed. /frontier settlers all lists them");
+                if(sim.lastError!=null)player.reply("Problem (last seen about "+Math.max(0,(sim.now-sim.lastErrorTick)/20)+"s ago): "+sim.lastError+(sim.errorCount>1?" ("+sim.errorCount+" failures this session)":"")+". The rest of the camp keeps running");
+            }
             case "settlers" -> {
+                boolean all=args.size()==2&&args.get(1).equals("all");
+                if(args.size()>2||(args.size()==2&&!all))throw new IllegalArgumentException("Use /frontier settlers or /frontier settlers all");
                 if(sim.camp.settlers.isEmpty())player.reply("No settlers yet. Build beds under roofs near your campfire. The first bed scan can take about one minute.");
-                for(var s:sim.camp.settlers)if(!s.terminal())player.reply(s.id.toString().substring(0,8)+" | "+s.name+" | "+s.fate+" | "+s.job+" | food "+(int)s.hunger+" | loyalty "+(int)s.loyalty+" | "+s.activity);
+                for(var s:sim.camp.settlers)if(all||!s.terminal())player.reply(s.id.toString().substring(0,8)+" | "+s.name+" | "+s.fate+" | "+s.job+" | food "+(int)s.hunger+" | loyalty "+(int)s.loyalty+" | "+s.activity);
+                long dead=count(Fate.DEAD),left=count(Fate.LEFT);
+                if(!all&&dead+left>0)player.reply("Not listed: "+dead+" dead"+names(Fate.DEAD)+", "+left+" departed"+names(Fate.LEFT)+". Use /frontier settlers all");
             }
             case "stockpile" -> {
                 CodaBlockPos p;
@@ -117,6 +134,13 @@ public final class FrontierMod implements CodaMod {
             }
             default -> throw new IllegalArgumentException("Use /frontier help");
         }
+    }
+    private long count(Fate fate){return sim.camp.settlers.stream().filter(s->s.fate==fate).count();}
+    /** " (A, B)" with at most eight names, so a long-lived camp does not flood chat; empty when none. */
+    private String names(Fate fate){
+        var all=sim.camp.settlers.stream().filter(s->s.fate==fate).map(s->s.name).toList();
+        if(all.isEmpty())return "";
+        return " ("+String.join(", ",all.subList(0,Math.min(8,all.size())))+(all.size()>8?" and "+(all.size()-8)+" more":"")+")";
     }
     private static CodaBlockPos position(List<String>a,int i){return new CodaBlockPos(Integer.parseInt(a.get(i)),Integer.parseInt(a.get(i+1)),Integer.parseInt(a.get(i+2)));}
     private static void near(CodaCommandContext player,CodaBlockPos p,int radius)throws Exception{
