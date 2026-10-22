@@ -23,7 +23,7 @@ public final class FrontierCommandTest {
         Files.createDirectories(profile.resolve("config"));Files.writeString(profile.resolve("config/howl-play-mode.txt"),"frontier\n");
         Files.createDirectories(profile.resolve("save"));
         var world=new World();var view=new View(profile.resolve("save"),world);var player=new Player(view);
-        new FrontierMod().onInitialize(new CodaContext("0.0.44","26.4-snapshot-3",profile,profile.resolve("config"),"howl_frontier",List.of("howl_frontier")));
+        new FrontierMod().onInitialize(new CodaContext("0.0.45","26.4-snapshot-3",profile,profile.resolve("config"),"howl_frontier",List.of("howl_frontier")));
         var command=CodaCommands.registrations().stream().filter(r->r.name().equals("frontier")).findFirst().orElseThrow().command();
         command.execute(player,List.of("camp","0","64","0"));
         player.target=Optional.of(new CodaBlockTarget("minecraft:overworld",STOCK));
@@ -54,6 +54,24 @@ public final class FrontierCommandTest {
         command.execute(player,List.of("stockpile","1","64","2"));
         check(new SettlementStore(view.root).load().stockpile.equals(STOCK),"Advanced coordinate command remains compatible");
         command.execute(player,List.of("stockpile","1"));check(player.replies.getLast().contains("Look at"),"Incomplete coordinates teach default command");
-        System.out.println("PASS: "+checks+" Frontier stockpile command checks");
+        var saved=new SettlementStore(view.root).load();var resident=new Settlement.Settler(UUID.randomUUID(),"Asta");
+        resident.fate=Settlement.Fate.RESIDENT;resident.hunger=62;resident.loyalty=74;resident.job=Settlement.Job.MINER;resident.bed=BED;resident.spawn=CAMP;
+        saved.settlers.add(resident);new SettlementStore(view.root).save(saved);
+        // A new authoritative world session reads the actual persisted camp before the command.
+        CodaServerTicks.dispatch(new CodaServerTickContext("renaming-test",20,Optional.of(view)));
+        String prefix=resident.id.toString().substring(0,8);
+        command.execute(player,List.of("name",prefix,"jeb_"));
+        var renamed=new SettlementStore(view.root).load().settlers.getFirst();
+        check(renamed.name.equals("jeb_")&&world.names.get(resident.id).equals("jeb_"),"Name command updates actor skin account and saved display name");
+        check(renamed.hunger==62&&renamed.loyalty==74&&renamed.job==Settlement.Job.MINER&&renamed.bed.equals(BED),"Rename preserves hunger, loyalty, job and bed");
+        command.execute(player,List.of("name",prefix,"bad-name"));check(player.replies.getLast().contains("Minecraft username"),"Invalid username refused");
+        check(new SettlementStore(view.root).load().settlers.getFirst().name.equals("jeb_"),"Invalid name preserves saved state");
+        world.renameAllowed=false;command.execute(player,List.of("name",prefix,"Alex"));
+        check(player.replies.getLast().contains("alive and loaded")&&new SettlementStore(view.root).load().settlers.getFirst().name.equals("jeb_"),"Unavailable actor cannot be renamed");
+        world.recoveryAllowed=true;command.execute(player,List.of("recover",prefix));
+        check(world.recovered.equals(resident.id)&&player.replies.getLast().contains("recovered as a player-shaped"),"Recovery uses the saved UUID and name");
+        world.recoveryAllowed=false;command.execute(player,List.of("recover",prefix));
+        check(player.replies.getLast().contains("within 8 blocks"),"Refused recovery gives nearby-target help");
+        System.out.println("PASS: "+checks+" Frontier stockpile, naming and recovery command checks");
     }
 }

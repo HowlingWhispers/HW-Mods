@@ -31,7 +31,7 @@ final class FrontierSimulation {
         var block=world.block(p).orElseThrow(()->new IllegalArgumentException("Campfire must be loaded"));
         if(!block.id().equals("minecraft:campfire")||!"true".equals(block.properties().get("lit")))throw new IllegalArgumentException("Place and light an ordinary campfire first");
         camp.camp=p;camp.arrival=1200;save();
-        world.announce("Camp established. Build sheltered beds nearby, then designate a chest with /frontier stockpile x y z. /frontier help");
+        world.announce("Camp established. Build sheltered beds nearby, then look at a chest and use /frontier stockpile. /frontier help");
     }
     void tick(CodaServerTickContext tick)throws Exception{
         if(tick.tick()%20!=0||tick.world().isEmpty())return;
@@ -106,7 +106,7 @@ final class FrontierSimulation {
         }
         if(spawn==null)return;
         UUID id=UUID.randomUUID();String[] names={"Asta","Bryn","Edda","Finn","Ivar","Liv","Mika","Nils","Runa","Siv","Tora","Vidar"};
-        var s=new Settler(id,names[camp.settlers.size()%names.length]+" "+id.toString().substring(0,4));
+        var s=new Settler(id,names[camp.settlers.size()%names.length]);
         s.bed=bed;s.spawn=spawn;s.loyalty=35+Math.floorMod(id.hashCode(),41);
         camp.settlers.add(s);camp.arrival=ARRIVAL_INTERVAL;
         save(); // reserve bed and immutable identity BEFORE touching the native entity registry

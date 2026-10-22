@@ -15,7 +15,7 @@ final class Settlement {
     final Set<CodaBlockPos> beds=new LinkedHashSet<>(), ignoredBeds=new HashSet<>();
     final List<Settler> settlers=new ArrayList<>();
     static final class Settler {
-        final UUID id; final String name;
+        final UUID id; String name;
         CodaBlockPos bed, spawn, work;
         Job job=Job.IDLE; Fate fate=Fate.PENDING;
         double hunger=80, loyalty=55;

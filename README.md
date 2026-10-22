@@ -12,9 +12,9 @@ Unreleased prototypes are **development-only**, not optional player mods. World-
 
 ## Mods
 
-- `mods/howl-frontier/` — Frontier 0.1.1, a separate settlement play mode.
+- `mods/howl-frontier/` — Frontier 0.1.2, a separate settlement play mode.
   Uses `mods/frontier-mods.json` rather than adding experiments to Classic.
-  Published for CodaLauncher 0.7.32+ through its isolated Frontier Nightly mode. Look at a single chest or barrel and use `/frontier stockpile`, without coordinates. See its README for starter workers and limits.
+  Published for CodaLauncher 0.7.32+ through its isolated Frontier Nightly mode. Includes player-shaped settlers and Minecraft username skins with `/frontier name <id> <username>`. Look at a single chest or barrel and use `/frontier stockpile`, without coordinates. See its README for starter workers and limits.
 
 - `mods/hw-quiet-underground/` — HW Quiet Underground 1.0.0 — **development-only** Snapshot 3 world generation. A guarded pre-generation provisioner exists, but the Minecraft new-world hook remains to be implemented and tested.
 - `mods/hw-essentials/` — HW Essentials 0.2.0 — `/sethome`, `/home`, `/back`, `/homes`, `/delhome`, `/hwessentials`

@@ -11,6 +11,9 @@ public final class FrontierTest {
     static final CodaBlockPos CAMP=new CodaBlockPos(0,64,0), BED=new CodaBlockPos(3,64,0), STOCK=new CodaBlockPos(1,64,2);
     static final class World implements CodaLivingWorld {
         final Map<CodaBlockPos,Block> blocks=new HashMap<>();final Map<UUID,Actor> actors=new HashMap<>();
+        final Map<UUID,String> names=new HashMap<>();boolean renameAllowed=true,recoveryAllowed;UUID recovered;
+        public boolean rename(UUID id,String name){if(!renameAllowed)return false;names.put(id,name);return true;}
+        public boolean recover(UUID id,String name,CodaBlockPos p){if(!recoveryAllowed)return false;recovered=id;return true;}
         int spawned,damage,food=2,delivered,harvests;boolean loaded=true,spawnAllowed=true,path=true,tool=true;long clock=6000;
         World(){
             blocks.put(CAMP,b("minecraft:campfire",Map.of("lit","true"),false));
