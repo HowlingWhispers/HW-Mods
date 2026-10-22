@@ -1,7 +1,7 @@
 # H.O.W.L. Frontier 0.1.0-dev.1
 
 A new settlement play mode for Minecraft Java 26.4 Snapshot 3 and H.O.W.L. 0.0.43+.
-**Not yet in Nightly.** This first milestone implements the camp and starter workers;
+**Published for CodaLauncher 0.7.32+ on Windows Nightly.** This first milestone implements the camp and starter workers;
 it does not yet implement the wider Deepworld, industry or ecology expansions.
 
 ## Delivery and world isolation
@@ -25,7 +25,7 @@ changing/removing gameplay mods. Settlement writes also retain the previous
    existing campfire, stand nearby and use `/frontier camp x y z`.
 2. Build cabins and beds within 16 blocks horizontally and 6 vertically. Only bed
    heads with headroom and a solid roof 2-6 blocks overhead are counted. Bed scans
-   are incremental and may take about a minute. Clear a walking route to each bed.
+   are incremental and may take about a minute. Clear a walking route to each bed. Leave cabin doors open for this initial prototype; automatic door interactions still need client validation.
 3. Mark a **single chest or barrel**: `/frontier stockpile x y z`. Stock it with
    bread, cooked food, carrots, beetroot or apples. Poisonous/raw food is excluded.
 4. The first free bed attracts a traveller after about one minute of loaded camp
