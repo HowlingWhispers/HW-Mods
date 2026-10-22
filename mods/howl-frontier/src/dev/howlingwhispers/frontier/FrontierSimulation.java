@@ -29,6 +29,8 @@ final class FrontierSimulation {
     String arrivalStatus = "Waiting for the first camp update";
     boolean foodAvailable;
     private int scanCursor;
+    /** Spots where the loader refused a spawn this session; never offered again until the world reopens. */
+    private final Set<CodaBlockPos> refusedArrivals = new HashSet<>();
     private final ArrayDeque<CodaBlockPlacements.Placement> placements = new ArrayDeque<>();
     private final Set<String> logged = new HashSet<>();
 
@@ -51,6 +53,7 @@ final class FrontierSimulation {
             lastError = null;
             errorCount = 0;
             scanCursor = 0;
+            refusedArrivals.clear();
             logged.clear();
             try {
                 var opened = new FrontierStore(next);
@@ -192,7 +195,7 @@ final class FrontierSimulation {
             state.settlements.remove(c);
             throw failure;
         }
-        world.announce("Settlement founded. Your land is " + c.territory().describe() + " around this campfire. A pioneer will arrive soon. /frontier help");
+        world.announce(Chat.good("Settlement founded.") + Chat.label(" Your land is ") + Chat.value(c.territory().describe()) + Chat.label(" around this campfire. A pioneer will arrive soon. ") + Chat.warn("/frontier help"));
         return c;
     }
 
@@ -268,6 +271,12 @@ final class FrontierSimulation {
             arrivalStatus = "Stopped: this settlement has reached " + Settlement.MAX_RECORDS + " settler records";
             return;
         }
+        // One arrival at a time: a settler who has not appeared yet is reported, not overtaken.
+        for (var s : c.settlers.values())
+            if (s.state == COMMITTED) {
+                arrivalStatus = (s.pioneer ? "Pioneer " : "") + s.name + " is on the way. " + s.activity;
+                return;
+            }
         // The first arrival, and anyone arriving at an empty camp, is a pioneer who needs no bed.
         // Losing every settler therefore never leaves a settlement unable to recruit again.
         if (!c.pioneerCommitted || c.population() == 0) {
@@ -321,33 +330,75 @@ final class FrontierSimulation {
             c.pioneerCommitted = pioneerBefore;
             throw failure;
         }
-        trySpawn(world, s);
-        return null;
+        trySpawn(world, c, s);
+        return s.state == COMMITTED ? s.activity : null;
     }
 
-    /** Arrival points sit just inside the territory edge, on a side that rotates with time. */
-    private CodaBlockPos arrivalPoint(CodaLivingWorld world, Settlement c) throws Exception {
+    /**
+     * Arrival points sit just inside the territory edge. Several columns along every side
+     * are tried, each searched up and down for ground, so hills, trees and water rarely
+     * block arrivals. Only spots the loader will accept for spawning are returned.
+     */
+    CodaBlockPos arrivalPoint(CodaLivingWorld world, Settlement c) throws Exception {
         Territory t = c.territory();
         int turn = (int) ((c.elapsed / 20) % 4);
+        int[] along = {0, 4, -4, 8, -8, 12, -12};
         for (int i = 0; i < 4; i++) {
             int side = (turn + i) % 4;
-            int x = side == 0 ? t.maxBlockX() - 3 : side == 1 ? t.minBlockX() + 3 : c.campfire.x();
-            int z = side == 2 ? t.maxBlockZ() - 3 : side == 3 ? t.minBlockZ() + 3 : c.campfire.z();
-            var p = standing(world, new CodaBlockPos(x, c.campfire.y(), z), 2);
-            if (p != null && t.contains(p)) return p;
+            for (int offset : along) {
+                int x = side == 0 ? t.maxBlockX() - 3 : side == 1 ? t.minBlockX() + 3 : clamp(c.campfire.x() + offset, t.minBlockX() + 3, t.maxBlockX() - 3);
+                int z = side == 2 ? t.maxBlockZ() - 3 : side == 3 ? t.minBlockZ() + 3 : clamp(c.campfire.z() + offset, t.minBlockZ() + 3, t.maxBlockZ() - 3);
+                var p = groundIn(world, x, z, c.campfire.y());
+                if (p != null && t.contains(p) && !refusedArrivals.contains(p)) return p;
+            }
         }
         return null;
     }
 
-    private void trySpawn(CodaLivingWorld world, Settler s) throws Exception {
+    /** The highest spawnable spot in a column within 8 blocks of {@code nearY}, or null. Never loads chunks. */
+    static CodaBlockPos groundIn(CodaLivingWorld world, int x, int z, int nearY) throws Exception {
+        for (int y = nearY + 8; y >= nearY - 8; y--) {
+            var p = new CodaBlockPos(x, y, z);
+            if (spawnable(world, p)) return p;
+        }
+        return null;
+    }
+
+    /**
+     * Exactly the loader's spawn rule: air at the feet and head, solid dry ground below
+     * that is not a campfire, magma or cactus. Walking targets ({@link #standing}) may be
+     * looser, because settlers can walk through grass; spawning cannot.
+     */
+    static boolean spawnable(CodaLivingWorld world, CodaBlockPos p) throws Exception {
+        var feet = world.block(p);
+        var head = world.block(add(p, 0, 1, 0));
+        var floor = world.block(add(p, 0, -1, 0));
+        return feet.isPresent() && head.isPresent() && floor.isPresent() && feet.get().air() && head.get().air()
+                && floor.get().solid() && !floor.get().fluid()
+                && !Set.of("minecraft:magma_block", "minecraft:campfire", "minecraft:soul_campfire", "minecraft:cactus").contains(floor.get().id());
+    }
+
+    private static int clamp(int v, int min, int max) { return Math.max(min, Math.min(max, v)); }
+
+    private void trySpawn(CodaLivingWorld world, Settlement c, Settler s) throws Exception {
         if (world.actor(s.id).isPresent() || world.spawn(s.id, s.name, s.arrivalPoint)) {
             s.moveTo(ARRIVING);
             s.activity = s.pioneer ? "Walking to the campfire" : "Walking into the camp";
             save();
-            world.announce(s.pioneer ? "A pioneer, " + s.name + ", is approaching your campfire." : s.name + " is approaching your settlement.");
-        } else {
-            s.activity = "Waiting to appear at the edge of the territory";
+            world.announce(Chat.good(s.pioneer ? "A pioneer, " + s.name + ", is approaching your campfire." : s.name + " is approaching your settlement."));
+            return;
         }
+        // Refused (something in the way, or the spot changed): never retry the same spot forever.
+        CodaBlockPos refused = s.arrivalPoint;
+        refusedArrivals.add(refused);
+        var next = arrivalPoint(world, c);
+        if (next == null) {
+            s.activity = "Cannot appear: no safe spot near the edge of your land. Clear some flat, dry, open ground there";
+            return;
+        }
+        s.arrivalPoint = next;
+        save();
+        s.activity = "Could not appear at " + text(refused) + "; trying " + text(next) + " next";
     }
 
     // ---- One settler, once a second -------------------------------------------------------
@@ -357,7 +408,7 @@ final class FrontierSimulation {
             s.retryTicks += 20;
             if (s.retryTicks >= SPAWN_RETRY) {
                 s.retryTicks = 0;
-                trySpawn(world, s);
+                trySpawn(world, c, s);
             }
             return;
         }
@@ -372,7 +423,7 @@ final class FrontierSimulation {
             s.moveTo(DEAD);
             s.activity = "Dead";
             save();
-            world.announce(s.name + " has died.");
+            world.announce(Chat.bad(s.name + " has died."));
             return;
         }
         if (s.state == ARRIVING) {
@@ -382,7 +433,7 @@ final class FrontierSimulation {
                 s.activity = "Settling in";
                 noteResidents(world, c);
                 save();
-                world.announce(s.name + " has joined your settlement.");
+                world.announce(Chat.good(s.name + " has joined your settlement."));
             } else if (!(s.bed != null ? navigate(world, s, s.bed, .65) : moveNear(world, s, c.campfire))) {
                 s.activity = "Arrival path blocked: clear a route to the " + (s.bed != null ? "bed at " + text(s.bed) : "campfire");
             }
@@ -393,7 +444,7 @@ final class FrontierSimulation {
             s.hungerTicks -= Settler.HUNGER_STEP_TICKS;
             if (s.hungerStep()) {
                 save();
-                world.announce(s.name + " is leaving because there is not enough food.");
+                world.announce(Chat.warn(s.name + " is leaving because there is not enough food."));
             }
         }
         if (s.hunger == 0) {
@@ -407,7 +458,7 @@ final class FrontierSimulation {
                 s.activity = "Left the settlement";
                 save();
                 world.discard(s.id); // departing settlers take what they carry
-                world.announce(s.name + " has left the settlement.");
+                world.announce(Chat.warn(s.name + " has left the settlement."));
             } else if (!navigate(world, s, s.arrivalPoint, .7)) {
                 s.activity = "Leaving, but the way out is blocked";
             }
@@ -467,7 +518,7 @@ final class FrontierSimulation {
 
     private void noteResidents(CodaLivingWorld world, Settlement c) throws Exception {
         if (c.recordResidents())
-            world.announce("Your settlement reached " + c.peakResidents() + " residents. Your land grew to " + c.territory().describe() + ".");
+            world.announce(Chat.heading("Your land grew!") + Chat.label(" " + c.peakResidents() + " residents unlocked ") + Chat.good(c.territory().describe()) + Chat.label("."));
     }
 
     // ---- Movement -------------------------------------------------------------------------

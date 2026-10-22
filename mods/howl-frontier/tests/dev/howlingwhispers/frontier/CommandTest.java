@@ -140,23 +140,29 @@ public final class CommandTest {
         c.settlers.put(alive.id, alive);
         c.settlers.put(dead.id, dead);
         c.recordResidents();
-        me.replies.clear();
+        me.replies.clear(); me.raw.clear();
         run(me, "status");
-        check(me.said("land 3x3 chunks (48x48 blocks)") && me.said("next ring at 5"), "Status shows land size and the next ring");
+        check(me.said("Land: 3x3 chunks (48x48 blocks)") && me.said("next ring at 5"), "Status shows land size and the next ring");
         check(me.said("1 resident"), "Status counts residents");
         check(me.replies.stream().anyMatch(r -> r.startsWith("Arrivals: ")), "Status explains arrivals");
         check(me.said("Stockpile: 1 64 2, has food"), "Status reports the stockpile and food");
         check(me.said("1 dead"), "Status mentions past settlers");
-        me.replies.clear();
+        check(me.raw.stream().allMatch(r -> !r.equals(Chat.plain(r))), "Every status line is styled");
+        check(me.raw.stream().anyMatch(r -> r.contains(Chat.GREEN + "1 64 2, has food")), "A stocked stockpile is shown in green");
+        check(me.raw.getFirst().startsWith(Chat.GOLD), "Status opens with a gold heading");
+        me.replies.clear(); me.raw.clear();
         run(me, "settlers");
         check(me.said("Asta (pioneer)") && !me.said("| Bryn |") && me.last().contains("1 dead (Bryn)"), "settlers lists the living and names the dead");
-        me.replies.clear();
+        me.replies.clear(); me.raw.clear();
         run(me, "settlers", "all");
         check(me.replies.size() == 2 && me.said("DEAD"), "settlers all lists every record");
+        check(me.raw.stream().anyMatch(r -> r.contains(Chat.RED + "DEAD")), "Dead settlers are shown in red");
+        check(me.raw.stream().anyMatch(r -> r.contains(Chat.DARK_AQUA + alive.shortId())), "Settler IDs are highlighted for typing back");
         run(me, "settlers", "nonsense");
         check(me.last().contains("settlers all"), "A bad argument shows usage");
         run(me, "nonsense");
         check(me.last().contains("/frontier help"), "Unknown commands point to help");
+        check(me.raw.getLast().startsWith(Chat.RED + "Frontier: "), "Refusals are red");
     }
 
     static void renameAndRetire() throws Exception {
