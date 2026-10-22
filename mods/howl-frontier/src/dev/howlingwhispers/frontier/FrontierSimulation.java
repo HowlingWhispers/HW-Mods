@@ -1,279 +1,543 @@
 package dev.howlingwhispers.frontier;
 
 import dev.howlingwhispers.codaloader.api.*;
-import java.nio.file.*;
+import java.nio.file.Path;
 import java.util.*;
-import static dev.howlingwhispers.frontier.Settlement.*;
+import static dev.howlingwhispers.frontier.Settler.State.*;
 
-/** One-second decisions; native Minecraft owns entity movement and the carried ItemStacks. */
+/**
+ * Once-a-second settlement decisions. Native Minecraft owns movement, health and
+ * items; Frontier decides intent. See DESIGN.md for the rules this keeps.
+ */
 final class FrontierSimulation {
-    static final Set<String> FOOD=Set.of("minecraft:bread","minecraft:baked_potato","minecraft:carrot","minecraft:cooked_beef","minecraft:cooked_porkchop","minecraft:cooked_chicken","minecraft:cooked_mutton","minecraft:cooked_rabbit","minecraft:cooked_cod","minecraft:cooked_salmon","minecraft:beetroot","minecraft:apple");
-    static final Set<String> AXES=tools("axe"), PICKS=tools("pickaxe");
-    private static Set<String> tools(String type){Set<String>s=new HashSet<>();for(String material:List.of("wooden","stone","copper","iron","golden","diamond","netherite"))s.add("minecraft:"+material+"_"+type);return Set.copyOf(s);}
-    Settlement camp;
-    SettlementStore store;
+    static final Set<String> FOOD = Set.of("minecraft:bread", "minecraft:baked_potato", "minecraft:carrot",
+            "minecraft:cooked_beef", "minecraft:cooked_porkchop", "minecraft:cooked_chicken", "minecraft:cooked_mutton",
+            "minecraft:cooked_rabbit", "minecraft:cooked_cod", "minecraft:cooked_salmon", "minecraft:beetroot", "minecraft:apple");
+    static final Set<String> CONTAINERS = Set.of("minecraft:chest", "minecraft:barrel");
+    /** The pioneer arrives after 60-120 seconds of loaded camp time. */
+    static final int PIONEER_MIN = 1200, PIONEER_SPREAD = 1200;
+    static final int BED_SCAN_BUDGET = 512, BED_SCAN_DEPTH = 8, SPAWN_RETRY = 200;
+
+    FrontierState state;
+    private FrontierStore store;
     private Path root;
     private String session;
-    private boolean foodAvailable;
-    private final ArrayDeque<CodaBlockPlacements.Placement> placements=new ArrayDeque<>();
-    void placed(CodaBlockPlacements.Placement p){if(p.blockId().equals("minecraft:campfire")&&placements.size()<16)placements.add(p);}
-    void open(CodaWorldView view,String session)throws Exception{
-        Path next=view.worldDirectory().orElseThrow(()->new IllegalStateException("World save directory unavailable")).toAbsolutePath().normalize();
-        if(camp==null||!next.equals(root)||(session!=null&&!session.equals(this.session))){
-            if(root!=null)placements.clear();
-            var loadedStore=new SettlementStore(next);Settlement loaded=loadedStore.load();
-            root=next;store=loadedStore;camp=loaded;this.session=session;
-        }
+    /** Why this world's state could not be read. While set, nothing is simulated or saved. */
+    String loadError;
+    String lastError;
+    long errorCount, lastErrorTick, now;
+    String arrivalStatus = "Waiting for the first camp update";
+    boolean foodAvailable;
+    private int scanCursor;
+    private final ArrayDeque<CodaBlockPlacements.Placement> placements = new ArrayDeque<>();
+    private final Set<String> logged = new HashSet<>();
+
+    Settlement camp() { return state == null ? null : state.primary(); }
+
+    void placed(CodaBlockPlacements.Placement p) {
+        String id = p.blockId();
+        if (placements.size() < 64 && (id.equals("minecraft:campfire") || id.endsWith("_bed"))) placements.add(p);
     }
-    void save()throws Exception{store.save(camp);}
-    void establish(CodaLivingWorld world,CodaBlockPos p)throws Exception{
-        if(camp.camp!=null)throw new IllegalArgumentException("This world already has a Frontier camp at "+camp.camp);
-        var block=world.block(p).orElseThrow(()->new IllegalArgumentException("Campfire must be loaded"));
-        if(!block.id().equals("minecraft:campfire")||!"true".equals(block.properties().get("lit")))throw new IllegalArgumentException("Place and light an ordinary campfire first");
-        camp.camp=p;camp.arrival=1200;save();
-        world.announce("Camp established. Build sheltered beds nearby, then look at a chest and use /frontier stockpile. /frontier help");
-    }
-    void tick(CodaServerTickContext tick)throws Exception{
-        if(tick.tick()%20!=0||tick.world().isEmpty())return;
-        CodaWorldView view=tick.world().orElseThrow();open(view,tick.sessionId());
-        var access=view.living("minecraft:overworld");if(access.isEmpty())return;CodaLivingWorld world=access.get();
-        while(!placements.isEmpty()){
-            var p=placements.removeFirst();if(camp.camp==null&&p.dimension().equals(camp.dimension)){
-                var b=world.block(p.position());if(b.isPresent()&&b.get().id().equals("minecraft:campfire")&&"true".equals(b.get().properties().get("lit")))establish(world,p.position());
+
+    // ---- State and failure containment ------------------------------------------------
+
+    void open(CodaWorldView view, String session) throws Exception {
+        Path next = view.worldDirectory().orElseThrow(() -> new IllegalStateException("World save directory unavailable")).toAbsolutePath().normalize();
+        // A failed load is retried only when the world or session changes, never every second.
+        if ((state == null && loadError == null) || !next.equals(root) || (session != null && !session.equals(this.session))) {
+            if (root != null) placements.clear();
+            root = next;
+            this.session = session;
+            lastError = null;
+            errorCount = 0;
+            scanCursor = 0;
+            logged.clear();
+            try {
+                var opened = new FrontierStore(next);
+                state = opened.load();
+                store = opened;
+                loadError = null;
+            } catch (java.io.IOException unreadable) {
+                // Never replace unreadable state with a fresh settlement: that would erase the camp.
+                state = null;
+                store = null;
+                loadError = unreadable.getMessage();
+                log("load", "[Frontier] World state unreadable; camp paused and the file left unchanged: " + loadError);
             }
         }
-        if(camp.camp==null)return;
-        // A camp outside loaded chunks is paused, including hunger and immigration. No offline catch-up.
-        if(world.block(camp.camp).isEmpty())return;
-        camp.elapsed+=20;
-        scanBeds(world,256);
-        foodAvailable=camp.stockpile!=null && view.itemInventory(camp.dimension,camp.stockpile)
-                .map(inventory->inventory.slots().stream().anyMatch(slot->slot.count()>0&&FOOD.contains(slot.itemId()))).orElse(false);
-        for(var s:camp.settlers){
-            if(!s.terminal())step(world,s);
-            else if(s.fate==Fate.LEFT)world.discard(s.id); // finish an interrupted, already-persisted departure
+    }
+
+    void requireReadable() {
+        if (loadError != null) throw new IllegalArgumentException("This world's Frontier file could not be read and has not been changed: "
+                + loadError + ". Close the world, then fix or restore howl_frontier/" + FrontierStore.FILE
+                + " (the previous version is kept as " + FrontierStore.PREVIOUS + ") and reopen it.");
+    }
+
+    void save() throws Exception {
+        if (store == null) throw new IllegalStateException("Frontier storage is unavailable");
+        store.save(state);
+    }
+
+    @FunctionalInterface interface Part { void run() throws Exception; }
+
+    /** Contain one failing part of the update so the loader never disables Frontier for the session. */
+    private boolean guard(String part, Part action) {
+        try {
+            action.run();
+            return true;
+        } catch (Exception | LinkageError failure) {
+            errorCount++;
+            lastError = part + ": " + failure;
+            lastErrorTick = now;
+            log(part + failure.getClass().getName() + failure.getMessage(), "[Frontier] " + part + " failed and was skipped this second: " + failure);
+            return false;
         }
-        var fire=world.block(camp.camp).orElseThrow();
-        boolean welcoming=fire.id().equals("minecraft:campfire")&&"true".equals(fire.properties().get("lit"));
-        if(welcoming&&camp.population()<CAPACITY){
-            List<CodaBlockPos> free=camp.freeBeds().stream().filter(b->{try{return shelteredBed(world,b);}catch(Exception e){throw new IllegalStateException(e);}}).toList();
-            if(!free.isEmpty()){
-                camp.arrival=Math.max(0,camp.arrival-20);
-                if(camp.arrival==0&&camp.settlers.size()<512)arrive(world,free.getFirst());
+    }
+
+    private void log(String key, String message) {
+        if (logged.size() < 64 && logged.add(key)) System.err.println(message);
+    }
+
+    // ---- The update -------------------------------------------------------------------
+
+    /** Never throws: three consecutive failures would make the loader disable Frontier. */
+    void tick(CodaServerTickContext tick) {
+        now = tick.tick();
+        if (tick.tick() % 20 != 0 || tick.world().isEmpty()) return;
+        CodaWorldView view = tick.world().orElseThrow();
+        if (!guard("Opening the world state", () -> open(view, tick.sessionId())) || loadError != null) {
+            placements.clear();
+            return;
+        }
+        CodaLivingWorld world;
+        try {
+            var access = view.living("minecraft:overworld");
+            if (access.isEmpty()) return;
+            world = access.get();
+        } catch (Exception failure) {
+            guard("Reaching the Overworld", () -> { throw failure; });
+            return;
+        }
+        guard("Removing dismissed settlers", () -> dismissals(world));
+        guard("Handling placed blocks", () -> placements(world));
+        Settlement c = camp();
+        if (c == null) {
+            arrivalStatus = "No settlement yet: place and light a campfire";
+            return;
+        }
+        // A camp whose campfire chunk is unloaded is paused, including hunger and arrivals. No offline catch-up.
+        boolean[] loaded = {false};
+        if (!guard("Checking the campfire", () -> loaded[0] = world.block(c.campfire).isPresent()) || !loaded[0]) {
+            arrivalStatus = "Paused: the campfire's chunk is not loaded";
+            return;
+        }
+        c.elapsed += 20;
+        guard("Scanning for beds", () -> scanBeds(world, c));
+        if (c.elapsed % 100 == 0) guard("Re-checking beds", () -> recheckBeds(world, c));
+        if (!guard("Checking stockpile food", () -> foodAvailable = hasFood(view, c))) foodAvailable = false;
+        for (var s : new ArrayList<>(c.settlers.values())) {
+            if (s.terminal()) continue;
+            if (!guard("Settler " + s.name + " (" + s.shortId() + ")", () -> step(world, c, s))) s.activity = "Update failed: see /frontier status";
+        }
+        guard("Arrivals", () -> arrivals(world, c));
+        if (c.elapsed % 100 == 0) guard("Saving", this::save);
+    }
+
+    private void dismissals(CodaLivingWorld world) throws Exception {
+        boolean changed = false;
+        for (var it = state.dismissed.iterator(); it.hasNext(); ) {
+            UUID id = it.next();
+            try {
+                if (world.actor(id).isEmpty()) continue; // absent: removed when their chunk next loads
+                world.discard(id);
+            } catch (IllegalArgumentException notASettler) {
+                log("dismiss" + id, "[Frontier] Dismissed ID " + id + " is not a settler entity; it was left alone");
+            }
+            it.remove();
+            changed = true;
+        }
+        if (changed) save();
+    }
+
+    private void placements(CodaLivingWorld world) throws Exception {
+        while (!placements.isEmpty()) {
+            var p = placements.removeFirst();
+            if (!p.dimension().equals("minecraft:overworld")) continue;
+            Settlement c = camp();
+            if (p.blockId().equals("minecraft:campfire")) {
+                if (c != null) continue; // later campfires never move or replace the settlement
+                var b = world.block(p.position());
+                if (b.isPresent() && b.get().id().equals("minecraft:campfire") && "true".equals(b.get().properties().get("lit")))
+                    establish(world, p.position(), null);
+            } else if (c != null) {
+                CodaBlockPos head = bedHead(world, p.position());
+                if (head != null && c.territory().contains(head) && !c.keptBeds.contains(head)
+                        && c.beds.size() < Settlement.MAX_BEDS && shelteredBed(world, head)) c.beds.add(head);
             }
         }
-        if(camp.elapsed%100==0)save();
     }
-    void scanBeds(CodaLivingWorld world,int budget)throws Exception{
-        int width=RADIUS*2+1,height=13,total=width*width*height;
-        for(int i=0;i<budget;i++){
-            int n=camp.scanCursor++%total;
-            CodaBlockPos p=add(camp.camp,n%width-RADIUS,(n/(width*width))-6,(n/width)%width-RADIUS);
-            var b=world.block(p);if(b.isEmpty())continue;
-            if(b.get().id().endsWith("_bed")&&"head".equals(b.get().properties().get("part"))&&!camp.ignoredBeds.contains(p)){
-                if(shelteredBed(world,p)&&camp.beds.size()<256)camp.beds.add(p);
-            }else camp.beds.remove(p);
+
+    Settlement establish(CodaLivingWorld world, CodaBlockPos campfire, UUID owner) throws Exception {
+        requireReadable();
+        if (camp() != null) throw new IllegalArgumentException("This world already has a Frontier settlement at " + text(camp().campfire));
+        var block = world.block(campfire).orElseThrow(() -> new IllegalArgumentException("The campfire must be in a loaded area"));
+        if (!block.id().equals("minecraft:campfire") || !"true".equals(block.properties().get("lit")))
+            throw new IllegalArgumentException("That is not a lit campfire. Place and light an ordinary campfire first");
+        var c = new Settlement(UUID.randomUUID(), owner, campfire);
+        c.arrivalTimer = PIONEER_MIN + new Random(c.id.getLeastSignificantBits()).nextInt(PIONEER_SPREAD / 20 + 1) * 20;
+        state.settlements.add(c);
+        try {
+            save();
+        } catch (Exception failure) {
+            state.settlements.remove(c);
+            throw failure;
         }
-        if(camp.scanCursor>=total)camp.scanCursor%=total;
+        world.announce("Settlement founded. Your land is " + c.territory().describe() + " around this campfire. A pioneer will arrive soon. /frontier help");
+        return c;
     }
-    static boolean shelteredBed(CodaLivingWorld world,CodaBlockPos p)throws Exception{
-        var b=world.block(p);if(b.isEmpty()||!b.get().id().endsWith("_bed")||!"head".equals(b.get().properties().get("part")))return false;
-        var above=world.block(add(p,0,1,0));if(above.isEmpty()||!above.get().air())return false;
-        boolean roof=false;for(int y=2;y<=6;y++){var sample=world.block(add(p,0,y,0));if(sample.isEmpty())return false;if(sample.get().solid()){roof=true;break;}}
-        return roof;
+
+    // ---- Beds ---------------------------------------------------------------------------
+
+    /** Slow background sweep of the territory, for beds that existed before the camp. */
+    private void scanBeds(CodaLivingWorld world, Settlement c) throws Exception {
+        Territory t = c.territory();
+        int width = t.sideBlocks(), height = BED_SCAN_DEPTH * 2 + 1;
+        long total = (long) width * width * height;
+        for (int i = 0; i < BED_SCAN_BUDGET; i++) {
+            long n = Math.floorMod(scanCursor++, total);
+            if (scanCursor < 0) scanCursor = 0;
+            var p = new CodaBlockPos(t.minBlockX() + (int) (n % width), c.campfire.y() - BED_SCAN_DEPTH + (int) (n / ((long) width * width)),
+                    t.minBlockZ() + (int) ((n / width) % width));
+            var b = world.block(p);
+            if (b.isEmpty()) continue;
+            boolean head = b.get().id().endsWith("_bed") && "head".equals(b.get().properties().get("part"));
+            if (head && !c.keptBeds.contains(p) && shelteredBed(world, p)) {
+                if (c.beds.size() < Settlement.MAX_BEDS) c.beds.add(p);
+            } else c.beds.remove(p);
+        }
     }
-    private CodaBlockPos standing(CodaLivingWorld world,CodaBlockPos origin,int radius)throws Exception{
-        for(int dy=0;dy<=3;dy++)for(int y:dy==0?new int[]{0}:new int[]{dy,-dy})
-            for(int r=0;r<=radius;r++)for(int x=-r;x<=r;x++)for(int z=-r;z<=r;z++){
-                if(Math.max(Math.abs(x),Math.abs(z))!=r)continue;
-                var p=add(origin,x,y,z);var f=world.block(p);var h=world.block(add(p,0,1,0));var b=world.block(add(p,0,-1,0));
-                if(f.isPresent()&&h.isPresent()&&b.isPresent()&&passable(f.get())&&h.get().air()&&(b.get().solid()||b.get().id().equals("minecraft:farmland"))&&!b.get().fluid()
-                        &&!Set.of("minecraft:campfire","minecraft:soul_campfire","minecraft:magma_block","minecraft:cactus").contains(b.get().id()))return p;
-            }
+
+    private void recheckBeds(CodaLivingWorld world, Settlement c) throws Exception {
+        for (var bed : new ArrayList<>(c.beds)) {
+            var b = world.block(bed);
+            if (b.isPresent() && !shelteredBed(world, bed)) c.beds.remove(bed);
+        }
+    }
+
+    /** The head of a bed at or next to a placed position (placement reports the foot). */
+    static CodaBlockPos bedHead(CodaLivingWorld world, CodaBlockPos p) throws Exception {
+        for (int[] d : new int[][]{{0, 0}, {1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            var q = new CodaBlockPos(p.x() + d[0], p.y(), p.z() + d[1]);
+            var b = world.block(q);
+            if (b.isPresent() && b.get().id().endsWith("_bed") && "head".equals(b.get().properties().get("part"))) return q;
+        }
         return null;
     }
-    private static boolean passable(CodaLivingWorld.Block b){
-        return b.air()||Set.of("minecraft:wheat","minecraft:carrots","minecraft:potatoes","minecraft:beetroots","minecraft:short_grass").contains(b.id())||b.id().endsWith("_sapling");
+
+    /** A bed head with headroom and a solid roof two to six blocks above it. */
+    static boolean shelteredBed(CodaLivingWorld world, CodaBlockPos p) throws Exception {
+        var b = world.block(p);
+        if (b.isEmpty() || !b.get().id().endsWith("_bed") || !"head".equals(b.get().properties().get("part"))) return false;
+        var above = world.block(add(p, 0, 1, 0));
+        if (above.isEmpty() || !above.get().air()) return false;
+        for (int y = 2; y <= 6; y++) {
+            var sample = world.block(add(p, 0, y, 0));
+            if (sample.isEmpty()) return false;
+            if (sample.get().solid()) return true;
+        }
+        return false;
     }
-    private void arrive(CodaLivingWorld world,CodaBlockPos bed)throws Exception{
-        // Only unoccupied native beds can attract a new resident. Existing claims survive sleeping/unloading.
-        if("true".equals(world.block(bed).orElseThrow().properties().get("occupied")))return;
-        CodaBlockPos spawn=null;
-        int turn=(int)((camp.elapsed/20)%4);
-        for(int i=0;i<4&&spawn==null;i++){
-            int side=(turn+i)%4;
-            spawn=standing(world,add(camp.camp,side==0?24:side==1?-24:0,0,side==2?24:side==3?-24:0),2);
-        }
-        if(spawn==null)return;
-        UUID id=UUID.randomUUID();String[] names={"Asta","Bryn","Edda","Finn","Ivar","Liv","Mika","Nils","Runa","Siv","Tora","Vidar"};
-        var s=new Settler(id,names[camp.settlers.size()%names.length]);
-        s.bed=bed;s.spawn=spawn;s.loyalty=35+Math.floorMod(id.hashCode(),41);
-        camp.settlers.add(s);camp.arrival=ARRIVAL_INTERVAL;
-        save(); // reserve bed and immutable identity BEFORE touching the native entity registry
-        spawnPending(world,s);
-    }
-    private void spawnPending(CodaLivingWorld world,Settler s)throws Exception{
-        var existing=world.actor(s.id);
-        if(existing.isPresent()||world.spawn(s.id,s.name,s.spawn)){
-            s.fate=Fate.ARRIVING;save();world.announce(s.name+" is approaching your camp.");
-        }
-    }
-    private void step(CodaLivingWorld world,Settler s)throws Exception{
-        if(s.fate==Fate.PENDING){
-            // Native entity chunks may finish loading after the first server tick.
-            s.absentTicks+=20;if(s.absentTicks>=200){s.absentTicks=0;spawnPending(world,s);}return;
-        }
-        var entity=world.actor(s.id);
-        if(entity.isEmpty()){s.activity="Away or in an unloaded chunk (paused)";return;}
-        var actor=entity.get();
-        if(actor.health()<=0){s.fate=Fate.DEAD;s.bed=null;save();world.announce(s.name+" has died.");return;}
-        s.hungerTicks+=20;
-        if(s.hungerTicks>=200){s.hungerTicks-=200;var previous=s.fate;s.hungerStep();if(previous!=s.fate){save();world.announce(s.name+" is leaving because there is not enough food.");}}
-        if(s.hunger==0){world.damage(s.id,1);s.activity="Starving";}
-        if(s.fate==Fate.LEAVING){
-            world.wake(s.id);s.travelTicks+=20;
-            if(actor.distanceSquared(s.spawn)<=9){
-                // Departing settlers take their carried supplies with them.
-                s.fate=Fate.LEFT;save();world.discard(s.id);world.announce(s.name+" has left the settlement.");return;
-            }
-            navigate(world,s,s.spawn,.7);return;
-        }
-        if(s.fate==Fate.ARRIVING){
-            s.travelTicks+=20;s.activity="Walking into camp";
-            if(s.bed!=null&&actor.distanceSquared(s.bed)<=9){s.fate=Fate.RESIDENT;s.travelTicks=0;save();world.announce(s.name+" has joined your settlement.");}
-            else if(s.bed!=null&&!navigate(world,s,s.bed,.65))s.activity="Arrival path blocked: clear a route to the cabin";
+
+    // ---- Arrivals -----------------------------------------------------------------------
+
+    private void arrivals(CodaLivingWorld world, Settlement c) throws Exception {
+        var fire = world.block(c.campfire).orElseThrow();
+        if (!fire.id().equals("minecraft:campfire")) {
+            arrivalStatus = "Stopped: the campfire at " + text(c.campfire) + " is gone. Place a campfire on that exact spot";
             return;
         }
-        if(s.bed!=null){
-            var b=world.block(s.bed);
-            if(b.isPresent()&&!shelteredBed(world,s.bed)){camp.beds.remove(s.bed);s.bed=null;save();}
+        if (!"true".equals(fire.properties().get("lit"))) {
+            arrivalStatus = "Stopped: the campfire at " + text(c.campfire) + " is not lit";
+            return;
         }
-        if(s.bed==null){for(var bed:camp.freeBeds())if(shelteredBed(world,bed)){s.bed=bed;save();break;}}
-        if(s.hunger<=60&&camp.stockpile!=null&&foodAvailable){
+        if (c.population() >= Settlement.MAX_POPULATION) {
+            arrivalStatus = "The settlement is full (" + c.population() + "/" + Settlement.MAX_POPULATION + ")";
+            return;
+        }
+        if (c.settlers.size() >= Settlement.MAX_RECORDS) {
+            arrivalStatus = "Stopped: this settlement has reached " + Settlement.MAX_RECORDS + " settler records";
+            return;
+        }
+        // The first arrival, and anyone arriving at an empty camp, is a pioneer who needs no bed.
+        // Losing every settler therefore never leaves a settlement unable to recruit again.
+        if (!c.pioneerCommitted || c.population() == 0) {
+            c.arrivalTimer = Math.max(0, c.arrivalTimer - 20);
+            if (c.arrivalTimer > 0) {
+                arrivalStatus = (c.pioneerCommitted ? "Nobody lives here now. A new pioneer" : "The pioneer")
+                        + " arrives in about " + (c.arrivalTimer / 20) + "s of loaded camp time. No bed needed";
+                return;
+            }
+            String problem = commit(world, c, null, true);
+            arrivalStatus = problem == null ? "The pioneer is on the way" : problem;
+            return;
+        }
+        List<CodaBlockPos> free = new ArrayList<>();
+        for (var bed : c.freeBeds()) if (shelteredBed(world, bed)) free.add(bed);
+        if (free.isEmpty()) {
+            // Kept beds are never in c.beds, so an empty list means no usable bed exists.
+            arrivalStatus = c.beds.isEmpty()
+                    ?"Waiting for a bed: no sheltered beds in your territory yet. A bed needs a solid roof 2-6 blocks above its head"
+                    : "Waiting for a bed: every sheltered bed is claimed. Build another one";
+            return;
+        }
+        c.arrivalTimer = Math.max(0, c.arrivalTimer - 20);
+        if (c.arrivalTimer > 0) {
+            arrivalStatus = "Next settler in about " + (c.arrivalTimer / 20) + "s of loaded camp time";
+            return;
+        }
+        String problem = commit(world, c, free.getFirst(), false);
+        arrivalStatus = problem == null ? "A settler is on the way" : problem;
+    }
+
+    /** Save a new settler's identity and bed before touching the entity. Returns why not, or null. */
+    private String commit(CodaLivingWorld world, Settlement c, CodaBlockPos bed, boolean pioneer) throws Exception {
+        if (bed != null && "true".equals(world.block(bed).orElseThrow().properties().get("occupied")))
+            return "Waiting: the free bed at " + text(bed) + " is occupied by someone sleeping in it";
+        CodaBlockPos point = arrivalPoint(world, c);
+        if (point == null) return "Waiting: no safe place to arrive near the edge of your territory. Clear some flat, dry ground there";
+        var s = new Settler(UUID.randomUUID(), c.nextName());
+        s.pioneer = pioneer;
+        s.bed = bed;
+        s.arrivalPoint = point;
+        s.loyalty = pioneer ? 70 : 35 + Math.floorMod(s.id.hashCode(), 41);
+        c.settlers.put(s.id, s);
+        boolean pioneerBefore = c.pioneerCommitted;
+        if (pioneer) c.pioneerCommitted = true;
+        c.arrivalTimer = Settlement.ARRIVAL_INTERVAL;
+        try {
+            save();
+        } catch (Exception failure) {
+            c.settlers.remove(s.id);
+            c.pioneerCommitted = pioneerBefore;
+            throw failure;
+        }
+        trySpawn(world, s);
+        return null;
+    }
+
+    /** Arrival points sit just inside the territory edge, on a side that rotates with time. */
+    private CodaBlockPos arrivalPoint(CodaLivingWorld world, Settlement c) throws Exception {
+        Territory t = c.territory();
+        int turn = (int) ((c.elapsed / 20) % 4);
+        for (int i = 0; i < 4; i++) {
+            int side = (turn + i) % 4;
+            int x = side == 0 ? t.maxBlockX() - 3 : side == 1 ? t.minBlockX() + 3 : c.campfire.x();
+            int z = side == 2 ? t.maxBlockZ() - 3 : side == 3 ? t.minBlockZ() + 3 : c.campfire.z();
+            var p = standing(world, new CodaBlockPos(x, c.campfire.y(), z), 2);
+            if (p != null && t.contains(p)) return p;
+        }
+        return null;
+    }
+
+    private void trySpawn(CodaLivingWorld world, Settler s) throws Exception {
+        if (world.actor(s.id).isPresent() || world.spawn(s.id, s.name, s.arrivalPoint)) {
+            s.moveTo(ARRIVING);
+            s.activity = s.pioneer ? "Walking to the campfire" : "Walking into the camp";
+            save();
+            world.announce(s.pioneer ? "A pioneer, " + s.name + ", is approaching your campfire." : s.name + " is approaching your settlement.");
+        } else {
+            s.activity = "Waiting to appear at the edge of the territory";
+        }
+    }
+
+    // ---- One settler, once a second -------------------------------------------------------
+
+    private void step(CodaLivingWorld world, Settlement c, Settler s) throws Exception {
+        if (s.state == COMMITTED) {
+            s.retryTicks += 20;
+            if (s.retryTicks >= SPAWN_RETRY) {
+                s.retryTicks = 0;
+                trySpawn(world, s);
+            }
+            return;
+        }
+        var entity = world.actor(s.id);
+        if (entity.isEmpty()) {
+            // Absent is not dead: keep the bed, pause hunger and work.
+            s.activity = "Absent: in an unloaded area (paused)";
+            return;
+        }
+        var actor = entity.get();
+        if (actor.health() <= 0) {
+            s.moveTo(DEAD);
+            s.activity = "Dead";
+            save();
+            world.announce(s.name + " has died.");
+            return;
+        }
+        if (s.state == ARRIVING) {
+            CodaBlockPos goal = s.bed != null ? s.bed : c.campfire;
+            if (actor.distanceSquared(goal) <= (s.bed != null ? 9 : 16)) {
+                s.moveTo(RESIDENT);
+                s.activity = "Settling in";
+                noteResidents(world, c);
+                save();
+                world.announce(s.name + " has joined your settlement.");
+            } else if (!(s.bed != null ? navigate(world, s, s.bed, .65) : moveNear(world, s, c.campfire))) {
+                s.activity = "Arrival path blocked: clear a route to the " + (s.bed != null ? "bed at " + text(s.bed) : "campfire");
+            }
+            return;
+        }
+        s.hungerTicks += 20;
+        if (s.hungerTicks >= Settler.HUNGER_STEP_TICKS) {
+            s.hungerTicks -= Settler.HUNGER_STEP_TICKS;
+            if (s.hungerStep()) {
+                save();
+                world.announce(s.name + " is leaving because there is not enough food.");
+            }
+        }
+        if (s.hunger == 0) {
+            world.damage(s.id, 1);
+            s.activity = "Starving";
+        }
+        if (s.state == LEAVING) {
             world.wake(s.id);
-            if(actor.distanceSquared(camp.stockpile)<=9){if(world.eat(s.id,camp.stockpile,FOOD)){s.meal();s.activity="Eating";}}
-            else {s.activity="Going to the stockpile for food";moveNear(world,s,camp.stockpile);return;}
+            if (actor.distanceSquared(s.arrivalPoint) <= 9) {
+                s.moveTo(DEPARTED);
+                s.activity = "Left the settlement";
+                save();
+                world.discard(s.id); // departing settlers take what they carry
+                world.announce(s.name + " has left the settlement.");
+            } else if (!navigate(world, s, s.arrivalPoint, .7)) {
+                s.activity = "Leaving, but the way out is blocked";
+            }
+            return;
         }
-        if(s.hunger<20){s.activity="Too hungry to work";return;}
-        long time=Math.floorMod(world.clock(),24000);
-        if(time>=12500&&time<23500){
-            s.activity=s.bed==null?"No sheltered bed":"Returning to bed";
-            if(s.bed!=null){if(actor.distanceSquared(s.bed)<=6.25){if(world.sleep(s.id,s.bed))s.activity="Sleeping";}else navigate(world,s,s.bed,.6);}return;
+        resident(world, c, s, actor);
+    }
+
+    private void resident(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
+        if (s.bed != null && (c.keptBeds.contains(s.bed) || (world.block(s.bed).isPresent() && !shelteredBed(world, s.bed)))) {
+            if (!c.keptBeds.contains(s.bed)) c.beds.remove(s.bed);
+            s.bed = null;
+            save();
+        }
+        if (s.bed == null) {
+            for (var bed : c.freeBeds()) if (shelteredBed(world, bed)) { s.bed = bed; save(); break; }
+        }
+        if (s.hunger <= Settler.HUNGRY && foodAvailable && stockpileProblem(world, c) == null) {
+            world.wake(s.id);
+            if (actor.distanceSquared(c.stockpile) <= 9) {
+                if (world.eat(s.id, c.stockpile, FOOD)) {
+                    s.meal();
+                    s.activity = "Eating";
+                }
+            } else {
+                s.activity = "Going to the stockpile for food";
+                moveNear(world, s, c.stockpile);
+                return;
+            }
+        }
+        if (s.hunger < Settler.TOO_HUNGRY_TO_WORK) {
+            s.activity = "Too hungry to work";
+            return;
+        }
+        long time = Math.floorMod(world.clock(), 24000);
+        if (time >= 12500 && time < 23500) {
+            if (s.bed == null) {
+                s.activity = "Resting by the campfire (no bed)";
+                if (actor.distanceSquared(c.campfire) > 36) moveNear(world, s, c.campfire);
+            } else if (actor.distanceSquared(s.bed) <= 6.25) {
+                s.activity = world.sleep(s.id, s.bed) ? "Sleeping" : "Trying to sleep";
+            } else {
+                s.activity = "Going to bed";
+                navigate(world, s, s.bed, .6);
+            }
+            return;
         }
         world.wake(s.id);
-        if(camp.stockpile==null){s.activity="Needs a camp stockpile";return;}
-        work(world,s,actor);
+        work(world, c, s, actor);
     }
-    private boolean navigate(CodaLivingWorld world,Settler s,CodaBlockPos target,double speed)throws Exception{
-        var actor=world.actor(s.id);if(actor.isEmpty())return false;
-        var at=actor.get();CodaBlockPos next=target;
-        if(at.distanceSquared(target)>28*28){
-            double dx=target.x()+.5-at.x(),dz=target.z()+.5-at.z(),length=Math.sqrt(dx*dx+dz*dz);
-            if(length<1)return false;
-            var midpoint=new CodaBlockPos((int)Math.floor(at.x()+dx*22/length),(int)Math.floor(at.y()),(int)Math.floor(at.z()+dz*22/length));
-            next=standing(world,midpoint,2);if(next==null)return false;
-        }
-        return world.walk(s.id,next,speed);
+
+    /** Jobs arrive in the next part of 0.2.0. Until then residents keep the campfire company. */
+    private void work(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
+        s.activity = c.stockpile == null ? "Waiting at the campfire. Set a stockpile with /frontier stockpile" : "Waiting at the campfire for work";
+        if (actor.distanceSquared(c.campfire) > 36) moveNear(world, s, c.campfire);
     }
-    private void moveNear(CodaLivingWorld world,Settler s,CodaBlockPos target)throws Exception{
-        CodaBlockPos stand=standing(world,target,2);
-        if(stand==null||!navigate(world,s,stand,s.hunger<30?.4:.65))s.activity="Path blocked: "+s.activity;
+
+    private void noteResidents(CodaLivingWorld world, Settlement c) throws Exception {
+        if (c.recordResidents())
+            world.announce("Your settlement reached " + c.peakResidents() + " residents. Your land grew to " + c.territory().describe() + ".");
     }
-    private void work(CodaLivingWorld world,Settler s,CodaLivingWorld.Actor actor)throws Exception{
-        if(s.returning){
-            s.activity="Delivering supplies";
-            if(actor.distanceSquared(camp.stockpile)>9){moveNear(world,s,camp.stockpile);return;}
-            int moved=world.deliver(s.id,camp.stockpile);
-            if(world.carried(s.id)>0){s.activity=moved==0?"Stockpile full: work paused":"Unloading";return;}
-            s.returning=false;s.prepared=false;
+
+    // ---- Movement -------------------------------------------------------------------------
+
+    private boolean navigate(CodaLivingWorld world, Settler s, CodaBlockPos target, double speed) throws Exception {
+        var actor = world.actor(s.id);
+        if (actor.isEmpty()) return false;
+        var at = actor.get();
+        CodaBlockPos next = target;
+        if (at.distanceSquared(target) > 28 * 28) {
+            // Native pathfinding has a limited range: walk via a standing point about 22 blocks along.
+            double dx = target.x() + .5 - at.x(), dz = target.z() + .5 - at.z(), length = Math.sqrt(dx * dx + dz * dz);
+            if (length < 1) return false;
+            var midpoint = new CodaBlockPos((int) Math.floor(at.x() + dx * 22 / length), (int) Math.floor(at.y()), (int) Math.floor(at.z() + dz * 22 / length));
+            next = standing(world, midpoint, 2);
+            if (next == null) return false;
         }
-        if(s.job==Job.IDLE||s.work==null){s.activity="Waiting for a job and work area";return;}
-        if(!s.prepared){
-            if(actor.distanceSquared(camp.stockpile)>9){s.activity="Collecting work supplies";moveNear(world,s,camp.stockpile);return;}
-            Set<String> tools=s.job==Job.LUMBERJACK?AXES:s.job==Job.MINER?PICKS:Set.of();
-            if(!world.equip(s.id,camp.stockpile,tools)){s.activity="Stockpile needs a suitable tool and space for the old tool";return;}
-            if(s.replant!=null){
-                if(world.collect(s.id,camp.stockpile,CodaItemFilter.only(s.seed),1)==0){s.activity="Stockpile needs "+s.seed+" for replanting";return;}
-            }else if(s.job==Job.LUMBERJACK){
-                String sapling=sapling(world,s.work);
-                if(sapling==null||world.collect(s.id,camp.stockpile,CodaItemFilter.only(sapling),1)==0){s.activity="Stockpile needs a sapling for the marked tree";return;}
-            }
-            s.prepared=true;
-        }
-        if(s.replant!=null){
-            s.activity="Replanting";
-            if(actor.distanceSquared(s.replant)>9){moveNear(world,s,s.replant);return;}
-            if(!world.plant(s.id,s.replant,s.seed,camp.stockpile)){s.activity="Needs seed/sapling or suitable soil to replant";s.prepared=false;return;}
-            s.replant=null;s.seed="";s.returning=true;if(s.job==Job.LUMBERJACK)s.work=null;return;
-        }
-        switch(s.job){
-            case LUMBERJACK -> lumber(world,s,actor);
-            case MINER -> mine(world,s,actor);
-            case FARMER -> farm(world,s,actor);
-            default -> {}
-        }
+        return world.walk(s.id, next, speed);
     }
-    private String sapling(CodaLivingWorld world,CodaBlockPos p)throws Exception{
-        var b=world.block(p);if(b.isEmpty()||!b.get().id().endsWith("_log"))return null;
-        return b.get().id().substring(0,b.get().id().length()-4)+"_sapling";
+
+    private boolean moveNear(CodaLivingWorld world, Settler s, CodaBlockPos target) throws Exception {
+        CodaBlockPos stand = standing(world, target, 2);
+        boolean moving = stand != null && navigate(world, s, stand, s.hunger < 30 ? .4 : .65);
+        if (!moving && !s.activity.startsWith("Path blocked")) s.activity = "Path blocked: " + s.activity;
+        return moving;
     }
-    private void lumber(CodaLivingWorld world,Settler s,CodaLivingWorld.Actor actor)throws Exception{
-        s.activity="Cutting the marked tree";
-        CodaBlockPos target=add(s.work,0,s.workIndex,0);var b=world.block(target);if(b.isEmpty())return;
-        if(!b.get().id().endsWith("_log")){
-            if(s.workIndex==0){s.activity="Mark another small tree with /frontier work";return;}
-            s.replant=s.work; // seed recorded on first harvested log
-            if(s.seed.isEmpty()){s.activity="No supported sapling for this tree";s.replant=null;s.returning=true;return;}
-            return;
-        }
-        if(s.workIndex>=6){s.activity="Tree exceeds starter lumberjack reach; delivering cut logs";s.work=null;s.returning=true;return;}
-        if(s.workIndex==0){
-            boolean leaves=false;for(int y=2;y<=7;y++)for(int x=-2;x<=2;x++)for(int z=-2;z<=2;z++){
-                var leaf=world.block(add(s.work,x,y,z));if(leaf.isPresent()&&leaf.get().id().endsWith("_leaves"))leaves=true;
-            }
-            if(!leaves){s.activity="Refusing logs without a nearby tree canopy";return;}
-            s.seed=sapling(world,s.work);
-        }
-        if(actor.distanceSquared(s.work)>9){
-            moveNear(world,s,s.work);return;
-        }
-        if(world.harvest(s.id,target,b.get().id(),camp.stockpile,AXES))s.workIndex++;
-        else s.activity="Needs an axe, free carrying space or a reachable log";
+
+    /** The nearest place a settler can stand: passable feet and head, solid dry floor. */
+    static CodaBlockPos standing(CodaLivingWorld world, CodaBlockPos origin, int radius) throws Exception {
+        for (int dy = 0; dy <= 3; dy++)
+            for (int y : dy == 0 ? new int[]{0} : new int[]{dy, -dy})
+                for (int r = 0; r <= radius; r++)
+                    for (int x = -r; x <= r; x++)
+                        for (int z = -r; z <= r; z++) {
+                            if (Math.max(Math.abs(x), Math.abs(z)) != r) continue;
+                            var p = add(origin, x, y, z);
+                            var feet = world.block(p);
+                            var head = world.block(add(p, 0, 1, 0));
+                            var floor = world.block(add(p, 0, -1, 0));
+                            if (feet.isPresent() && head.isPresent() && floor.isPresent() && passable(feet.get()) && head.get().air()
+                                    && (floor.get().solid() || floor.get().id().equals("minecraft:farmland")) && !floor.get().fluid()
+                                    && !Set.of("minecraft:campfire", "minecraft:soul_campfire", "minecraft:magma_block", "minecraft:cactus").contains(floor.get().id()))
+                                return p;
+                        }
+        return null;
     }
-    private void mine(CodaLivingWorld world,Settler s,CodaLivingWorld.Actor actor)throws Exception{
-        if(s.workIndex>=16){s.activity="Starter tunnel complete (8 blocks). Mark the next section.";s.returning=world.carried(s.id)>0;return;}
-        int dx=s.direction.equals("east")?1:s.direction.equals("west")?-1:0;
-        int dz=s.direction.equals("south")?1:s.direction.equals("north")?-1:0;
-        int step=s.workIndex/2;CodaBlockPos target=add(s.work,dx*step,1-s.workIndex%2,dz*step);
-        var b=world.block(target);if(b.isEmpty())return;
-        if(b.get().air()){s.workIndex++;return;}
-        Set<String> safe=Set.of("minecraft:stone","minecraft:deepslate","minecraft:andesite","minecraft:diorite","minecraft:granite","minecraft:tuff","minecraft:dirt","minecraft:coal_ore","minecraft:deepslate_coal_ore","minecraft:iron_ore","minecraft:deepslate_iron_ore","minecraft:copper_ore","minecraft:deepslate_copper_ore","minecraft:gold_ore","minecraft:deepslate_gold_ore","minecraft:redstone_ore","minecraft:deepslate_redstone_ore","minecraft:lapis_ore","minecraft:deepslate_lapis_ore","minecraft:diamond_ore","minecraft:deepslate_diamond_ore","minecraft:emerald_ore","minecraft:deepslate_emerald_ore");
-        if(!safe.contains(b.get().id())){s.activity="Mining paused at an unsupported block";return;}
-        for(int[] d:new int[][]{{1,0,0},{-1,0,0},{0,1,0},{0,0,1},{0,0,-1},{0,-1,0}}){
-            var n=world.block(add(target,d[0],d[1],d[2]));
-            if(n.isEmpty()||n.get().fluid()||Set.of("minecraft:sand","minecraft:red_sand","minecraft:gravel").contains(n.get().id())){s.activity="Mining paused: liquid, falling material or unloaded boundary";return;}
-        }
-        s.activity="Mining the marked tunnel";
-        if(actor.distanceSquared(target)>9){moveNear(world,s,add(s.work,dx*(step-1),0,dz*(step-1)));return;}
-        if(world.harvest(s.id,target,b.get().id(),camp.stockpile,PICKS)){s.workIndex++;if(s.workIndex%4==0)s.returning=true;}
-        else s.activity="Needs the correct pickaxe or free carrying space";
+
+    private static boolean passable(CodaLivingWorld.Block b) {
+        return b.air() || Set.of("minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroots", "minecraft:short_grass").contains(b.id())
+                || b.id().endsWith("_sapling");
     }
-    private void farm(CodaLivingWorld world,Settler s,CodaLivingWorld.Actor actor)throws Exception{
-        // One prepared 9x9 field, max nine inspections per decision. Minecraft grows the crops normally.
-        for(int i=0;i<9;i++){
-            int n=s.workIndex++%81;CodaBlockPos target=add(s.work,n%9-4,0,n/9-4);var b=world.block(target);if(b.isEmpty())continue;
-            String seed;String age;
-            switch(b.get().id()){
-                case "minecraft:wheat" -> {seed="minecraft:wheat_seeds";age="7";}
-                case "minecraft:carrots" -> {seed="minecraft:carrot";age="7";}
-                case "minecraft:potatoes" -> {seed="minecraft:potato";age="7";}
-                case "minecraft:beetroots" -> {seed="minecraft:beetroot_seeds";age="3";}
-                default -> {continue;}
-            }
-            if(!age.equals(b.get().properties().get("age")))continue;
-            if(actor.distanceSquared(target)>9){s.workIndex--;s.activity="Walking to ripe crops";moveNear(world,s,target);return;}
-            if(world.harvest(s.id,target,b.get().id(),camp.stockpile,Set.of())){s.replant=target;s.seed=seed;s.activity="Harvesting";return;}
-        }
-        s.workIndex%=81;s.activity="Waiting for crops to ripen";
+
+    // ---- Stockpile ------------------------------------------------------------------------
+
+    /** Reads the stockpile now, so status is correct before the first update. */
+    boolean hasFood(CodaWorldView view, Settlement c) throws Exception {
+        return c.stockpile != null && view.itemInventory(c.dimension, c.stockpile)
+                .map(inventory -> inventory.slots().stream().anyMatch(slot -> slot.count() > 0 && FOOD.contains(slot.itemId()))).orElse(false);
     }
+
+    /** Null when the stockpile is usable; otherwise a plain explanation. Never loads chunks. */
+    static String stockpileProblem(CodaLivingWorld world, Settlement c) throws Exception {
+        if (c.stockpile == null) return "No stockpile yet: look at a chest or barrel inside your territory and use /frontier stockpile";
+        var b = world.block(c.stockpile);
+        if (b.isEmpty()) return "The stockpile at " + text(c.stockpile) + " is in an unloaded area";
+        if (!CONTAINERS.contains(b.get().id()))
+            return "The stockpile at " + text(c.stockpile) + " is missing: there is no chest or barrel there any more. Look at one and use /frontier stockpile";
+        return null;
+    }
+
+    static CodaBlockPos add(CodaBlockPos p, int x, int y, int z) { return new CodaBlockPos(p.x() + x, p.y() + y, p.z() + z); }
+    static String text(CodaBlockPos p) { return p.x() + " " + p.y() + " " + p.z(); }
 }
