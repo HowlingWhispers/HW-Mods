@@ -1,0 +1,94 @@
+name: Build, test and publish Frontier
+on:
+  push:
+    branches: [main, feature/frontier-camp]
+    paths: ['mods/howl-frontier/**', 'mods/frontier-mods.json', 'scripts/build-howl-frontier.sh', '.github/workflows/howl-frontier.yml']
+  pull_request:
+    paths: ['mods/howl-frontier/**', 'mods/frontier-mods.json', 'scripts/build-howl-frontier.sh', '.github/workflows/howl-frontier.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: frontier-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: HowlingWhispers/HW-CodaLoader
+          ref: e96b38693033440db07c1de570e8a38df2b3a907
+          path: build-loader
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+      - name: Build matching runtime and verify its real native settlement primitives
+        working-directory: build-loader
+        run: |
+          bash scripts/build-dist.sh
+          bash scripts/test-essentials.sh
+          python3 scripts/fetch-snapshot-test-runtime.py out/frontier-minecraft
+          bash scripts/test-living-world-native.sh out/frontier-minecraft/client.jar out/frontier-minecraft/libraries
+      - name: Build and test Frontier against that exact API
+        env:
+          HW_CODALOADER_API_DIR: ${{ github.workspace }}/build-loader/src/main/java
+        run: bash scripts/build-howl-frontier.sh
+      - name: Verify full loader/mod initialization and profile opt-in
+        run: |
+          set -euo pipefail
+          mkdir -p out/frontier-profile/mods out/frontier-profile/config
+          cp mods/howl-frontier/dist/howl-frontier-*.jar out/frontier-profile/mods/
+          printf 'frontier\n' > out/frontier-profile/config/howl-play-mode.txt
+          java -jar build-loader/dist/CodaLoader.jar --loader-only out/frontier-profile > out/frontier-init.log
+          grep -F '[Frontier] 0.1.0-dev.1, mode=Frontier, H.O.W.L. 0.0.43' out/frontier-init.log
+          test -f out/frontier-profile/mods/hw-essentials.jar
+          test -f out/frontier-profile/mods/coda-wolf-0.1.0-dev.jar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: frontier-${{ github.sha }}
+          path: mods/howl-frontier/dist/*
+          if-no-files-found: error
+  publish:
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: frontier-${{ github.sha }}
+          path: dist/frontier
+      - name: Verify published runtime prerequisite and immutable mod release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh release view v0.0.43 --repo HowlingWhispers/HW-CodaLoader
+          mkdir -p runtime-check
+          gh release download v0.0.43 --repo HowlingWhispers/HW-CodaLoader --pattern CodaLoader.jar --dir runtime-check
+          unzip -l runtime-check/CodaLoader.jar | grep -F dev/howlingwhispers/codaloader/api/CodaLivingWorld.class
+          VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/resources/coda.mod.json"))["version"])')"
+          TAG="frontier-v${VERSION}"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            echo 'Published Frontier versions are immutable.'
+            exit 0
+          fi
+          (cd dist/frontier && sha256sum --check howl-frontier-*.sha256)
+          cat > frontier-release.md <<'NOTES'
+          First H.O.W.L. Frontier settlement milestone for Minecraft Java 26.4 Snapshot 3.
+          Requires H.O.W.L. 0.0.43+ and CodaLauncher 0.7.32+ on Windows.
+          Select Frontier in the launcher, then use Nightly Play / Install-Repair.
+          Frontier uses its own world/mod/config directory. Classic and Stable are preserved.
+          Place a lit campfire, build roofed beds, designate a stocked chest/barrel and welcome settlers.
+          Includes hunger, loyalty, departures, starvation, native bed sleep and starter lumberjack/miner/farmer jobs.
+          Automated camp/survival/save scenarios and running Mojang native-world checks passed.
+          Rendered integrated-client placement and world save/reload need a Nightly playtest in a new world.
+          No manual mod installation or separate testing ZIP is required or supported.
+          NOTES
+          gh release create "$TAG" dist/frontier/* --draft --prerelease --target "$GITHUB_SHA" --title "H.O.W.L. Frontier ${VERSION}" --notes-file frontier-release.md
+          gh release edit "$TAG" --draft=false
