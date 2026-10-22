@@ -1,0 +1,14 @@
+{
+  "schema": 1,
+  "minecraft": "26.4-snapshot-3",
+  "mods": [
+    {
+      "slug": "howl-frontier",
+      "modId": "howl_frontier",
+      "name": "H.O.W.L. Frontier",
+      "channel": "nightly",
+      "minimumLoader": "0.0.43",
+      "requiredLoaderClass": "dev/howlingwhispers/codaloader/api/CodaLivingWorld.class"
+    }
+  ]
+}

@@ -12,6 +12,10 @@ Unreleased prototypes are **development-only**, not optional player mods. World-
 
 ## Mods
 
+- `mods/howl-frontier/` — Frontier 0.1.0-dev.1, a separate settlement play mode.
+  Uses `mods/frontier-mods.json` rather than adding experiments to Classic.
+  Source milestone; not yet in Nightly. See its README for starter workers and limits.
+
 - `mods/hw-quiet-underground/` — HW Quiet Underground 1.0.0 — **development-only** Snapshot 3 world generation. A guarded pre-generation provisioner exists, but the Minecraft new-world hook remains to be implemented and tested.
 - `mods/hw-essentials/` — HW Essentials 0.2.0 — `/sethome`, `/home`, `/back`, `/homes`, `/delhome`, `/hwessentials`
 - `mods/hw-waypoints/` — HW Waypoints 0.1.0-dev.1 — **development-only**, world landmarks via `/wp`; not auto-installed until live Snapshot 3 verification.
