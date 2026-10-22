@@ -70,8 +70,23 @@ jobs:
           set -euo pipefail
           gh release view v0.0.43 --repo HowlingWhispers/HW-CodaLoader
           mkdir -p runtime-check
-          gh release download v0.0.43 --repo HowlingWhispers/HW-CodaLoader --pattern CodaLoader.jar --dir runtime-check
-          unzip -l runtime-check/CodaLoader.jar | grep -F dev/howlingwhispers/codaloader/api/CodaLivingWorld.class
+          gh release download v0.0.43 --repo HowlingWhispers/HW-CodaLoader --pattern CodaLoader-v0.0.43-win64.zip --pattern update-manifest.json --dir runtime-check
+          python3 - <<'PYCODE'
+          import hashlib,json,pathlib,zipfile
+          root=pathlib.Path('runtime-check')
+          m=json.loads((root/'update-manifest.json').read_text())
+          assert m['version']=='0.0.43' and m['bundle']=='CodaLoader-v0.0.43-win64.zip'
+          archive=root/m['bundle']
+          assert hashlib.sha256(archive.read_bytes()).hexdigest()==m['sha256']
+          with zipfile.ZipFile(archive) as z: jar=z.read('CodaLoader.jar')
+          assert hashlib.sha256(jar).hexdigest()==m['files']['CodaLoader.jar']
+          (root/'CodaLoader.jar').write_bytes(jar)
+          with zipfile.ZipFile(root/'CodaLoader.jar') as z:
+              assert 'dev/howlingwhispers/codaloader/api/CodaLivingWorld.class' in z.namelist()
+              assert 'dev/howlingwhispers/codaloader/bootstrap/MinecraftLivingWorld.class' in z.namelist()
+              assert json.loads(z.read('codaloader/runtime-version.json'))=={'version':'0.0.43','minecraft':'26.4-snapshot-3'}
+          print('PASS: published runtime archive, inner JAR, compatibility classes and exact version verified')
+          PYCODE
           VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/resources/coda.mod.json"))["version"])')"
           TAG="frontier-v${VERSION}"
           if gh release view "$TAG" >/dev/null 2>&1; then
