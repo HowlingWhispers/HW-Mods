@@ -1,6 +1,6 @@
-# H.O.W.L. Frontier 0.1.0-dev.1
+# H.O.W.L. Frontier 0.1.0-dev.2
 
-A new settlement play mode for Minecraft Java 26.4 Snapshot 3 and H.O.W.L. 0.0.43+.
+A new settlement play mode for Minecraft Java 26.4 Snapshot 3 and H.O.W.L. 0.0.44+.
 **Published for CodaLauncher 0.7.32+ on Windows Nightly.** This first milestone implements the camp and starter workers;
 it does not yet implement the wider Deepworld, industry or ecology expansions.
 
@@ -26,7 +26,8 @@ changing/removing gameplay mods. Settlement writes also retain the previous
 2. Build cabins and beds within 16 blocks horizontally and 6 vertically. Only bed
    heads with headroom and a solid roof 2-6 blocks overhead are counted. Bed scans
    are incremental and may take about a minute. Clear a walking route to each bed. Leave cabin doors open for this initial prototype; automatic door interactions still need client validation.
-3. Mark a **single chest or barrel**: `/frontier stockpile x y z`. Stock it with
+3. Look at a **single chest or barrel** within normal block reach and run
+   `/frontier stockpile`. No coordinates are needed. Stock it with
    bread, cooked food, carrots, beetroot or apples. Poisonous/raw food is excluded.
 4. The first free bed attracts a traveller after about one minute of loaded camp
    time. Further travellers arrive at five-minute intervals. No food gate prevents
@@ -38,6 +39,10 @@ unloaded. Missing entity lookups are never treated as death or permission to spa
 replacements. A removed/unroofed bed is reassigned when another sheltered bed is
 available. Use `/frontier ignorebed x y z` on your own bed's HEAD to reserve it for
 yourself; `/frontier bed x y z` explicitly re-adds a valid head.
+
+The command selects the first block under your crosshair. Walls block selection.
+A miss or unsuitable container leaves the current stockpile in place. The advanced
+`/frontier stockpile x y z` form is also available.
 
 ## Hunger and loyalty
 
