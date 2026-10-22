@@ -2,9 +2,9 @@
   "schema": 1,
   "id": "howl_frontier",
   "name": "H.O.W.L. Frontier",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "minecraft": "26.4-snapshot-3",
   "entrypoint": "dev.howlingwhispers.frontier.FrontierMod",
-  "description": "Establish a camp, welcome settlers and manage food, loyalty and the first worker jobs.",
+  "description": "Found a settlement with a campfire, welcome a pioneer and settlers, and grow your land one ring for every five residents.",
   "depends": []
 }

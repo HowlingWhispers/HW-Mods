@@ -43,7 +43,8 @@ jobs:
           cp mods/howl-frontier/dist/howl-frontier-*.jar out/frontier-profile/mods/
           printf 'frontier\n' > out/frontier-profile/config/howl-play-mode.txt
           java -jar build-loader/dist/CodaLoader.jar --loader-only out/frontier-profile > out/frontier-init.log
-          grep -F '[Frontier] 0.1.2, mode=Frontier, H.O.W.L. 0.0.45' out/frontier-init.log
+          VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/resources/coda.mod.json"))["version"])')"
+          grep -F "[Frontier] ${VERSION}, mode=Frontier, H.O.W.L. 0.0.45" out/frontier-init.log
           test -f out/frontier-profile/mods/hw-essentials.jar
           test -f out/frontier-profile/mods/coda-wolf-0.1.0-dev.jar
       - uses: actions/upload-artifact@v4
@@ -98,8 +99,8 @@ jobs:
           cp dist/frontier/*.jar runtime-check/profile/mods/
           printf 'frontier\n' > runtime-check/profile/config/howl-play-mode.txt
           java -jar runtime-check/CodaLoader.jar --loader-only runtime-check/profile > runtime-check/init.log
-          grep -F '[Frontier] 0.1.2, mode=Frontier, H.O.W.L. 0.0.45' runtime-check/init.log
           VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/resources/coda.mod.json"))["version"])')"
+          grep -F "[Frontier] ${VERSION}, mode=Frontier, H.O.W.L. 0.0.45" runtime-check/init.log
           TAG="frontier-v${VERSION}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo 'Published Frontier versions are immutable.'
@@ -108,19 +109,8 @@ jobs:
           gh api --paginate --slurp repos/HowlingWhispers/HW-Mods/releases > frontier-published-releases.json
           python3 scripts/check-frontier-release-version.py "$VERSION" frontier-published-releases.json
           (cd dist/frontier && sha256sum --check howl-frontier-*.sha256)
-          cat > frontier-release.md <<'NOTES'
-          Frontier 0.1.2: player-shaped settlers and username-based skins for Minecraft Java 26.4 Snapshot 3.
-          Settlers now use Mojang's player-shaped NPC body, with native skin resolution and default-skin fallback.
-          Use /frontier settlers for an ID, then /frontier name <id> <MinecraftUsername>.
-          Jobs, hunger, loyalty, tools, bed sleep and real carried inventory remain in use.
-          Living loaded legacy settlers migrate with their saved UUID, health and items.
-          To repair an old zombified settler, stand within 8 blocks and use /frontier recover <id>.
-          Recovery refuses ordinary zombie villagers, duplicate names and existing actor identities.
-          Back up an existing closed Frontier world before migration; restore that whole backup for rollback.
-          Requires H.O.W.L. 0.0.45+ and CodaLauncher 0.7.32+ on Windows Nightly.
-          Choose Frontier, then Nightly Play / Install-Repair for automatic installation.
-          Native movement, inventory save/reload with item components, death drops, migration and recovery passed.
-          Rendered skins and animations remain a Nightly gameplay acceptance check.
-          NOTES
+          NOTES_FILE=mods/howl-frontier/RELEASE_NOTES.md
+          head -n1 "$NOTES_FILE" | grep -F "Frontier ${VERSION}" || { echo "$NOTES_FILE must start with the notes for Frontier ${VERSION}" >&2; exit 1; }
+          cp "$NOTES_FILE" frontier-release.md
           gh release create "$TAG" dist/frontier/* --draft --prerelease --target "$GITHUB_SHA" --title "H.O.W.L. Frontier ${VERSION}" --notes-file frontier-release.md
           gh release edit "$TAG" --draft=false

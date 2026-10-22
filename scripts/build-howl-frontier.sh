@@ -13,8 +13,12 @@ cp "$MOD/resources/coda.mod.json" "$MOD/build/classes/"
 VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/resources/coda.mod.json"))["version"])')"
 mapfile -d '' TESTS < <(find "$MOD/tests" -name '*.java' -print0)
 javac --release 21 -encoding UTF-8 -cp "$MOD/build/api:$MOD/build/classes" -d "$MOD/build/tests" "${TESTS[@]}"
-java -cp "$MOD/build/api:$MOD/build/classes:$MOD/build/tests" dev.howlingwhispers.frontier.FrontierTest
-java -cp "$MOD/build/api:$MOD/build/classes:$MOD/build/tests" dev.howlingwhispers.frontier.FrontierCommandTest
+# Run every *Test class, so a new test can never be skipped by forgetting to list it here.
+mapfile -t TEST_CLASSES < <(find "$MOD/tests" -name '*Test.java' | sort | sed -e "s|^$MOD/tests/||" -e 's|\.java$||' -e 's|/|.|g')
+(( ${#TEST_CLASSES[@]} > 0 )) || { echo 'No Frontier tests found' >&2; exit 1; }
+for TEST_CLASS in "${TEST_CLASSES[@]}"; do
+  java -cp "$MOD/build/api:$MOD/build/classes:$MOD/build/tests" "$TEST_CLASS"
+done
 jar --create --file "$MOD/dist/howl-frontier-${VERSION}.jar" -C "$MOD/build/classes" .
 (cd "$MOD/dist" && sha256sum "howl-frontier-${VERSION}.jar" > "howl-frontier-${VERSION}.jar.sha256")
 python3 - "$MOD/dist/howl-frontier-${VERSION}.jar" <<'PY'
