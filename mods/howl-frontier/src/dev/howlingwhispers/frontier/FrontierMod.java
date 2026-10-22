@@ -24,7 +24,7 @@ public final class FrontierMod implements CodaMod {
             });
         });
         if(enabled){context.registerServerTick("frontier",sim::tick);context.registerBlockPlacement(sim::placed);}
-        System.out.println("[Frontier] 0.1.0-dev.2, mode="+(enabled?"Frontier":"inactive")+", H.O.W.L. "+context.loaderVersion());
+        System.out.println("[Frontier] 0.1.1, mode="+(enabled?"Frontier":"inactive")+", H.O.W.L. "+context.loaderVersion());
     }
     private void command(CodaCommandContext player,CodaLivingWorld world,List<String> args)throws Exception{
         String op=args.isEmpty()?"help":args.getFirst();

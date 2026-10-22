@@ -12,7 +12,7 @@ Unreleased prototypes are **development-only**, not optional player mods. World-
 
 ## Mods
 
-- `mods/howl-frontier/` — Frontier 0.1.0-dev.2, a separate settlement play mode.
+- `mods/howl-frontier/` — Frontier 0.1.1, a separate settlement play mode.
   Uses `mods/frontier-mods.json` rather than adding experiments to Classic.
   Published for CodaLauncher 0.7.32+ through its isolated Frontier Nightly mode. Look at a single chest or barrel and use `/frontier stockpile`, without coordinates. See its README for starter workers and limits.
 

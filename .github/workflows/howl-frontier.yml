@@ -2,9 +2,9 @@ name: Build, test and publish Frontier
 on:
   push:
     branches: [main, feature/frontier-camp]
-    paths: ['mods/howl-frontier/**', 'mods/frontier-mods.json', 'scripts/build-howl-frontier.sh', '.github/workflows/howl-frontier.yml']
+    paths: ['mods/howl-frontier/**', 'mods/frontier-mods.json', 'scripts/build-howl-frontier.sh', '.github/workflows/howl-frontier.yml', 'scripts/check-frontier-release-version.py']
   pull_request:
-    paths: ['mods/howl-frontier/**', 'mods/frontier-mods.json', 'scripts/build-howl-frontier.sh', '.github/workflows/howl-frontier.yml']
+    paths: ['mods/howl-frontier/**', 'mods/frontier-mods.json', 'scripts/build-howl-frontier.sh', '.github/workflows/howl-frontier.yml', 'scripts/check-frontier-release-version.py']
   workflow_dispatch:
 permissions:
   contents: read
@@ -43,7 +43,7 @@ jobs:
           cp mods/howl-frontier/dist/howl-frontier-*.jar out/frontier-profile/mods/
           printf 'frontier\n' > out/frontier-profile/config/howl-play-mode.txt
           java -jar build-loader/dist/CodaLoader.jar --loader-only out/frontier-profile > out/frontier-init.log
-          grep -F '[Frontier] 0.1.0-dev.2, mode=Frontier, H.O.W.L. 0.0.44' out/frontier-init.log
+          grep -F '[Frontier] 0.1.1, mode=Frontier, H.O.W.L. 0.0.44' out/frontier-init.log
           test -f out/frontier-profile/mods/hw-essentials.jar
           test -f out/frontier-profile/mods/coda-wolf-0.1.0-dev.jar
       - uses: actions/upload-artifact@v4
@@ -96,13 +96,15 @@ jobs:
           cp dist/frontier/*.jar runtime-check/profile/mods/
           printf 'frontier\n' > runtime-check/profile/config/howl-play-mode.txt
           java -jar runtime-check/CodaLoader.jar --loader-only runtime-check/profile > runtime-check/init.log
-          grep -F '[Frontier] 0.1.0-dev.2, mode=Frontier, H.O.W.L. 0.0.44' runtime-check/init.log
+          grep -F '[Frontier] 0.1.1, mode=Frontier, H.O.W.L. 0.0.44' runtime-check/init.log
           VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/resources/coda.mod.json"))["version"])')"
           TAG="frontier-v${VERSION}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo 'Published Frontier versions are immutable.'
             exit 0
           fi
+          gh api --paginate --slurp repos/HowlingWhispers/HW-Mods/releases > frontier-published-releases.json
+          python3 scripts/check-frontier-release-version.py "$VERSION" frontier-published-releases.json
           (cd dist/frontier && sha256sum --check howl-frontier-*.sha256)
           cat > frontier-release.md <<'NOTES'
           Frontier stockpile selection for Minecraft Java 26.4 Snapshot 3.

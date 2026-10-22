@@ -26,3 +26,11 @@ Every player-facing Nightly change **must bump the version of the component that
 - **Loader API/runtime changes:** increment `CodaTarget.LOADER_VERSION`, publish the compatible runtime and verify its required classes.
 - Show mod versions where practical in the in-game UI or startup logs, and distinguish loader, launcher and mod versions in testing instructions.
 - Never claim the player has the change until version selection and verified automatic Nightly installation have been demonstrated. No manual-install workaround is permitted.
+
+## Frontier release numbers
+
+Every published Frontier update must increase its numeric `major.minor.patch` version.
+Use plain numeric versions such as `0.1.0`, `0.1.1`, `0.1.2`; indicate Nightly with
+the GitHub prerelease flag. Changing only a `-dev` suffix is not a version bump.
+The manifest, startup log, JAR filename and release tag must agree. Already published
+release bytes and tags remain unchanged. CI must reject reused or older numeric versions.

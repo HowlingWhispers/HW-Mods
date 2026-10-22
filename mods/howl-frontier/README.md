@@ -1,4 +1,4 @@
-# H.O.W.L. Frontier 0.1.0-dev.2
+# H.O.W.L. Frontier 0.1.1
 
 A new settlement play mode for Minecraft Java 26.4 Snapshot 3 and H.O.W.L. 0.0.44+.
 **Published for CodaLauncher 0.7.32+ on Windows Nightly.** This first milestone implements the camp and starter workers;

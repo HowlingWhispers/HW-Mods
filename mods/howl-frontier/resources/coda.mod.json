@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "howl_frontier",
   "name": "H.O.W.L. Frontier",
-  "version": "0.1.0-dev.2",
+  "version": "0.1.1",
   "minecraft": "26.4-snapshot-3",
   "entrypoint": "dev.howlingwhispers.frontier.FrontierMod",
   "description": "Establish a camp, welcome settlers and manage food, loyalty and the first worker jobs.",
