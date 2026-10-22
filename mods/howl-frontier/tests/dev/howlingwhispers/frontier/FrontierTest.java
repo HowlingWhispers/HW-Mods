@@ -11,7 +11,7 @@ public final class FrontierTest {
     static final CodaBlockPos CAMP=new CodaBlockPos(0,64,0), BED=new CodaBlockPos(3,64,0), STOCK=new CodaBlockPos(1,64,2);
     static final class World implements CodaLivingWorld {
         final Map<CodaBlockPos,Block> blocks=new HashMap<>();final Map<UUID,Actor> actors=new HashMap<>();
-        int spawned,damage,food=2,delivered;boolean loaded=true,spawnAllowed=true,path=true,tool=true;long clock=6000;
+        int spawned,damage,food=2,delivered,harvests;boolean loaded=true,spawnAllowed=true,path=true,tool=true;long clock=6000;
         World(){
             blocks.put(CAMP,b("minecraft:campfire",Map.of("lit","true"),false));
             blocks.put(BED,b("minecraft:red_bed",Map.of("part","head","occupied","false"),false));
@@ -36,7 +36,7 @@ public final class FrontierTest {
         public int carried(UUID id){return 0;}
         public int collect(UUID id,CodaBlockPos p,CodaItemFilter f,int maximum){return 1;}
         public boolean equip(UUID id,CodaBlockPos p,Set<String>tools){return tool;}
-        public boolean harvest(UUID id,CodaBlockPos p,String expected,CodaBlockPos supplies,Set<String>tools){if(!tool)return false;blocks.remove(p);return true;}
+        public boolean harvest(UUID id,CodaBlockPos p,String expected,CodaBlockPos supplies,Set<String>tools){if(!tool)return false;harvests++;blocks.remove(p);return true;}
         public boolean plant(UUID id,CodaBlockPos p,String item,CodaBlockPos supplies){blocks.put(p,b("minecraft:oak_sapling",Map.of(),false));return true;}
         public void announce(String text){}
     }
@@ -84,6 +84,22 @@ public final class FrontierTest {
         try{new SettlementStore(temp).load();throw new AssertionError("Corruption accepted");}catch(java.io.IOException expected){checks++;}
         check(Files.readString(file).contains("schema=99"),"Corrupt save remains untouched for recovery");
         Files.writeString(file,original);check(Files.exists(temp.resolve("howl_frontier/settlement.previous.properties")),"Previous state backup exists");
+        // An empty stockpile must not trap hungry farmers in an endless trip home.
+        s.fate=Fate.RESIDENT;s.job=Job.FARMER;s.work=new CodaBlockPos(4,64,0);s.hunger=50;s.loyalty=90;s.prepared=true;s.workIndex=40;s.returning=false;
+        world.actors.put(s.id,new CodaLivingWorld.Actor(s.id,4.5,64,.5,20,false));world.food=0;
+        world.blocks.put(s.work,World.b("minecraft:wheat",Map.of("age","7"),false));int harvests=world.harvests;
+        advance(sim,view,1);check(world.harvests==harvests+1,"Hungry farmer can produce food when stockpile is empty");
+        check(s.replant.equals(s.work),"Harvest retains the exact crop replant task");
+        advance(sim,view,1);check(s.replant==null&&s.returning,"Farmer replants before delivering the remaining harvest");
+        // Explicit work areas must not turn cabins or storage into free materials.
+        s.returning=false;s.prepared=true;s.job=Job.LUMBERJACK;s.work=new CodaBlockPos(5,64,0);s.workIndex=0;
+        world.blocks.put(s.work,World.b("minecraft:oak_log",Map.of(),true));harvests=world.harvests;
+        advance(sim,view,1);check(world.harvests==harvests&&s.activity.contains("canopy"),"Lumberjack refuses cabin-like logs without a tree canopy");
+        s.job=Job.MINER;s.direction="north";world.blocks.put(add(s.work,0,1,0),World.b("minecraft:stone",Map.of(),true));
+        world.blocks.put(add(s.work,1,1,0),World.b("minecraft:gravel",Map.of(),true));
+        advance(sim,view,1);check(world.harvests==harvests&&s.activity.contains("falling"),"Miner pauses at falling material before breaking a block");
+        s.prepared=false;world.tool=false;world.actors.put(s.id,new CodaLivingWorld.Actor(s.id,STOCK.x()+.5,STOCK.y(),STOCK.z()+.5,20,false));
+        advance(sim,view,1);check(world.harvests==harvests&&s.activity.contains("tool"),"Missing supplied tool pauses work without producing resources");world.tool=true;
         // Native absence is deliberately not interpreted as death or a reason to duplicate a settler.
         sim.camp.settlers.clear();var absent=new Settler(UUID.randomUUID(),"Unloaded");absent.fate=Fate.RESIDENT;absent.bed=BED;absent.spawn=add(CAMP,24,0,0);sim.camp.settlers.add(absent);sim.camp.arrival=6000;
         advance(sim,view,30);check(absent.fate==Fate.RESIDENT&&absent.hunger==80,"Absent actor is paused, not killed or respawned");
