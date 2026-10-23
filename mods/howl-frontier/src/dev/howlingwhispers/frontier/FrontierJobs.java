@@ -340,6 +340,11 @@ final class FrontierJobs {
 
     // ---- Miner -------------------------------------------------------------------------------------
 
+    /** For builders who dig rock for their own building. */
+    void minerFor(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
+        miner(world, c, s, actor);
+    }
+
     private void miner(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
         if (c.mineEntrance == null) {
             if (!s.jobChosen) { s.profession = LABOURER; sim.save(); }

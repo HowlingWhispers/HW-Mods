@@ -37,7 +37,12 @@ final class Settlement {
 
     /** A building in progress: where, which way it faces, in which materials, and how far it has got. */
     static final class Project {
-        enum Phase { ROAD, CLEAR, BUILD }
+        /** TEARDOWN takes down a house started with the old raised layout before it starts again. */
+        enum Phase { ROAD, CLEAR, BUILD, TEARDOWN }
+        /** 0.3.x: floor laid on top of the ground. Only read from old saves. */
+        static final int RAISED = 1;
+        /** 0.4.0+: the top layer of ground is dug out and a foundation is laid in it. */
+        static final int SUNK = 2;
         final String blueprint;
         final FrontierPlanner.CellPos cell;
         final String facing;
@@ -46,6 +51,7 @@ final class Settlement {
         final List<FrontierPlanner.CellPos> road;
         Phase phase = Phase.ROAD;
         int step;
+        int layout = SUNK;
 
         Project(String blueprint, FrontierPlanner.CellPos cell, String facing, int level, Palette palette, List<FrontierPlanner.CellPos> road) {
             this.blueprint = blueprint;

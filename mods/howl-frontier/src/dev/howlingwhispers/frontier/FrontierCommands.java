@@ -123,6 +123,7 @@ final class FrontierCommands {
             case ROAD -> warn("laying the road first");
             case CLEAR -> warn("clearing the site");
             case BUILD -> warn(p.step + "/" + sim.builder.steps(p).size() + " blocks");
+            case TEARDOWN -> warn("taking down the old hut to start again on a proper foundation");
         };
         List<String> needs = new ArrayList<>();
         sim.builder.remaining(world, p).forEach((item, n) -> needs.add(n + " " + item));

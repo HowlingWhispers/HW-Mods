@@ -1,4 +1,4 @@
-# H.O.W.L. Frontier 0.3
+# H.O.W.L. Frontier 0.4
 
 A settlement play mode for Minecraft Java 26.4 Snapshot 3 and H.O.W.L. 0.0.46+.
 0.2 is a rebuild from scratch; see [DESIGN.md](DESIGN.md) for the rules and the plan.
@@ -63,13 +63,22 @@ planned plot. A resident without a tool job becomes the builder, the pioneer fir
    1. fetch an axe and fell every natural tree that stands on the plot or hangs its leaves
       over it, whole and from the top, nearest first;
    2. clear the remaining leaves and plants by hand, top down;
-   3. level the ground inside the walls by hand.
-3. **Build.** The starter hut (5x5, door facing the road, bed inside) goes up from the floor.
+   3. dig out the top layer of ground inside the walls: by hand, or with a pickaxe from the
+      stockpile for stone.
+3. **Foundation.** Dips under the plot are filled with the dug-out earth, then the
+   foundation goes into the dug-out layer, level with the land around it.
+4. **Build.** The starter hut (5x5, door facing the road, bed inside) goes up on the foundation.
 
-Materials follow the land: a log cabin where trees grow (78 logs), otherwise sandstone,
-terracotta or cobblestone. The builder takes them from the stockpile, and fells trees for
-logs itself when it has an axe. **Put a door and a bed in the stockpile**: Frontier cannot
-craft yet. Builders never break or replace anything you built or placed; they stop and say
+Materials follow the land: a log cabin on a cobblestone foundation where trees grow
+(53 logs and 25 cobblestone), otherwise sandstone, terracotta or cobblestone throughout.
+The builder takes them from the stockpile, fells trees for logs itself when it has an axe,
+and digs rock in the mine for cobblestone when there is a pickaxe and a mine
+(`/frontier mine`). **Put a door and a bed in the stockpile**: Frontier cannot craft yet
+(a crafting table next to the stockpile is planned; see DESIGN.md).
+
+A hut started by Frontier 0.3.x sat on top of the grass. After updating, its builder takes
+down what they built of it, puts everything back in the stockpile and builds it again on a
+foundation. A bed that was already placed is yours to pick up first. Builders never break or replace anything you built or placed; they stop and say
 what is in the way. `/frontier status` shows the Building line. Progress is saved after
 every block.
 

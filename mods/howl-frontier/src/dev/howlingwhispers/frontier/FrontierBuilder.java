@@ -23,13 +23,26 @@ final class FrontierBuilder {
             "minecraft:rooted_dirt", "minecraft:mycelium", "minecraft:moss_block", "minecraft:sand", "minecraft:red_sand", "minecraft:gravel",
             "minecraft:clay", "minecraft:snow", "minecraft:snow_block", "minecraft:mud");
 
+    /** Natural stone a builder may dig out of a plot, with a pickaxe from the stockpile. */
+    static final Set<String> NATURAL_STONE = Set.of("minecraft:stone", "minecraft:deepslate", "minecraft:andesite", "minecraft:diorite",
+            "minecraft:granite", "minecraft:tuff", "minecraft:calcite", "minecraft:sandstone", "minecraft:red_sandstone", "minecraft:terracotta",
+            "minecraft:white_terracotta", "minecraft:orange_terracotta", "minecraft:yellow_terracotta", "minecraft:brown_terracotta",
+            "minecraft:red_terracotta", "minecraft:light_gray_terracotta");
+    /** What fills a dip under the foundation: the earth dug out of the plot, or stone. */
+    static final List<String> FILL = List.of("minecraft:dirt", "minecraft:coarse_dirt", "minecraft:grass_block", "minecraft:cobblestone");
+    /** How far below the foundation a dip may be filled; deeper hollows pause the build. */
+    static final int MAX_FILL = 3;
+
     /** One block of the building, in world space, with the state to place and the item it needs. */
     record Step(CodaBlockPos pos, String role, String state, String item) {}
+    /** A building's blocks in one layout, its whole volume, and the walking level around it. */
+    record Geometry(List<Step> steps, Set<CodaBlockPos> volume, Set<CodaBlockPos> base) {}
 
     private final FrontierSimulation sim;
     private final FrontierJobs jobs;
     /** Runtime cache of the current project's world-space steps. */
     private Settlement.Project cachedFor;
+    private int cachedLayout;
     private List<Step> steps = List.of();
     private Set<CodaBlockPos> footprintVolume = Set.of(), footprint = Set.of();
     /**
@@ -109,27 +122,40 @@ final class FrontierBuilder {
     }
 
     private void prepare(Settlement.Project p) throws Exception {
-        if (cachedFor == p) return;
+        if (cachedFor == p && cachedLayout == p.layout) return;
+        var g = geometry(p, p.layout);
+        steps = g.steps();
+        footprintVolume = g.volume();
+        footprint = g.base();
+        cachedFor = p;
+        cachedLayout = p.layout;
+    }
+
+    /**
+     * Where every block of the building goes. SUNK (0.4.0+): the bottom layer replaces the top layer of
+     * ground and is the foundation; the walls stand on it, so the floor is level with the land around.
+     * RAISED (0.3.x saves only): everything one block higher, the floor lying on the grass.
+     */
+    static Geometry geometry(Settlement.Project p, int layout) throws Exception {
         var bp = Blueprint.resource(p.blueprint);
         boolean turned = p.facing.equals("east") || p.facing.equals("west");
         int fw = turned ? bp.depth : bp.width, fd = turned ? bp.width : bp.depth;
         int[] o = origin(p, fw, fd);
+        boolean sunk = layout == Settlement.Project.SUNK;
         List<Step> list = new ArrayList<>();
         Set<CodaBlockPos> volume = new HashSet<>(), base = new HashSet<>();
         for (var cell : bp.cells) {
             int[] r = rotate(cell.x(), cell.z(), bp.width, bp.depth, p.facing);
-            var pos = new CodaBlockPos(o[0] + r[0], p.level + 1 + cell.y(), o[1] + r[1]);
+            var pos = new CodaBlockPos(o[0] + r[0], p.level + (sunk ? 0 : 1) + cell.y(), o[1] + r[1]);
             volume.add(pos);
             base.add(new CodaBlockPos(pos.x(), p.level + 1, pos.z()));
             if (!cell.solid() || cell.secondHalf()) continue;
-            String state = p.palette.resolve(cell.role(), rotateProperties(cell.properties(), p.facing));
+            String role = sunk && cell.y() == 0 ? "foundation" : cell.role();
+            String state = p.palette.resolve(role, rotateProperties(cell.properties(), p.facing));
             int bracket = state.indexOf('[');
-            list.add(new Step(pos, cell.role(), state, bracket < 0 ? state : state.substring(0, bracket)));
+            list.add(new Step(pos, role, state, bracket < 0 ? state : state.substring(0, bracket)));
         }
-        steps = List.copyOf(list);
-        footprintVolume = Set.copyOf(volume);
-        footprint = Set.copyOf(base);
-        cachedFor = p;
+        return new Geometry(List.copyOf(list), Set.copyOf(volume), Set.copyOf(base));
     }
 
     List<Step> steps(Settlement.Project p) throws Exception {
@@ -163,12 +189,100 @@ final class FrontierBuilder {
         var p = c.project;
         if (p == null) return false;
         prepare(p);
+        if (p.layout == Settlement.Project.RAISED && p.phase != TEARDOWN && !upgrade(world, c, s, p)) return true;
         switch (p.phase) {
             case ROAD -> road(world, view, c, s, actor, p);
             case CLEAR -> clear(world, view, c, s, actor, p);
             case BUILD -> build(world, view, c, s, actor, p);
+            case TEARDOWN -> teardown(world, view, c, s, actor, p);
         }
         return true;
+    }
+
+    // ---- Houses started before 0.4.0 --------------------------------------------------------------
+
+    /**
+     * A project from a 0.3.x save was laid out on top of the ground. If nothing of it stands yet it
+     * simply switches to the sunk layout; otherwise the builder first takes down what they built.
+     * Returns false while the site is not loaded.
+     */
+    private boolean upgrade(CodaLivingWorld world, Settlement c, Settler s, Settlement.Project p) throws Exception {
+        boolean started = false;
+        if (p.phase == BUILD)
+            for (var step : steps) {
+                var b = world.block(step.pos());
+                if (b.isEmpty()) { s.activity = "Waiting: the building site is not loaded"; return false; }
+                if (placed(world, step)) { started = true; break; }
+            }
+        if (started) {
+            p.phase = TEARDOWN;
+            sim.save();
+            world.announce(Chat.warn(s.name + " will take down the hut started the old way") + Chat.label(" and build it again on a proper foundation, dug into the ground."));
+            return true;
+        }
+        restartSunk(p);
+        if (p.phase == BUILD) p.phase = CLEAR;
+        sim.save();
+        return true;
+    }
+
+    private void restartSunk(Settlement.Project p) throws Exception {
+        p.layout = Settlement.Project.SUNK;
+        p.step = 0;
+        cachedFor = null;
+        prepare(p);
+    }
+
+    /**
+     * Take down, top first, only the blocks this builder placed for the old hut (its own steps,
+     * and the top half of its door). Everything goes to the stockpile and is used again. A bed is
+     * the player's to pick up: settlers cannot take beds down.
+     */
+    private void teardown(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Settlement.Project p) throws Exception {
+        if (world.carried(s.id) >= FrontierJobs.CARRY_LIMIT) { s.delivering = true; return; }
+        List<CodaBlockPos> targets = new ArrayList<>();
+        for (var step : steps) {
+            if (world.block(step.pos()).isEmpty()) { s.activity = "Waiting: the old hut is not loaded"; return; }
+            if (!placed(world, step)) continue;
+            if (step.role().equals("bed")) {
+                s.activity = "Taking down the old hut: please pick up the bed at " + text(step.pos()) + " (settlers cannot take beds down)";
+                return;
+            }
+            targets.add(step.pos());
+            if (step.role().equals("door")) {
+                var upper = add(step.pos(), 0, 1, 0);
+                if (world.block(upper).map(b -> b.id().endsWith("_door")).orElse(false)) targets.add(upper);
+            }
+        }
+        if (targets.isEmpty()) {
+            if (world.carried(s.id) > 0) { s.delivering = true; return; }
+            restartSunk(p);
+            p.phase = CLEAR;
+            ledger.remove(s.id);
+            sim.save();
+            s.activity = "The old hut is down";
+            world.announce(Chat.good("The old hut is down.") + Chat.label(" " + s.name + " starts again: digging out the ground for a " + p.palette.foundation().replace("minecraft:", "") + " foundation."));
+            return;
+        }
+        var pos = sorted(targets).getFirst();
+        var block = world.block(pos).orElseThrow();
+        var tools = toolsFor(block.id());
+        if (!tools.isEmpty() && !world.equip(s.id, c.stockpile, tools)) {
+            if (!hasInStockpile(view, c, tools)) { s.activity = "Taking down the old hut: needs a pickaxe in the stockpile for the " + block.id().replace("minecraft:", "").replace('_', ' '); return; }
+            s.activity = "Fetching a pickaxe to take down the old hut";
+            sim.moveNear(world, s, c.stockpile);
+            return;
+        }
+        if (!near(world, s, actor, pos, "Taking down the old hut")) return;
+        if (world.harvest(s.id, pos, block.id(), c.stockpile, tools)) s.activity = "Taking down the old hut (" + (targets.size() - 1) + " blocks left)";
+        else if (world.carried(s.id) > 0) s.delivering = true;
+        else s.activity = "Taking down the old hut: could not take the " + block.id().replace("minecraft:", "").replace('_', ' ') + " at " + text(pos);
+    }
+
+    /** Stone, cobblestone, sandstone and terracotta need a pickaxe; everything else comes away by hand. */
+    static Set<String> toolsFor(String id) {
+        boolean stone = NATURAL_STONE.contains(id) || id.equals("minecraft:cobblestone") || (id.endsWith("terracotta") && !id.contains("glazed"));
+        return stone ? FrontierJobs.PICKS : Set.of();
     }
 
     private void road(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Settlement.Project p) throws Exception {
@@ -237,7 +351,7 @@ final class FrontierBuilder {
         if (block.fluid() || FrontierPlanner.made(block.id())) return false;
         if (block.id().endsWith("_leaves")) return !"true".equals(block.properties().get("persistent"));
         boolean plant = !block.solid();
-        return plant || CLEARABLE_GROUND.contains(block.id()) || FrontierJobs.isLog(block.id());
+        return plant || CLEARABLE_GROUND.contains(block.id()) || NATURAL_STONE.contains(block.id()) || FrontierJobs.isLog(block.id());
     }
 
     /** Trees whose felling has started: their canopy may decay before the last log is cut. Runtime only. */
@@ -309,15 +423,23 @@ final class FrontierBuilder {
                 if (block.air()) continue;
                 boolean soft = !block.solid() || block.id().endsWith("_leaves");
                 if (stage == 2 && !soft) continue;
-                String label = stage == 2 ? "Clearing (2/3): leaves and plants" : "Clearing (3/3): levelling the ground";
+                String label = stage == 2 ? "Clearing (2/3): leaves and plants" : p.layout == Settlement.Project.SUNK
+                        ? "Clearing (3/3): digging out the ground for the foundation" : "Clearing (3/3): levelling the ground";
                 if (!clearable(block)) {
                     s.activity = "Building paused: " + block.id().replace("minecraft:", "") + " at " + text(pos) + " is in the way and cannot be cleared";
                     return;
                 }
+                var tools = toolsFor(block.id());
+                if (!tools.isEmpty() && !world.equip(s.id, c.stockpile, tools)) {
+                    if (!hasInStockpile(view, c, tools)) { s.activity = "Building paused: " + block.id().replace("minecraft:", "") + " at " + text(pos) + " needs a pickaxe in the stockpile"; return; }
+                    s.activity = "Fetching a pickaxe to dig out the " + block.id().replace("minecraft:", "");
+                    sim.moveNear(world, s, c.stockpile);
+                    return;
+                }
                 if (!near(world, s, actor, pos, label)) return;
-                if (!world.harvest(s.id, pos, block.id(), c.stockpile, Set.of())) {
+                if (!world.harvest(s.id, pos, block.id(), c.stockpile, tools)) {
                     if (world.carried(s.id) > 0) s.delivering = true;
-                    else s.activity = "Building paused: cannot clear " + block.id().replace("minecraft:", "") + " by hand at " + text(pos);
+                    else s.activity = "Building paused: cannot clear " + block.id().replace("minecraft:", "") + (tools.isEmpty() ? " by hand" : "") + " at " + text(pos);
                     return;
                 }
                 s.activity = label;
@@ -334,7 +456,11 @@ final class FrontierBuilder {
      */
     List<CodaBlockPos> treesOverSite(CodaLivingWorld world, Settlement c) throws Exception {
         Map<CodaBlockPos, CodaBlockPos> bases = new LinkedHashMap<>();
-        for (var pos : footprintVolume) {
+        // The site plus one layer above the roof: leaves resting on the roof count as hanging over it.
+        Set<CodaBlockPos> around = new HashSet<>(footprintVolume);
+        int top = footprintVolume.stream().mapToInt(CodaBlockPos::y).max().orElse(0);
+        for (var pos : footprintVolume) if (pos.y() == top) around.add(add(pos, 0, 1, 0));
+        for (var pos : around) {
             var b = world.block(pos);
             if (b.isEmpty()) continue;
             if (FrontierJobs.isLog(b.get().id())) { addTree(world, c, pos, bases, true); continue; }
@@ -364,6 +490,7 @@ final class FrontierBuilder {
     }
 
     private void build(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Settlement.Project p) throws Exception {
+        if (p.layout == Settlement.Project.SUNK && p.step < foundationSteps() && !fillDips(world, view, c, s, actor, p)) return;
         while (p.step < steps.size() && placed(world, steps.get(p.step))) p.step++;
         if (p.step >= steps.size()) { finish(world, c, s, p); return; }
         var step = steps.get(p.step);
@@ -400,6 +527,60 @@ final class FrontierBuilder {
             ledger.remove(s.id); // the bag may not hold what the ledger says: re-collect next time
             s.activity = "Building paused: could not place " + describe(step) + " at " + text(step.pos());
         }
+    }
+
+    private int foundationSteps() {
+        int n = 0;
+        for (var step : steps) if (step.role().equals("foundation")) n++;
+        return n;
+    }
+
+    /**
+     * The foundation must rest on solid ground everywhere. Dips under it, up to {@link #MAX_FILL}
+     * deep, are filled from the bottom with the earth dug out of the plot (or cobblestone).
+     * Returns true when every column is supported and building can go on.
+     */
+    private boolean fillDips(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Settlement.Project p) throws Exception {
+        CodaBlockPos lowest = null;
+        for (var step : steps) {
+            if (!step.role().equals("foundation")) continue;
+            CodaBlockPos hole = null;
+            boolean supported = false;
+            for (int d = 1; d <= MAX_FILL; d++) {
+                var below = add(step.pos(), 0, -d, 0);
+                var b = world.block(below);
+                if (b.isEmpty()) { s.activity = "Waiting: the building site is not loaded"; return false; }
+                if (b.get().fluid()) { s.activity = "Building paused: water or lava under the foundation at " + text(below); return false; }
+                if (b.get().solid()) { supported = true; break; }
+                hole = below;
+            }
+            if (!supported) { s.activity = "Building paused: the ground under " + text(step.pos()) + " is hollow more than " + MAX_FILL + " blocks deep"; return false; }
+            if (hole != null && (lowest == null || hole.y() < lowest.y())) lowest = hole;
+        }
+        if (lowest == null) return true;
+        var there = world.block(lowest).orElseThrow();
+        if (!there.air()) {
+            // A plant in the dip comes out first.
+            if (!near(world, s, actor, lowest, "Filling a dip under the foundation")) return false;
+            if (!world.harvest(s.id, lowest, there.id(), c.stockpile, Set.of()) && world.carried(s.id) > 0) s.delivering = true;
+            return false;
+        }
+        String item = null;
+        for (var candidate : FILL) if (carries(world, s, candidate) || stocked(view, c, candidate) > 0) { item = candidate; break; }
+        if (item == null) {
+            s.activity = "Building: needs dirt or cobblestone in the stockpile to fill a dip under the foundation";
+            return false;
+        }
+        if (!carries(world, s, item)) { fetch(world, view, c, s, actor, item, 8); return false; }
+        if (!near(world, s, actor, lowest, "Filling a dip under the foundation")) return false;
+        if (world.place(s.id, lowest, item, c.stockpile)) {
+            ledger.getOrDefault(s.id, new HashMap<>()).computeIfPresent(item, (k, n) -> n > 1 ? n - 1 : null);
+            s.activity = "Filling a dip under the foundation";
+        } else {
+            ledger.remove(s.id);
+            s.activity = "Building paused: could not fill the dip at " + text(lowest);
+        }
+        return false;
     }
 
     private void finish(CodaLivingWorld world, Settlement c, Settler s, Settlement.Project p) throws Exception {
@@ -458,6 +639,12 @@ final class FrontierBuilder {
     }
 
     private void fetch(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Settlement.Project p, String item) throws Exception {
+        int need = 0;
+        for (int i = p.step; i < steps.size(); i++) if (matches(steps.get(i), item)) need++;
+        fetch(world, view, c, s, actor, item, need);
+    }
+
+    private void fetch(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, String item, int need) throws Exception {
         if (actor.distanceSquared(c.stockpile) > 9) {
             s.activity = "Fetching " + item.replace("minecraft:", "").replace('_', ' ') + " from the stockpile";
             sim.moveNear(world, s, c.stockpile);
@@ -466,15 +653,27 @@ final class FrontierBuilder {
         // Empty the bag first: whatever is in it (cleared dirt, an unknown load after a reload) goes to the stockpile.
         if (world.carried(s.id) > 0 && world.deliver(s.id, c.stockpile) == 0) { s.activity = "The stockpile is full: make room in it"; return; }
         ledger.remove(s.id);
-        int need = 0;
-        for (int i = p.step; i < steps.size(); i++) if (matches(steps.get(i), item)) need++;
         int got = world.collect(s.id, c.stockpile, CodaItemFilter.only(item), Math.max(1, Math.min(need, 64))); // the loader moves at most 64 per call; the next second collects more
         if (got > 0) ledger.computeIfAbsent(s.id, k -> new HashMap<>()).merge(item, got, Integer::sum);
         s.activity = got > 0 ? "Carrying " + got + " " + item.replace("minecraft:", "").replace('_', ' ') + " to the site" : "The stockpile has no " + item;
     }
 
-    /** With no logs left, a builder who can get an axe fells trees for the cabin. */
+    /**
+     * With no logs left, a builder who can get an axe fells trees for the cabin. With no cobblestone
+     * left, a builder digs rock in the mine with a pickaxe (equipping it puts the axe back first).
+     */
     private void gatherIfPossible(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Step step) throws Exception {
+        if (step.item().equals("minecraft:cobblestone")) {
+            String what = step.role().equals("foundation") ? "the foundation" : "the " + c.project.palette.name();
+            if (c.mineEntrance == null || (!hasInStockpile(view, c, FrontierJobs.PICKS) && !world.equip(s.id, c.stockpile, FrontierJobs.PICKS))) {
+                s.activity = "Building: needs cobblestone for " + what + ". Put cobblestone in the stockpile, or a pickaxe and a mine (/frontier mine)";
+                return;
+            }
+            jobs.minerFor(world, c, s, actor);
+            if (s.profession != Settler.Profession.BUILDER && c.project != null) s.profession = Settler.Profession.BUILDER;
+            if (!s.activity.isEmpty()) s.activity = "Mining rock for " + what + ": " + s.activity.toLowerCase(Locale.ROOT);
+            return;
+        }
         if (!FrontierJobs.isLog(step.item())) return;
         // equip() succeeds when an axe is already in hand, or in reach at the stockpile.
         if (!hasInStockpile(view, c, FrontierJobs.AXES) && !world.equip(s.id, c.stockpile, FrontierJobs.AXES)) return;

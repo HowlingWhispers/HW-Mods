@@ -60,9 +60,18 @@ record Palette(String name, String frame, String wall, String floor, String roof
         return stone(few + " in your land");
     }
 
+    /**
+     * The block laid in the dug-out ground under a house. Wood houses stand on cobblestone, so the
+     * logs stay off the ground; stone, sandstone and terracotta houses use their own material.
+     */
+    String foundation() {
+        return frame.endsWith("_log") ? "minecraft:cobblestone" : frame;
+    }
+
     /** The real block state for a blueprint role. Properties only apply to blocks that have them. */
     String resolve(String role, String properties) {
         String id = switch (role) {
+            case "foundation" -> foundation();
             case "frame" -> frame;
             case "wall" -> wall;
             case "floor" -> floor;
