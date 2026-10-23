@@ -99,9 +99,13 @@ final class Fixtures {
             // A settler wedged somewhere accepts long paths but does not move; a short step frees it, like a nudge.
             if (wedged.contains(new CodaBlockPos((int) Math.floor(a.x()), (int) Math.floor(a.y()), (int) Math.floor(a.z())))
                     && a.distanceSquared(p) > 4 * 4) { wedgedWalks++; return true; }
+            // CodaLoader 0.0.46 plans with accuracy 1: a target already within a block gives an empty path, so nobody moves.
+            if (vanillaAccuracy && Math.abs(a.x() - p.x() - .5) <= 1.01 && Math.abs(a.z() - p.z() - .5) <= 1.01 && Math.abs(a.y() - p.y()) <= 1.01) return true;
             actors.put(id, new Actor(id, p.x() + .5, p.y(), p.z() + .5, a.health(), false));
             return true;
         }
+        /** When true, walking to a block next to the settler "succeeds" without moving, like the real pathfinder. */
+        boolean vanillaAccuracy;
         public boolean sleep(UUID id, CodaBlockPos p) { return true; }
         public void wake(UUID id) {}
         public void damage(UUID id, float amount) {

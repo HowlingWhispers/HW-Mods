@@ -445,36 +445,39 @@ final class FrontierJobs {
     }
 
     /**
-     * Walk to the face the way a player would: first to the mouth of the mine on the surface (or at
-     * the cave the player chose), then down the dug columns a couple at a time. Never across the
-     * hill above it. Returns true when standing in the column just before the face.
+     * Get within reach of the face the way a player would: first to the mouth of the mine on the
+     * surface (or at the cave the player chose), then down the dug columns. Digging starts as soon
+     * as the face is within reach, wherever in the mine the settler stands. Waypoints are always at
+     * least two columns ahead: the loader's pathfinder treats anything within a block as already
+     * reached and would not move the settler at all (0.4.1 left miners standing still).
      */
     private boolean walkToFace(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor, CodaBlockPos face) throws Exception {
         int faceColumn = column(c.mineEntrance, c.mineDirection, face);
-        int stand = Math.max(-1, faceColumn - 1);
         int[] d = direction(c.mineDirection);
-        // Which dug column the settler is standing in, if any (-1 = at the mouth, outside).
         int inside = mineColumnAt(c, actor.x(), actor.y(), actor.z());
-        int at = inside < 0 ? Integer.MIN_VALUE : inside;
         var mouthBlock = new CodaBlockPos(c.mineEntrance.x() - d[0], c.mineEntrance.y(), c.mineEntrance.z() - d[1]);
         var mouth = FrontierSimulation.standing(world, mouthBlock, 0);
-        if (at == Integer.MIN_VALUE) {
-            boolean atMouth = mouth != null && Math.abs(actor.x() - mouth.x() - .5) <= 1.2 && Math.abs(actor.z() - mouth.z() - .5) <= 1.2 && Math.abs(actor.y() - mouth.y()) <= 1.5;
-            if (!atMouth) {
-                s.activity = "Walking to the mine";
-                if (mouth == null || !sim.navigate(world, s, mouth, .65)) {
-                    s.activity = "Path blocked: cannot reach the mouth of the mine at " + text(c.mineEntrance);
-                    if (autoMine(c) && mouth == null) finishMine(world, c, "has no place to stand at its mouth and is closed");
-                }
-                return false;
+        boolean atMouth = mouth != null && Math.abs(actor.x() - mouth.x() - .5) <= 1.5 && Math.abs(actor.z() - mouth.z() - .5) <= 1.5 && Math.abs(actor.y() - mouth.y()) <= 1.5;
+        boolean inReach = actor.distanceSquared(face) <= REACH * REACH;
+        if (inside < 0 && !atMouth) {
+            if (inReach && faceColumn <= 1) return true;
+            s.activity = "Walking to the mine";
+            if (mouth == null || !sim.navigate(world, s, mouth, .65)) {
+                s.activity = "Path blocked: cannot reach the mouth of the mine at " + text(c.mineEntrance);
+                if (autoMine(c) && mouth == null) finishMine(world, c, "has no place to stand at its mouth and is closed");
             }
-            at = -1;
-            if (stand < 0) return true;
+            return false;
         }
-        if (at >= stand) return true;
-        var next = mineFeet(c.mineEntrance, c.mineDirection, c.mineShape, Math.min(at + 2, stand));
+        if (inReach) return true;
+        int from = Math.max(inside, -1);
+        int last = faceColumn - 1;
+        if (last <= from) return true; // already as close as the dug columns allow
         s.activity = "Walking down into the mine";
-        if (!world.walk(s.id, next, .65) && !sim.navigate(world, s, next, .65)) s.activity = "Path blocked inside the mine at " + text(next);
+        // Three columns ahead, else two: never one, which the pathfinder counts as already there.
+        for (int to = Math.min(last, from + 3); to >= Math.min(last, from + 2); to--)
+            if (world.walk(s.id, mineFeet(c.mineEntrance, c.mineDirection, c.mineShape, to), .65)) return false;
+        var next = mineFeet(c.mineEntrance, c.mineDirection, c.mineShape, Math.min(last, from + 2));
+        if (!sim.navigate(world, s, next, .65)) s.activity = "Path blocked inside the mine at " + text(next);
         return false;
     }
 
