@@ -19,6 +19,9 @@ public final class JobsTest {
         treesOutsideTheLandAreNotCut();
         farmerHarvestsReplantsAndDelivers();
         minerDigsTunnelAndStopsSafely();
+        minersShareOneStairwayTheyChoseThemselves();
+        playerMineIsReachedThroughItsMouth();
+        unsafeStairwayIsClosedAndAnotherChosen();
         fullStockpileIsReported();
         noToolsMeansNoJob();
         olderSavesStillLoad();
@@ -146,5 +149,86 @@ public final class JobsTest {
             if (key.endsWith(".mineEntrance") || key.endsWith(".mineDirection") || key.endsWith(".mineProgress") || key.endsWith(".jobChosen")) p.remove(key);
         var back = FrontierStore.decode(p);
         check(back.primary().mineEntrance == null && back.primary().mineProgress == 0, "A 0.2.2 world without job fields still loads");
+    }
+
+    /** Every miner, not one each: with pickaxes and no mine set, miners choose one stairway and take turns at its face. */
+    static void minersShareOneStairwayTheyChoseThemselves() throws Exception {
+        var t = new Camp();
+        var a = camp(t);
+        var b = t.add("Second", RESIDENT, null, true);
+        t.c().recordResidents();
+        t.world.put(b.id, new CodaBlockPos(3, 64, 2), 20);
+        t.world.stock(STOCK, "minecraft:stone_pickaxe", 2);
+        t.world.food = 60; // a long test: keep everyone fed
+        t.sim.planner.surveyAll(t.world, t.c());
+        // Underground the fake pathfinder only finds short ways, like the real one from far away.
+        t.world.reachable = (actor, p) -> p.y() >= 64 || actor.distanceSquared(p) <= 3.5 * 3.5;
+        Set<String> together = new HashSet<>();
+        int[] maxProgress = {0};
+        CodaBlockPos[] firstMine = {null};
+        String[] firstDirection = {null};
+        for (int i = 0; i < 300; i++) {
+            t.seconds(1);
+            if (firstMine[0] == null && t.c().mineEntrance != null) { firstMine[0] = t.c().mineEntrance; firstDirection[0] = t.c().mineDirection; }
+            if (a.target != null && a.target.equals(b.target)) together.add("both at " + a.target);
+            maxProgress[0] = Math.max(maxProgress[0], t.c().mineProgress);
+        }
+        check(a.profession == MINER && b.profession == MINER, "A pickaxe alone makes a miner: no /frontier mine needed: " + a.profession + "/" + b.profession + " " + a.activity + " / " + b.activity);
+        check(t.c().mineEntrance != null && FrontierJobs.autoMine(t.c()), "The miners chose a stairway mine themselves");
+        long chosen = t.world.announcements.stream().filter(x -> x.contains("chose a place for the settlement's mine")).count();
+        long closed = t.world.announcements.stream().filter(x -> x.contains("Miners will choose a new place")).count();
+        check(chosen >= 1 && chosen == closed + 1, "One shared mine at a time, not one each (" + chosen + " chosen, " + closed + " closed)");
+        check(together.isEmpty(), "Never two miners at the same face: " + together);
+        var e = firstMine[0];
+        var col4 = FrontierJobs.mineFeet(e, firstDirection[0], "stairs", 4);
+        check(col4.y() == e.y() - 4, "The stairway goes one block down per step");
+        check(maxProgress[0] > 20 && t.world.block(col4).orElseThrow().air() && t.world.block(FrontierSimulation.add(col4, 0, 1, 0)).orElseThrow().air()
+                && t.world.block(FrontierSimulation.add(col4, 0, 2, 0)).orElseThrow().air(), "Steps are dug three high so settlers can walk down (progress " + maxProgress[0] + ")");
+        var plot = t.sim.planner.nextPlot(t.c());
+        check(plot == null || !FrontierPlanner.CellPos.of(e).equals(plot.cell()), "No home is planned on top of the mine");
+        t.reopen();
+        check(t.c().mineEntrance != null && FrontierJobs.autoMine(t.c()), "The shared mine survives reopening the world");
+        // Dug out to the end, it is closed and the next one chosen: still one mine at a time.
+        var mineNow = t.c().mineEntrance;
+        until(t, 1500, () -> t.c().mineEntrance != null && !t.c().mineEntrance.equals(mineNow));
+        check(t.world.announcements.stream().noneMatch(x -> x.contains("not enough food")), "Miners deep in the mine walk back out the way they came to eat");
+        check(t.c().mineEntrance != null && !t.c().mineEntrance.equals(mineNow) && t.world.announcements.stream().anyMatch(x -> x.contains("is finished")),
+                "A finished mine is followed by a new one elsewhere: " + mineNow + " " + t.c().mineEntrance + " " + t.world.announcements.stream().filter(x -> !x.contains("mine")).skip(Math.max(0, t.world.announcements.size() - 12)).toList() + " food " + t.world.food);
+    }
+
+    /** The reported bug: a mine set at a cave below a hill. Miners go to its mouth, then inside, never over the hill. */
+    static void playerMineIsReachedThroughItsMouth() throws Exception {
+        var t = new Camp();
+        var s = camp(t);
+        t.world.stock(STOCK, "minecraft:stone_pickaxe", 1);
+        // A hill east of the camp: solid stone from x=8 to 24 up to y=72, with the cave mouth at its foot.
+        for (int x = 8; x <= 24; x++) for (int y = 64; y <= 72; y++) for (int z = -3; z <= 3; z++)
+            t.world.blocks.put(new CodaBlockPos(x, y, z), block("minecraft:stone", Map.of(), true));
+        t.world.reachable = (actor, p) -> p.x() < 8 || actor.distanceSquared(p) <= 3.5 * 3.5; // inside the hill only short steps work
+        t.c().mineEntrance = new CodaBlockPos(8, 64, 0);
+        t.c().mineDirection = "east";
+        until(t, 400, () -> t.c().mineProgress >= 12);
+        check(t.c().mineProgress >= 12, "The miner walks in through the mouth and digs (" + s.activity + ")");
+        var at = t.world.actor(s.id).orElseThrow();
+        check(at.y() < 66, "The miner is inside the tunnel, not on top of the hill (y " + at.y() + ")");
+        check(!s.activity.contains("Path blocked"), "No path-blocked complaint: " + s.activity);
+    }
+
+    /** A stairway that reaches water is closed and the miners choose another place; nothing is dug next to the water. */
+    static void unsafeStairwayIsClosedAndAnotherChosen() throws Exception {
+        var t = new Camp();
+        var s = camp(t);
+        t.world.stock(STOCK, "minecraft:stone_pickaxe", 1);
+        t.sim.planner.surveyAll(t.world, t.c());
+        until(t, 60, () -> t.c().mineEntrance != null);
+        var first = t.c().mineEntrance;
+        check(first != null, "A mine was chosen");
+        var col3 = FrontierJobs.mineFeet(first, t.c().mineDirection, "stairs", 3);
+        var under = FrontierSimulation.add(col3, 0, -1, 0);
+        t.world.blocks.put(under, new CodaLivingWorld.Block("minecraft:water", Map.of(), false, true));
+        until(t, 600, () -> t.c().mineEntrance != null && !t.c().mineEntrance.equals(first));
+        check(t.world.announcements.stream().anyMatch(x -> x.contains("reached water")), "Players are told the mine was closed and why");
+        check(t.c().mineEntrance != null && !t.c().mineEntrance.equals(first), "Another place was chosen");
+        check(t.world.block(under).orElseThrow().fluid(), "The water was not dug into");
     }
 }

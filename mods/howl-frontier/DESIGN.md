@@ -175,6 +175,26 @@ half of its door), never anything else. Everything goes back to the stockpile an
 used again. A bed already placed is left for the player to pick up, because settlers
 cannot take beds down.
 
+### The settlement's mine (0.4.1)
+
+One shared mine per settlement, stored with the settlement, worked by every miner and by
+builders who need rock. Only one settler digs at the face at a time; others wait their turn.
+
+- **Chosen by the miners** when there is none: the cell centre of an open or steep cell in
+  the land, not a road, the project's plot or its road, with room for 16 steps in a direction
+  inside the land. Steep cells first, then nearest the stockpile. The planner keeps homes off
+  the mouth and the top of the stairway.
+- **Shape:** a stairway one block down per step for 8 steps, three blocks high on the way
+  down, then a 2-high level tunnel to 32 steps. Dirt and grass come away by hand; stone needs
+  a pickaxe.
+- **Walking:** to the mouth first (the block in front of the first step), then down the dug
+  steps two at a time. Settlers inside the mine heading anywhere else walk back up the same
+  way. This replaces aiming straight at the face, which led over the hill above it.
+- **Safety:** water, lava, sand or gravel next to the next block, or a block miners do not
+  dig, closes a chosen mine (players are told why) and a new place is chosen. A finished mine
+  is closed the same way. A mine the player set (`/frontier mine`) is never closed by settlers;
+  it pauses and says why, as before.
+
 ### Mountain homes and underground villages (later)
 
 Some buildings are dug instead of built. A mountain home is carved into a slope that
@@ -240,6 +260,7 @@ decision on whether players may use it too.
 | 0.3.0 | Builders: roads, then the starter hut on the planned plot, in the land's palette, from real stockpile items; door and bed from the stockpile | L6 (0.0.46) |
 | 0.3.x | Death events, owner from placement, soft-claim enforcement, campfire screen | L1, L2, L5 |
 | 0.4.0 | Houses dug into the ground on a foundation, dips filled, builders mine rock for it; 0.3.x huts taken down and rebuilt | Nothing new |
-| 0.4.x | Crafting at a workbench next to the stockpile; plank houses | L8 (0.0.47) |
+| 0.4.1 | One shared mine the miners choose and dig as a walkable stairway; walking in and out through its mouth | Nothing new |
+| 0.4.x | Crafting at a workbench next to the stockpile: planks, sticks, ladders; plank houses | L8 (0.0.47) |
 | 0.5.0 | Mountain homes and underground villages; expeditions | L6, plus an entity storage hook for expeditions |
 | 0.6.0 | Starting locations, visible border | L3, L4, L7 |

@@ -113,7 +113,7 @@ final class FrontierJobs {
                     idle(world, c, s, actor, "Nothing to build right now");
                 }
             }
-            case LABOURER -> idle(world, c, s, actor, "No job yet. Put an axe, a hoe (with crops planted) or a pickaxe (with /frontier mine) in the stockpile");
+            case LABOURER -> idle(world, c, s, actor, "No job yet. Put an axe, a hoe (with crops planted) or a pickaxe in the stockpile");
         }
     }
 
@@ -125,7 +125,7 @@ final class FrontierJobs {
         String tool = null;
         if (!Collections.disjoint(stocked, HOES) && !crops.isEmpty()) { next = FARMER; tool = "a hoe"; }
         else if (!Collections.disjoint(stocked, AXES)) { next = LUMBERJACK; tool = "an axe"; }
-        else if (!Collections.disjoint(stocked, PICKS) && c.mineEntrance != null) { next = MINER; tool = "a pickaxe"; }
+        else if (!Collections.disjoint(stocked, PICKS)) { next = MINER; tool = "a pickaxe"; }
         if (next == null) return;
         s.profession = next;
         s.target = null;
@@ -345,47 +345,215 @@ final class FrontierJobs {
         miner(world, c, s, actor);
     }
 
+    /**
+     * The settlement's one shared mine. Miners (and builders who need rock) all work in it, one at
+     * the face at a time. Without a mine the first miner chooses one: a stairway dug down from the
+     * surface, which settlers can always walk in and out of. A mine the player set with
+     * /frontier mine is a straight tunnel from where they looked.
+     */
     private void miner(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
-        if (c.mineEntrance == null) {
-            if (!s.jobChosen) { s.profession = LABOURER; sim.save(); }
-            idle(world, c, s, actor, "No mine yet: look at where the tunnel should start and use /frontier mine");
+        if (c.mineEntrance == null && !chooseMine(world, c, s)) {
+            idle(world, c, s, actor, s.activity.isEmpty() ? "Looking for a place for the mine" : s.activity);
             return;
         }
         if (!tool(world, c, s, actor, PICKS, "a pickaxe")) return;
-        int[] d = direction(c.mineDirection);
-        int step = c.mineProgress / 2;
-        CodaBlockPos cell = add(c.mineEntrance, d[0] * step, c.mineProgress % 2 == 0 ? 1 : 0, d[1] * step);
-        if (step >= MAX_TUNNEL || !c.territory().contains(cell)) {
-            if (world.carried(s.id) > 0) s.delivering = true;
-            else idle(world, c, s, actor, "The mine is finished. Use /frontier mine to start a new tunnel");
+        var blocks = mineBlocks(c.mineEntrance, c.mineDirection, c.mineShape);
+        if (c.mineProgress >= blocks.size() || !c.territory().contains(blocks.get(c.mineProgress))) {
+            if (world.carried(s.id) > 0) { s.target = null; s.delivering = true; return; }
+            finishMine(world, c, "is finished");
             return;
         }
-        var b = world.block(cell);
-        if (b.isEmpty()) { s.activity = "Mining paused: the tunnel is in an unloaded area"; return; }
-        if (b.get().air()) { c.mineProgress++; sim.save(); return; }
+        var face = blocks.get(c.mineProgress);
+        var b = world.block(face);
+        if (b.isEmpty()) { s.activity = "Mining paused: the mine is in an unloaded area"; return; }
+        if (b.get().air() || (!b.get().solid() && !b.get().fluid())) {
+            // Already open (a cave, or grass and flowers at the top of the stairs): plants are cleared by hand.
+            if (!b.get().air() && !world.harvest(s.id, face, b.get().id(), c.stockpile, Set.of())) {
+                if (!b.get().air() && walkToFace(world, c, s, actor, face)) s.activity = "Mining paused: cannot clear the " + b.get().id().replace("minecraft:", "") + " at " + text(face);
+                return;
+            }
+            c.mineProgress++;
+            sim.save();
+            return;
+        }
         String id = b.get().id();
-        if (!MINEABLE.contains(id)) { s.activity = "Mining paused at " + id.replace("minecraft:", "") + ": miners only dig stone, dirt, ore, sandstone and terracotta"; return; }
+        if (!MINEABLE.contains(id) && !CLEAR_BY_HAND.contains(id)) {
+            if (autoMine(c)) { finishMine(world, c, "reached " + id.replace("minecraft:", "") + ", which miners do not dig, and is closed"); return; }
+            s.activity = "Mining paused at " + id.replace("minecraft:", "") + ": miners only dig stone, dirt, ore, sandstone and terracotta";
+            return;
+        }
         for (int[] n : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {0, 0, -1}}) {
-            var near = world.block(add(cell, n[0], n[1], n[2]));
+            var near = world.block(add(face, n[0], n[1], n[2]));
             if (near.isEmpty() || near.get().fluid() || FALLING.contains(near.get().id())) {
+                if (autoMine(c)) { finishMine(world, c, "reached water, lava, sand or gravel and is closed"); return; }
                 s.activity = "Mining paused: water, lava, sand or gravel next to the tunnel";
                 return;
             }
         }
-        CodaBlockPos stand = add(c.mineEntrance, d[0] * (step - 1), 0, d[1] * (step - 1));
-        if (actor.distanceSquared(stand) > 2.25) {
-            s.activity = "Walking to the mine";
-            if (!sim.navigate(world, s, stand, .65)) s.activity = "Path blocked: cannot reach the mine at " + text(c.mineEntrance);
+        if (claimedByOther(c, s, face)) {
+            s.target = null;
+            idle(world, c, s, actor, "Waiting for a turn at the face of the mine");
             return;
         }
-        if (world.harvest(s.id, cell, id, c.stockpile, PICKS)) {
+        s.target = face;
+        if (!walkToFace(world, c, s, actor, face)) return;
+        Set<String> tools = CLEAR_BY_HAND.contains(id) ? Set.of() : PICKS;
+        if (world.harvest(s.id, face, id, c.stockpile, tools)) {
             c.mineProgress++;
             sim.save();
             s.activity = "Mining";
         } else if (world.carried(s.id) > 0) {
+            s.target = null;
             s.delivering = true;
         } else {
             s.activity = "Needs a better pickaxe for " + id.replace("minecraft:", "");
+        }
+    }
+
+    /** Dirt, grass and the like at the top of a stairway: they come away by hand, no pickaxe needed. */
+    static final Set<String> CLEAR_BY_HAND = Set.of("minecraft:grass_block", "minecraft:dirt", "minecraft:coarse_dirt", "minecraft:podzol",
+            "minecraft:rooted_dirt", "minecraft:mycelium", "minecraft:moss_block", "minecraft:clay", "minecraft:mud", "minecraft:snow_block");
+    /** Stairway mines go this many steps down before levelling out. */
+    static final int STAIR_DEPTH = 8;
+
+    static boolean autoMine(Settlement c) { return "stairs".equals(c.mineShape); }
+
+    /** The blocks of a mine in digging order. A tunnel: head then feet of each step. Stairs: three high while going down. */
+    static List<CodaBlockPos> mineBlocks(CodaBlockPos entrance, String direction, String shape) {
+        int[] d = direction(direction);
+        List<CodaBlockPos> list = new ArrayList<>();
+        boolean stairs = "stairs".equals(shape);
+        for (int i = 0; i < MAX_TUNNEL; i++) {
+            var feet = mineFeet(entrance, direction, shape, i);
+            if (stairs && i > 0 && i <= STAIR_DEPTH) list.add(add(feet, 0, 2, 0));
+            list.add(add(feet, 0, 1, 0));
+            list.add(feet);
+        }
+        return list;
+    }
+
+    /** Where a settler's feet are in column {@code i} of the mine. */
+    static CodaBlockPos mineFeet(CodaBlockPos entrance, String direction, String shape, int i) {
+        int[] d = direction(direction);
+        int down = "stairs".equals(shape) ? Math.min(i, STAIR_DEPTH) : 0;
+        return new CodaBlockPos(entrance.x() + d[0] * i, entrance.y() - down, entrance.z() + d[1] * i);
+    }
+
+    private static int column(CodaBlockPos entrance, String direction, CodaBlockPos p) {
+        int[] d = direction(direction);
+        return d[0] != 0 ? (p.x() - entrance.x()) * d[0] : (p.z() - entrance.z()) * d[1];
+    }
+
+    /**
+     * Walk to the face the way a player would: first to the mouth of the mine on the surface (or at
+     * the cave the player chose), then down the dug columns a couple at a time. Never across the
+     * hill above it. Returns true when standing in the column just before the face.
+     */
+    private boolean walkToFace(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor, CodaBlockPos face) throws Exception {
+        int faceColumn = column(c.mineEntrance, c.mineDirection, face);
+        int stand = Math.max(-1, faceColumn - 1);
+        int[] d = direction(c.mineDirection);
+        // Which dug column the settler is standing in, if any (-1 = at the mouth, outside).
+        int inside = mineColumnAt(c, actor.x(), actor.y(), actor.z());
+        int at = inside < 0 ? Integer.MIN_VALUE : inside;
+        var mouthBlock = new CodaBlockPos(c.mineEntrance.x() - d[0], c.mineEntrance.y(), c.mineEntrance.z() - d[1]);
+        var mouth = FrontierSimulation.standing(world, mouthBlock, 0);
+        if (at == Integer.MIN_VALUE) {
+            boolean atMouth = mouth != null && Math.abs(actor.x() - mouth.x() - .5) <= 1.2 && Math.abs(actor.z() - mouth.z() - .5) <= 1.2 && Math.abs(actor.y() - mouth.y()) <= 1.5;
+            if (!atMouth) {
+                s.activity = "Walking to the mine";
+                if (mouth == null || !sim.navigate(world, s, mouth, .65)) {
+                    s.activity = "Path blocked: cannot reach the mouth of the mine at " + text(c.mineEntrance);
+                    if (autoMine(c) && mouth == null) finishMine(world, c, "has no place to stand at its mouth and is closed");
+                }
+                return false;
+            }
+            at = -1;
+            if (stand < 0) return true;
+        }
+        if (at >= stand) return true;
+        var next = mineFeet(c.mineEntrance, c.mineDirection, c.mineShape, Math.min(at + 2, stand));
+        s.activity = "Walking down into the mine";
+        if (!world.walk(s.id, next, .65) && !sim.navigate(world, s, next, .65)) s.activity = "Path blocked inside the mine at " + text(next);
+        return false;
+    }
+
+    /** The mine column a settler stands in, or -1. */
+    static int mineColumnAt(Settlement c, double x, double y, double z) {
+        for (int i = 0; i < MAX_TUNNEL; i++) {
+            var feet = mineFeet(c.mineEntrance, c.mineDirection, c.mineShape, i);
+            if (Math.abs(x - feet.x() - .5) <= .9 && Math.abs(z - feet.z() - .5) <= .9 && Math.abs(y - feet.y()) <= 1.2) return i;
+        }
+        return -1;
+    }
+
+    /**
+     * For a settler inside the mine heading somewhere outside it: the next place to walk to on
+     * the way out (two columns back, then the mouth). Null when not inside or already heading in.
+     */
+    static CodaBlockPos wayOutOfMine(CodaLivingWorld world, Settlement c, CodaLivingWorld.Actor actor, CodaBlockPos target) throws Exception {
+        int at = mineColumnAt(c, actor.x(), actor.y(), actor.z());
+        if (at <= 0) return null;
+        if (mineColumnAt(c, target.x() + .5, target.y(), target.z() + .5) >= 0) return null;
+        if (at >= 2) return mineFeet(c.mineEntrance, c.mineDirection, c.mineShape, at - 2);
+        int[] d = direction(c.mineDirection);
+        return FrontierSimulation.standing(world, new CodaBlockPos(c.mineEntrance.x() - d[0], c.mineEntrance.y(), c.mineEntrance.z() - d[1]), 0);
+    }
+
+    /**
+     * Choose the shared mine: a stairway starting on open or steep land inside the territory, away
+     * from planned homes and roads, nearest the stockpile; hillsides first, since rock is closer there.
+     */
+    private boolean chooseMine(CodaLivingWorld world, Settlement c, Settler s) throws Exception {
+        var planner = sim.planner;
+        if (planner.surveyed(c) < FrontierPlanner.cells(c.territory()).size()) { s.activity = "Looking for a place for the mine: surveying the land"; return false; }
+        Set<FrontierPlanner.CellPos> reserved = new HashSet<>(c.roads);
+        if (c.project != null) { reserved.add(c.project.cell); reserved.addAll(c.project.road); }
+        CodaBlockPos best = null;
+        String bestDirection = null;
+        double bestScore = Double.MAX_VALUE;
+        for (var cell : FrontierPlanner.cells(c.territory())) {
+            var survey = planner.survey(cell).orElse(null);
+            if (survey == null || reserved.contains(cell)) continue;
+            if (survey.role() != FrontierPlanner.Role.OPEN && survey.role() != FrontierPlanner.Role.STEEP) continue;
+            int cx = cell.minX() + FrontierPlanner.CELL / 2, cz = cell.minZ() + FrontierPlanner.CELL / 2;
+            var entrance = FrontierSimulation.standing(world, new CodaBlockPos(cx, survey.level() + 1, cz), 0);
+            if (entrance == null || abandonedMines.contains(entrance)) continue;
+            for (String direction : List.of("north", "east", "south", "west")) {
+                int[] d = direction(direction);
+                boolean room = c.territory().contains(new CodaBlockPos(entrance.x() + d[0] * (STAIR_DEPTH + 8), entrance.y(), entrance.z() + d[1] * (STAIR_DEPTH + 8)))
+                        && c.territory().contains(new CodaBlockPos(entrance.x() - d[0], entrance.y(), entrance.z() - d[1]));
+                if (!room) continue;
+                double score = Math.sqrt(distanceSquared(entrance, c.stockpile)) + (survey.role() == FrontierPlanner.Role.STEEP ? 0 : 12);
+                if (score < bestScore) { bestScore = score; best = entrance; bestDirection = direction; }
+            }
+        }
+        if (best == null) { s.activity = "No good place for a mine in your land yet: miners need open or hilly ground away from homes and roads"; return false; }
+        c.mineEntrance = best;
+        c.mineDirection = bestDirection;
+        c.mineShape = "stairs";
+        c.mineProgress = 0;
+        sim.save();
+        world.announce(Chat.good(s.name + " chose a place for the settlement's mine") + Chat.label(" at ") + Chat.value(text(best))
+                + Chat.label(": a stairway down, heading " + bestDirection + ". Every miner works there."));
+        return true;
+    }
+
+    /** Places tried and closed this session, so a closed stairway is not chosen again straight away. */
+    private final Set<CodaBlockPos> abandonedMines = new HashSet<>();
+
+    private void finishMine(CodaLivingWorld world, Settlement c, String why) throws Exception {
+        var entrance = c.mineEntrance;
+        boolean auto = autoMine(c);
+        if (auto) {
+            abandonedMines.add(entrance);
+            c.mineEntrance = null;
+            c.mineProgress = 0;
+            for (var other : c.settlers.values()) if (other.target != null && other.profession == MINER) other.target = null;
+            sim.save();
+            world.announce(Chat.warn("The mine at " + text(entrance) + " " + why + ".") + Chat.label(" Miners will choose a new place."));
+        } else {
+            for (var other : c.settlers.values()) if (other.profession == MINER && other.resident()) other.activity = "The mine " + why + ". Use /frontier mine auto to let miners choose a new place";
         }
     }
 

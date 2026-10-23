@@ -283,6 +283,12 @@ final class FrontierPlanner {
         int bestScore = Integer.MAX_VALUE;
         Set<CellPos> reserved = new HashSet<>();
         if (c.project != null) { reserved.add(c.project.cell); reserved.addAll(c.project.road); }
+        // The shared mine's mouth and the top of its stairway stay free of homes.
+        if (c.mineEntrance != null) {
+            int[] d = FrontierJobs.direction(c.mineDirection);
+            reserved.add(CellPos.of(new CodaBlockPos(c.mineEntrance.x() - d[0], 0, c.mineEntrance.z() - d[1])));
+            for (int i = 0; i <= 4; i++) reserved.add(CellPos.of(FrontierJobs.mineFeet(c.mineEntrance, c.mineDirection, c.mineShape, i)));
+        }
         for (var s : surveys.values()) {
             if (s.role() != Role.OPEN || reserved.contains(s.cell())) continue;
             for (int[] d : dirs) {

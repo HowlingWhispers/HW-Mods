@@ -609,6 +609,15 @@ final class FrontierSimulation {
         var actor = world.actor(s.id);
         if (actor.isEmpty()) return false;
         var at = actor.get();
+        // Out of the mine the way in: back up its columns to the mouth, never straight through the rock.
+        var c = camp();
+        if (c != null && c.mineEntrance != null) {
+            var out = FrontierJobs.wayOutOfMine(world, c, at, target);
+            if (out != null) {
+                if (world.walk(s.id, out, speed)) return true;
+                target = out;
+            }
+        }
         var pr = progress.computeIfAbsent(s.id, k -> new Progress());
         long now = camp() == null ? 0 : camp().elapsed / 20;
         if (now != pr.second) {

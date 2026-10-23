@@ -98,6 +98,7 @@ final class FrontierStore {
             put(p, k + "mineEntrance", c.mineEntrance);
             p.setProperty(k + "mineDirection", c.mineDirection);
             p.setProperty(k + "mineProgress", "" + c.mineProgress);
+            p.setProperty(k + "mineShape", c.mineShape);
             positions(p, k + "beds", c.beds);
             positions(p, k + "keptBeds", c.keptBeds);
             p.setProperty(k + "settlers", "" + c.settlers.size());
@@ -168,7 +169,10 @@ final class FrontierStore {
             c.mineEntrance = inside(t, position(p.getProperty(k + "mineEntrance", "")), "mine entrance");
             c.mineDirection = p.getProperty(k + "mineDirection", "north");
             if (!Set.of("north", "south", "east", "west").contains(c.mineDirection)) throw new IllegalArgumentException("invalid mine direction");
-            c.mineProgress = optionalInteger(p, k + "mineProgress", 0, 0, FrontierJobs.MAX_TUNNEL * 2);
+            // Added in 0.4.1: older mines were all player-set tunnels.
+            c.mineShape = p.getProperty(k + "mineShape", "tunnel");
+            if (!Set.of("tunnel", "stairs").contains(c.mineShape)) throw new IllegalArgumentException("invalid mine shape");
+            c.mineProgress = optionalInteger(p, k + "mineProgress", 0, 0, FrontierJobs.MAX_TUNNEL * 3);
             readPositions(p, k + "beds", t, c.beds);
             readPositions(p, k + "keptBeds", t, c.keptBeds);
             int count = integer(p, k + "settlers", 0, Settlement.MAX_RECORDS);
