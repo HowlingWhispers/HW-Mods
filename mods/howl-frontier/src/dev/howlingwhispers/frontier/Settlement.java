@@ -28,6 +28,8 @@ final class Settlement {
     /** Where miners dig: the first feet-level block of a two-high tunnel, its direction, and blocks cleared. */
     CodaBlockPos mineEntrance;
     String mineDirection = "north";
+    /** "tunnel": a straight tunnel the player set with /frontier mine. "stairs": a stairway the miners chose. */
+    String mineShape = "tunnel";
     int mineProgress;
     /** Grid cells that already carry a road the settlers laid. Roads stay roads. */
     final LinkedHashSet<FrontierPlanner.CellPos> roads = new LinkedHashSet<>();

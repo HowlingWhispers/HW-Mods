@@ -38,7 +38,18 @@ Residents pick a job from the tools in the stockpile and fetch the tool themselv
 | --- | --- | --- |
 | Axe | Lumberjack | Cut natural trees in your land (up to 6 logs tall), replant a sapling from the stockpile |
 | Hoe (with crops on farmland) | Farmer | Harvest ripe wheat, carrots, potatoes and beetroot, replant with real seeds |
-| Pickaxe (after `/frontier mine`) | Miner | Dig a 2-high tunnel up to 32 blocks from where you set the mine |
+| Pickaxe | Miner | Work the settlement's one shared mine: a stairway the miners choose and dig themselves |
+
+**The mine.** There is one mine for the whole settlement, and every miner works in it,
+one at the face at a time. The first miner chooses the spot: open or hilly ground inside your
+land, away from homes, roads and fields, near the stockpile (hillsides first). They dig a
+stairway: one block down per step for 8 steps, three blocks high so everyone can walk it,
+then level for the rest of its 32 steps. Settlers always walk in through its mouth and back
+out the same way, never over the hill above it. If the stairway reaches water, lava, sand,
+gravel or something miners do not dig, it is closed safely and they choose another place;
+when it is finished, they choose a new one. Prefer a spot of your own? Look at it, face
+the direction to dig and use `/frontier mine` (a straight 2-high tunnel that must be
+reachable on foot); `/frontier mine auto` hands the choice back to the miners.
 
 Work happens in daylight, only inside your land, and only with real items. Lumberjacks never
 cut log houses or trees with player-placed leaves. Miners stop at water, lava, sand, gravel,
@@ -72,8 +83,8 @@ planned plot. A resident without a tool job becomes the builder, the pioneer fir
 Materials follow the land: a log cabin on a cobblestone foundation where trees grow
 (53 logs and 25 cobblestone), otherwise sandstone, terracotta or cobblestone throughout.
 The builder takes them from the stockpile, fells trees for logs itself when it has an axe,
-and digs rock in the mine for cobblestone when there is a pickaxe and a mine
-(`/frontier mine`). **Put a door and a bed in the stockpile**: Frontier cannot craft yet
+and digs rock in the settlement's mine for cobblestone when there is a pickaxe in the
+stockpile. **Put a door and a bed in the stockpile**: Frontier cannot craft yet
 (a crafting table next to the stockpile is planned; see DESIGN.md).
 
 A hut started by Frontier 0.3.x sat on top of the grass. After updating, its builder takes
@@ -91,7 +102,8 @@ every block.
 | `/frontier stockpile` | Set the chest or barrel you are looking at |
 | `/frontier keepbed` | Keep the bed you are looking at for yourself (again to share it) |
 | `/frontier job <id> <lumberjack\|farmer\|miner\|labourer>` | Choose a settler's job; `labourer` lets them pick |
-| `/frontier mine` | Start a mine at the block you look at, tunnelling the way you face |
+| `/frontier mine` | Optional: set the mine yourself at the block you look at, tunnelling the way you face |
+| `/frontier mine auto` | Let the miners choose the settlement's mine (the default) |
 | `/frontier plan [here]` | Show the settlement plan, or explain the spot you look at |
 | `/frontier name <id> <username>` | Rename a settler; their skin follows that Minecraft account |
 | `/frontier retire <id>` | Remove a settler who is lost (refused while they are alive and nearby) |

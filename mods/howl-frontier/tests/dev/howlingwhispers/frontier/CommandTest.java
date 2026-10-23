@@ -259,6 +259,11 @@ public final class CommandTest {
         check(me.last().contains("inside your land") && stored(t).mineEntrance.equals(new CodaBlockPos(6, 64, 0)), "A mine outside the land is refused");
         me.replies.clear(); me.raw.clear();
         run(me, "status");
-        check(me.said("Work: 1 labourer") && me.said("mine 6 64 0 facing east, 0 blocks dug"), "Status shows jobs and the mine");
+        check(me.said("Work: 1 labourer") && me.said("mine 6 64 0, tunnel east, 0 blocks dug"), "Status shows jobs and the mine");
+        run(me, "mine", "auto");
+        check(stored(t).mineEntrance == null && me.last().contains("choose the settlement's mine themselves"), "/frontier mine auto hands the choice back to the miners");
+        me.replies.clear(); me.raw.clear();
+        run(me, "status");
+        check(me.said("miners choose one when they start"), "Status says miners will choose: " + me.replies);
     }
 }

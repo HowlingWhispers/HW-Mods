@@ -665,8 +665,8 @@ final class FrontierBuilder {
     private void gatherIfPossible(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Step step) throws Exception {
         if (step.item().equals("minecraft:cobblestone")) {
             String what = step.role().equals("foundation") ? "the foundation" : "the " + c.project.palette.name();
-            if (c.mineEntrance == null || (!hasInStockpile(view, c, FrontierJobs.PICKS) && !world.equip(s.id, c.stockpile, FrontierJobs.PICKS))) {
-                s.activity = "Building: needs cobblestone for " + what + ". Put cobblestone in the stockpile, or a pickaxe and a mine (/frontier mine)";
+            if (!hasInStockpile(view, c, FrontierJobs.PICKS) && !world.equip(s.id, c.stockpile, FrontierJobs.PICKS)) {
+                s.activity = "Building: needs cobblestone for " + what + ". Put cobblestone or a pickaxe in the stockpile";
                 return;
             }
             jobs.minerFor(world, c, s, actor);
