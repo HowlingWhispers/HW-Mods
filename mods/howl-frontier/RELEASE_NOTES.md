@@ -1,12 +1,11 @@
-Frontier 0.3.0: settlers build their own homes.
+Frontier 0.3.1: settlers find their way.
 
-When every settler has a bed, the settlement starts the next home on the plot its plan chose. A free resident becomes the builder (the pioneer first) and builds it with real items, block by block.
+Fixes from the first 0.3.0 play test: arrivals stood still at the edge of the land until pushed, and the pioneer could not reach the building site.
 
-- Roads come first. The builder fetches a shovel from the stockpile and turns grass and dirt into paths along the planned road, cutting natural trees in the way with an axe from the stockpile.
-- Then the plot is cleared of grass, dirt, sand, plants and natural trees. Anything you built or placed is never removed: the builder stops and tells you what is in the way.
-- Then the starter hut goes up from the bottom: a floor, walls with two windows, a door facing the road, a roof and a bed inside. A free bed means the next settler can arrive.
-- Materials follow the land: a log cabin where trees grow, otherwise sandstone, terracotta or cobblestone. The builder takes them from the stockpile and gathers logs itself when there are trees and an axe. Put a door and a bed in the stockpile; Frontier cannot craft yet.
-- /frontier status shows a Building line: where, which stage, who builds and what is still missing. /frontier plan shows the project on the map.
-- Progress is saved after every block, so leaving and reopening the world resumes where it stopped.
+- Settlers walk through grass, ferns, flowers, bushes and leaf litter, and can stand among them. Before, only bare ground counted, so in a forest there was often nowhere to stand by the campfire or the building site.
+- When the direct way is refused, a settler walks to the best reachable spot towards its goal, fanning out sideways around trees and slopes, in steps as short as 4 blocks. Any distance works, not just the land around the campfire.
+- A settler that has not moved for 4 seconds steps aside by itself, the way your nudge freed them.
+- An arrival that finds no way in at all for 45 seconds is brought to the campfire, and you are told.
+- Trees on the building site are felled whole with an axe from the stockpile, top first, so no trunk is left hanging over the new home. The builder walks right up to the trunk to reach the top.
 
-Requires H.O.W.L. 0.0.46+ (settlers place real blocks) and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.
+Requires H.O.W.L. 0.0.46+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

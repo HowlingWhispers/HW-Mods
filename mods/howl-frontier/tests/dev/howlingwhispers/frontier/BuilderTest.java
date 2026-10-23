@@ -17,6 +17,7 @@ public final class BuilderTest {
         playerBlocksAreNeverTouched();
         waitsForDoorAndResumesAfterReopen();
         statusShowsBuilding();
+        treeOnSiteIsFelledWhole();
         finish("builder checks");
     }
 
@@ -197,5 +198,31 @@ public final class BuilderTest {
         check(me.said("cobblestone at") && me.said("still needs 1 bed, 78 cobblestone, 1 door") && me.said("no builder free"), "Status shows the project, its needs and its builder: " + me.replies);
         command.execute(me, List.of("plan"));
         check(me.said("Building: cobblestone at") && me.said("door facing"), "Plan shows the project in place of the next plot");
+    }
+
+    /** A tall natural tree on the plot is felled whole with an axe, and ferns around it do not stop anyone. */
+    static void treeOnSiteIsFelledWhole() throws Exception {
+        var t = meadow(16);
+        t.world.stock(STOCK, "minecraft:stone_axe", 1);
+        t.world.stock(STOCK, "minecraft:oak_sapling", 16);
+        until(t, 400, () -> t.c().project != null);
+        var project = t.c().project;
+        check(project != null, "A home is planned");
+        var steps = t.sim.builder.steps(project);
+        var first = steps.stream().filter(st -> st.pos().y() == project.level + 1).skip(12).findFirst().orElseThrow().pos();
+        t.world.tree(first, 6, "minecraft:oak", true); // as tall as a settler can reach the top of
+        int minX = steps.stream().mapToInt(st -> st.pos().x()).min().orElseThrow(), maxX = steps.stream().mapToInt(st -> st.pos().x()).max().orElseThrow();
+        int minZ = steps.stream().mapToInt(st -> st.pos().z()).min().orElseThrow(), maxZ = steps.stream().mapToInt(st -> st.pos().z()).max().orElseThrow();
+        for (int x = minX - 3; x <= maxX + 3; x++) for (int z = minZ - 3; z <= maxZ + 3; z++) {
+            var feet = new CodaBlockPos(x, project.level + 1, z);
+            if ((x < minX || x > maxX || z < minZ || z > maxZ) && t.world.block(feet).map(b -> b.air()).orElse(false))
+                t.world.blocks.put(feet, block((x + z) % 2 == 0 ? "minecraft:fern" : "minecraft:short_grass", Map.of(), false));
+        }
+        var builder = t.c().settlers.values().stream().filter(s -> !s.terminal()).findFirst().orElseThrow();
+        until(t, 900, () -> t.c().project == null || t.c().project.phase == Settlement.Project.Phase.BUILD);
+        boolean felled = true;
+        for (int y = 0; y < 6; y++) felled &= !t.world.block(new CodaBlockPos(first.x(), first.y() + y, first.z())).orElseThrow().id().endsWith("_log");
+        check(felled, "Every log of the tree is gone, including those above the house: " + builder.activity);
+        check(t.world.hands.values().stream().anyMatch(h -> h != null && h.endsWith("_axe")), "The tree was felled with an axe from the stockpile");
     }
 }

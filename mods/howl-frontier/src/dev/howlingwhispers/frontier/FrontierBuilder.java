@@ -165,7 +165,7 @@ final class FrontierBuilder {
         prepare(p);
         switch (p.phase) {
             case ROAD -> road(world, view, c, s, actor, p);
-            case CLEAR -> clear(world, c, s, actor, p);
+            case CLEAR -> clear(world, view, c, s, actor, p);
             case BUILD -> build(world, view, c, s, actor, p);
         }
         return true;
@@ -213,7 +213,8 @@ final class FrontierBuilder {
     /** A natural tree standing on the road's line is felled from the top, with an axe; its logs go to the stockpile. */
     private void fellForRoad(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, CodaBlockPos base) throws Exception {
         int height = FrontierJobs.trunk(world, base);
-        if (!FrontierJobs.naturalCanopy(world, base, height)) { s.activity = "Laying a road: logs that are not a natural tree are in the way at " + text(base); return; }
+        if (!felling.contains(base) && !FrontierJobs.naturalCanopy(world, base, height)) { s.activity = "Laying a road: logs that are not a natural tree are in the way at " + text(base); return; }
+        felling.add(base);
         if (world.carried(s.id) >= FrontierJobs.CARRY_LIMIT) { s.delivering = true; return; }
         if (!world.equip(s.id, c.stockpile, FrontierJobs.AXES)) {
             if (!hasInStockpile(view, c, FrontierJobs.AXES)) { s.activity = "Laying a road: a tree is in the way and the stockpile has no axe"; return; }
@@ -239,8 +240,58 @@ final class FrontierBuilder {
         return plant || CLEARABLE_GROUND.contains(block.id()) || FrontierJobs.isLog(block.id());
     }
 
-    private void clear(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor, Settlement.Project p) throws Exception {
+    /** Trees whose felling has started: their canopy may decay before the last log is cut. Runtime only. */
+    private final Set<CodaBlockPos> felling = new HashSet<>();
+
+    /**
+     * A natural tree on the building site is felled whole with an axe, from the highest log in
+     * reach downwards, so no trunk is left floating over the new home. Its logs go to the stockpile
+     * and count towards a log cabin.
+     */
+    private void fellOnSite(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, CodaBlockPos log) throws Exception {
+        var base = log;
+        String id = world.block(log).orElseThrow().id();
+        while (base.y() > log.y() - 32 && world.block(add(base, 0, -1, 0)).map(b -> b.id().equals(id)).orElse(false)) base = add(base, 0, -1, 0);
+        int height = FrontierJobs.trunk(world, base);
+        if (!felling.contains(base) && !FrontierJobs.naturalCanopy(world, base, height)) {
+            s.activity = "Building paused: " + id.replace("minecraft:", "") + " at " + text(log) + " is not part of a natural tree and cannot be cleared";
+            return;
+        }
         if (world.carried(s.id) >= FrontierJobs.CARRY_LIMIT) { s.delivering = true; return; }
+        if (!world.equip(s.id, c.stockpile, FrontierJobs.AXES)) {
+            if (!hasInStockpile(view, c, FrontierJobs.AXES)) { s.activity = "Clearing the building site: a tree is in the way. Put an axe in the stockpile"; return; }
+            s.activity = "Fetching an axe to clear the building site";
+            sim.moveNear(world, s, c.stockpile);
+            return;
+        }
+        felling.add(base);
+        var top = add(base, 0, height - 1, 0);
+        double beside = Math.pow(actor.x() - base.x() - .5, 2) + Math.pow(actor.z() - base.z() - .5, 2);
+        if (actor.distanceSquared(top) > REACH * REACH && beside > 1.6 * 1.6) {
+            // Stand right beside the trunk, so the top can be cut first and nothing is left hanging.
+            for (int[] d : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, -1}, {1, -1}, {-1, 1}}) {
+                var spot = FrontierSimulation.standing(world, add(base, d[0], 0, d[1]), 0);
+                if (spot != null && !spot.equals(base) && sim.navigate(world, s, spot, .65)) { s.activity = "Walking to a tree on the building site"; return; }
+            }
+        }
+        for (int h = height - 1; h >= 0; h--) {
+            var target = add(base, 0, h, 0);
+            if (actor.distanceSquared(target) > REACH * REACH) continue;
+            if (world.harvest(s.id, target, id, c.stockpile, FrontierJobs.AXES)) s.activity = "Felling a tree on the building site";
+            else if (world.carried(s.id) > 0) s.delivering = true;
+            else s.activity = "Clearing the building site: could not fell the tree at " + text(base);
+            return;
+        }
+        if (near(world, s, actor, base, "Clearing the building site")) s.activity = "Clearing the building site: the tree at " + text(base) + " is too tall to reach";
+    }
+
+    private void clear(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Settlement.Project p) throws Exception {
+        if (world.carried(s.id) >= FrontierJobs.CARRY_LIMIT) { s.delivering = true; return; }
+        // Trees first, whole, so nothing is left hanging over the house.
+        for (var pos : sorted(footprintVolume)) {
+            var b = world.block(pos);
+            if (b.isPresent() && FrontierJobs.isLog(b.get().id())) { fellOnSite(world, view, c, s, actor, pos); return; }
+        }
         for (var pos : sorted(footprintVolume)) {
             var b = world.block(pos);
             if (b.isEmpty()) { s.activity = "Waiting: the building site is not loaded"; return; }
@@ -397,14 +448,14 @@ final class FrontierBuilder {
         for (var b : footprint) { minX = Math.min(minX, b.x()); maxX = Math.max(maxX, b.x()); minZ = Math.min(minZ, b.z()); maxZ = Math.max(maxZ, b.z()); y = Math.min(y, b.y()); }
         CodaBlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
-        for (int ring = 1; ring <= 2; ring++)
+        for (int ring = 1; ring <= 4; ring++)
             for (int x = minX - ring; x <= maxX + ring; x++)
                 for (int z = minZ - ring; z <= maxZ + ring; z++) {
                     if (x > minX - ring && x < maxX + ring && z > minZ - ring && z < maxZ + ring) continue;
                     var spot = FrontierSimulation.standing(world, new CodaBlockPos(x, y, z), 0);
                     if (spot == null) continue;
                     double d = FrontierJobs.distanceSquared(spot, target);
-                    if (d <= REACH * REACH && d < bestDistance) { best = spot; bestDistance = d; }
+                    if (d <= (REACH - .7) * (REACH - .7) && d < bestDistance) { best = spot; bestDistance = d; }
                 }
         return best;
     }
