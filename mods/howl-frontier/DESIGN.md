@@ -119,7 +119,8 @@ with its own version bump, proposed before that repository is touched.
 
 | Version | Contents | Needs |
 | --- | --- | --- |
-| 0.2.0 | Camp, territory and expansion, pioneer, recruitment, needs, lifecycle, reset and retire, gathering jobs inside the territory | Nothing new |
+| 0.2.0-0.2.2 | Camp, territory and expansion, pioneer, recruitment, needs, lifecycle, reset and retire, styled chat | Nothing new |
+| 0.2.3 | Lumberjack, farmer and miner jobs inside the territory, chosen from stockpile tools | Nothing new |
 | 0.3.0 | Death events, owner from placement, soft-claim enforcement, campfire screen | L1, L2, L5 |
 | 0.4.0 | Builder and first cabin | L6 |
 | 0.5.0 | Starting locations, visible border | L3, L4, L7 |

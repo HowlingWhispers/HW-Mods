@@ -16,7 +16,7 @@ final class FrontierSimulation {
     static final Set<String> CONTAINERS = Set.of("minecraft:chest", "minecraft:barrel");
     /** The pioneer arrives after 60-120 seconds of loaded camp time. */
     static final int PIONEER_MIN = 1200, PIONEER_SPREAD = 1200;
-    static final int BED_SCAN_BUDGET = 512, BED_SCAN_DEPTH = 8, SPAWN_RETRY = 200;
+    static final int BED_SCAN_BUDGET = 512, BED_SCAN_DEPTH = 10, SPAWN_RETRY = 200;
 
     FrontierState state;
     private FrontierStore store;
@@ -33,6 +33,9 @@ final class FrontierSimulation {
     private final Set<CodaBlockPos> refusedArrivals = new HashSet<>();
     private final ArrayDeque<CodaBlockPlacements.Placement> placements = new ArrayDeque<>();
     private final Set<String> logged = new HashSet<>();
+    final FrontierJobs jobs = new FrontierJobs(this);
+    /** The current update's world view, for reading stockpile contents. Valid only during the update. */
+    private CodaWorldView view;
 
     Settlement camp() { return state == null ? null : state.primary(); }
 
@@ -54,6 +57,7 @@ final class FrontierSimulation {
             errorCount = 0;
             scanCursor = 0;
             refusedArrivals.clear();
+            jobs.clear();
             logged.clear();
             try {
                 var opened = new FrontierStore(next);
@@ -108,6 +112,7 @@ final class FrontierSimulation {
         now = tick.tick();
         if (tick.tick() % 20 != 0 || tick.world().isEmpty()) return;
         CodaWorldView view = tick.world().orElseThrow();
+        this.view = view;
         if (!guard("Opening the world state", () -> open(view, tick.sessionId())) || loadError != null) {
             placements.clear();
             return;
@@ -135,7 +140,7 @@ final class FrontierSimulation {
             return;
         }
         c.elapsed += 20;
-        guard("Scanning for beds", () -> scanBeds(world, c));
+        guard("Scanning the land", () -> scanLand(world, c));
         if (c.elapsed % 100 == 0) guard("Re-checking beds", () -> recheckBeds(world, c));
         if (!guard("Checking stockpile food", () -> foodAvailable = hasFood(view, c))) foodAvailable = false;
         for (var s : new ArrayList<>(c.settlers.values())) {
@@ -201,8 +206,8 @@ final class FrontierSimulation {
 
     // ---- Beds ---------------------------------------------------------------------------
 
-    /** Slow background sweep of the territory, for beds that existed before the camp. */
-    private void scanBeds(CodaLivingWorld world, Settlement c) throws Exception {
+    /** Slow background sweep of the territory: beds, natural trees and crops. */
+    private void scanLand(CodaLivingWorld world, Settlement c) throws Exception {
         Territory t = c.territory();
         int width = t.sideBlocks(), height = BED_SCAN_DEPTH * 2 + 1;
         long total = (long) width * width * height;
@@ -213,6 +218,7 @@ final class FrontierSimulation {
                     t.minBlockZ() + (int) ((n / width) % width));
             var b = world.block(p);
             if (b.isEmpty()) continue;
+            jobs.scanned(world, p, b.get());
             boolean head = b.get().id().endsWith("_bed") && "head".equals(b.get().properties().get("part"));
             if (head && !c.keptBeds.contains(p) && shelteredBed(world, p)) {
                 if (c.beds.size() < Settlement.MAX_BEDS) c.beds.add(p);
@@ -510,10 +516,8 @@ final class FrontierSimulation {
         work(world, c, s, actor);
     }
 
-    /** Jobs arrive in the next part of 0.2.0. Until then residents keep the campfire company. */
     private void work(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
-        s.activity = c.stockpile == null ? "Waiting at the campfire. Set a stockpile with /frontier stockpile" : "Waiting at the campfire for work";
-        if (actor.distanceSquared(c.campfire) > 36) moveNear(world, s, c.campfire);
+        jobs.work(world, view, c, s, actor);
     }
 
     private void noteResidents(CodaLivingWorld world, Settlement c) throws Exception {
@@ -523,7 +527,7 @@ final class FrontierSimulation {
 
     // ---- Movement -------------------------------------------------------------------------
 
-    private boolean navigate(CodaLivingWorld world, Settler s, CodaBlockPos target, double speed) throws Exception {
+    boolean navigate(CodaLivingWorld world, Settler s, CodaBlockPos target, double speed) throws Exception {
         var actor = world.actor(s.id);
         if (actor.isEmpty()) return false;
         var at = actor.get();
@@ -539,7 +543,7 @@ final class FrontierSimulation {
         return world.walk(s.id, next, speed);
     }
 
-    private boolean moveNear(CodaLivingWorld world, Settler s, CodaBlockPos target) throws Exception {
+    boolean moveNear(CodaLivingWorld world, Settler s, CodaBlockPos target) throws Exception {
         CodaBlockPos stand = standing(world, target, 2);
         boolean moving = stand != null && navigate(world, s, stand, s.hunger < 30 ? .4 : .65);
         if (!moving && !s.activity.startsWith("Path blocked")) s.activity = "Path blocked: " + s.activity;

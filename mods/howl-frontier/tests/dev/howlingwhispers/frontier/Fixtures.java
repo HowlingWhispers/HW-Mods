@@ -88,8 +88,9 @@ final class Fixtures {
             return true;
         }
         public boolean walk(UUID id, CodaBlockPos p, double speed) {
-            if (!paths) return false;
             var a = actors.get(id);
+            // Loader: the entity must exist, the target be within 32 blocks and loaded, and a path must reach it.
+            if (!paths || a == null || a.distanceSquared(p) > 32 * 32 || block(p).isEmpty()) return false;
             actors.put(id, new Actor(id, p.x() + .5, p.y(), p.z() + .5, a.health(), false));
             return true;
         }
@@ -101,17 +102,138 @@ final class Fixtures {
             actors.put(id, new Actor(id, a.x(), a.y(), a.z(), Math.max(0, a.health() - amount), false));
         }
         public void discard(UUID id) { actors.remove(id); }
+        // ---- Items, mirroring CodaLoader 0.0.45 MinecraftLivingWorld ---------------------------------
+        /** Each settler's 8-slot bag (item -> count), and what each holds in the main hand. */
+        final Map<UUID, LinkedHashMap<String, Integer>> bags = new HashMap<>();
+        final Map<UUID, String> hands = new HashMap<>();
+        /** Chest and barrel contents by position. Bread is counted by {@link #food} so older tests keep working. */
+        final Map<CodaBlockPos, LinkedHashMap<String, Integer>> chests = new HashMap<>();
+        boolean chestFull;
+        final List<String> harvested = new ArrayList<>();
+
+        LinkedHashMap<String, Integer> bag(UUID id) { return bags.computeIfAbsent(id, k -> new LinkedHashMap<>()); }
+        LinkedHashMap<String, Integer> chest(CodaBlockPos p) {
+            var b = blocks.get(p);
+            if (!loaded || b == null || !FrontierSimulation.CONTAINERS.contains(b.id())) return null;
+            return chests.computeIfAbsent(p, k -> new LinkedHashMap<>());
+        }
+        void stock(CodaBlockPos chest, String item, int count) { chest(chest).merge(item, count, Integer::sum); }
+        int stocked(CodaBlockPos chest, String item) { var c = chest(chest); return c == null ? 0 : c.getOrDefault(item, 0); }
+        private boolean near(UUID id, CodaBlockPos p, double d) { var a = actors.get(id); return a != null && a.distanceSquared(p) <= d * d; }
+        private static int slots(Map<String, Integer> items) { int n = 0; for (int c : items.values()) n += (c + 63) / 64; return n; }
+        private static void take(Map<String, Integer> items, String id, int n) { int left = items.get(id) - n; if (left <= 0) items.remove(id); else items.put(id, left); }
+
         public boolean eat(UUID id, CodaBlockPos p, Set<String> allowed) {
-            if (food == 0) return false;
+            if (!near(id, p, 3) || chest(p) == null || food == 0) return false;
             food--;
             return true;
         }
-        public int deliver(UUID id, CodaBlockPos p) { return 0; }
-        public int carried(UUID id) { return 0; }
-        public int collect(UUID id, CodaBlockPos p, CodaItemFilter f, int maximum) { return 0; }
-        public boolean equip(UUID id, CodaBlockPos p, Set<String> tools) { return true; }
-        public boolean harvest(UUID id, CodaBlockPos p, String expected, CodaBlockPos supplies, Set<String> tools) { return false; }
-        public boolean plant(UUID id, CodaBlockPos p, String item, CodaBlockPos supplies) { return false; }
+        public int carried(UUID id) { int n = 0; for (int c : bag(id).values()) n += c; return n; }
+        public int deliver(UUID id, CodaBlockPos p) {
+            var chest = chest(p);
+            if (!near(id, p, 3) || chest == null || chestFull) return 0;
+            int moved = carried(id);
+            bag(id).forEach((item, n) -> chest.merge(item, n, Integer::sum));
+            bag(id).clear();
+            return moved;
+        }
+        public int collect(UUID id, CodaBlockPos p, CodaItemFilter f, int maximum) {
+            var chest = chest(p);
+            if (!near(id, p, 3) || chest == null) return 0;
+            int moved = 0;
+            for (var item : new ArrayList<>(chest.keySet())) {
+                if (!f.allows(item) || moved >= maximum) continue;
+                int n = Math.min(maximum - moved, chest.get(item));
+                take(chest, item, n);
+                bag(id).merge(item, n, Integer::sum);
+                moved += n;
+            }
+            return moved;
+        }
+        public boolean equip(UUID id, CodaBlockPos supplies, Set<String> tools) {
+            if (!actors.containsKey(id)) return false;
+            String held = hands.get(id);
+            if (held != null && !tools.contains(held)) {
+                var chest = chest(supplies);
+                if (!near(id, supplies, 3) || chest == null) return false; // a wrong tool goes back first
+                chest.merge(held, 1, Integer::sum);
+                hands.remove(id);
+                held = null;
+            }
+            if (tools.isEmpty() || held != null) return true;
+            for (var item : new ArrayList<>(bag(id).keySet())) if (tools.contains(item)) { take(bag(id), item, 1); hands.put(id, item); return true; }
+            var chest = near(id, supplies, 3) ? chest(supplies) : null;
+            if (chest == null) return false;
+            for (var item : new ArrayList<>(chest.keySet())) if (tools.contains(item)) { take(chest, item, 1); hands.put(id, item); return true; }
+            return false;
+        }
+        /** What breaking a block drops, simplified from vanilla loot. */
+        static Map<String, Integer> drops(Block b) {
+            String id = b.id();
+            if (id.endsWith("_log")) return Map.of(id, 1);
+            boolean ripe = FrontierJobs.CROPS.containsKey(id) && FrontierJobs.CROPS.get(id).ripeAge().equals(b.properties().get("age"));
+            return switch (id) {
+                case "minecraft:wheat" -> ripe ? Map.of("minecraft:wheat", 1, "minecraft:wheat_seeds", 2) : Map.of("minecraft:wheat_seeds", 1);
+                case "minecraft:carrots" -> Map.of("minecraft:carrot", ripe ? 3 : 1);
+                case "minecraft:potatoes" -> Map.of("minecraft:potato", ripe ? 3 : 1);
+                case "minecraft:beetroots" -> ripe ? Map.of("minecraft:beetroot", 1, "minecraft:beetroot_seeds", 2) : Map.of("minecraft:beetroot_seeds", 1);
+                case "minecraft:stone" -> Map.of("minecraft:cobblestone", 1);
+                case "minecraft:coal_ore" -> Map.of("minecraft:coal", 1);
+                default -> Map.of(id, 1);
+            };
+        }
+        public boolean harvest(UUID id, CodaBlockPos p, String expected, CodaBlockPos supplies, Set<String> tools) {
+            String held = hands.get(id);
+            if ((!tools.isEmpty() && (held == null || !tools.contains(held))) || !near(id, p, 6)) return false;
+            var b = block(p);
+            if (b.isEmpty() || !b.get().id().equals(expected) || b.get().fluid() || FrontierSimulation.CONTAINERS.contains(expected)) return false;
+            var after = new LinkedHashMap<>(bag(id));
+            drops(b.get()).forEach((item, n) -> after.merge(item, n, Integer::sum));
+            if (slots(after) > 8) return false; // the 8-slot bag is full
+            blocks.put(p, Fixtures.block("minecraft:air", Map.of(), false));
+            bags.put(id, after);
+            harvested.add(expected);
+            return true;
+        }
+        public boolean plant(UUID id, CodaBlockPos p, String item, CodaBlockPos supplies) {
+            if (!near(id, p, 3)) return false;
+            var here = block(p);
+            var floor = block(new CodaBlockPos(p.x(), p.y() - 1, p.z()));
+            if (here.isEmpty() || !here.get().air() || floor.isEmpty()) return false;
+            String crop = switch (item) {
+                case "minecraft:wheat_seeds" -> "minecraft:wheat";
+                case "minecraft:carrot" -> "minecraft:carrots";
+                case "minecraft:potato" -> "minecraft:potatoes";
+                case "minecraft:beetroot_seeds" -> "minecraft:beetroots";
+                default -> null;
+            };
+            boolean sapling = item.endsWith("_sapling") || item.endsWith("_propagule");
+            if (crop == null && !sapling) return false;
+            if (crop != null && !floor.get().id().equals("minecraft:farmland")) return false;
+            if (sapling && !FrontierJobs.GROUND_FOR_TREES.contains(floor.get().id())) return false;
+            Map<String, Integer> from = bag(id).containsKey(item) ? bag(id) : near(id, supplies, 3) ? chest(supplies) : null;
+            if (from == null || !from.containsKey(item)) return false;
+            take(from, item, 1);
+            blocks.put(p, crop != null ? Fixtures.block(crop, Map.of("age", "0"), false) : Fixtures.block(item, Map.of(), false));
+            return true;
+        }
+
+        // ---- Building helpers for tests -------------------------------------------------------------
+        /** A tree: logs from {@code base} upward, a 5x5 canopy around the top two logs and one above. */
+        void tree(CodaBlockPos base, int height, String wood, boolean naturalLeaves) {
+            for (int y = 0; y < height; y++) blocks.put(new CodaBlockPos(base.x(), base.y() + y, base.z()), Fixtures.block(wood + "_log", Map.of("axis", "y"), true));
+            for (int y = height - 2; y <= height; y++)
+                for (int x = -2; x <= 2; x++)
+                    for (int z = -2; z <= 2; z++) {
+                        var p = new CodaBlockPos(base.x() + x, base.y() + y, base.z() + z);
+                        if (!blocks.containsKey(p)) blocks.put(p, Fixtures.block(wood + "_leaves", Map.of("persistent", naturalLeaves ? "false" : "true"), true));
+                    }
+        }
+        void crop(CodaBlockPos p, String crop, String age) {
+            blocks.put(new CodaBlockPos(p.x(), p.y() - 1, p.z()), Fixtures.block("minecraft:farmland", Map.of(), true));
+            blocks.put(p, Fixtures.block(crop, Map.of("age", age), false));
+        }
+
         final List<String> rawAnnouncements = new ArrayList<>();
         public void announce(String text) {
             check(Chat.wellFormed(text), "Announcement has broken formatting: " + text);
@@ -136,7 +258,12 @@ final class Fixtures {
         @Override public Optional<CodaItemInventoryView> itemInventory(String d, CodaBlockPos p) {
             var b = world.blocks.get(p);
             if (!world.loaded || b == null || !FrontierSimulation.CONTAINERS.contains(b.id())) return Optional.empty();
-            return Optional.of(new CodaItemInventoryView(p, List.of(new CodaItemInventoryView.Slot(0, "minecraft:bread", world.food, 64))));
+            // Like the loader: one entry per real item in the chest, plus the bread counted by world.food.
+            List<CodaItemInventoryView.Slot> slots = new ArrayList<>();
+            slots.add(new CodaItemInventoryView.Slot(0, "minecraft:bread", world.food, 64));
+            var chest = world.chest(p);
+            if (chest != null) for (var e : chest.entrySet()) slots.add(new CodaItemInventoryView.Slot(slots.size(), e.getKey(), e.getValue(), 64));
+            return Optional.of(new CodaItemInventoryView(p, slots));
         }
         @Override public Optional<CodaLivingWorld> living(String d) { return Optional.of(world); }
     }

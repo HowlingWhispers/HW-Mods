@@ -25,6 +25,7 @@ public final class CommandTest {
         statusAndSettlers();
         renameAndRetire();
         reset();
+        jobsAndMine();
         finish("command checks");
     }
 
@@ -230,5 +231,34 @@ public final class CommandTest {
         me.look(CAMP);
         run(me, "camp");
         check(me.last().contains("owned by you") && stored(t) != null && stored(t).settlers.isEmpty(), "A fresh settlement can start straight after a reset");
+    }
+
+    static void jobsAndMine() throws Exception {
+        var t = world();
+        var me = new Player(t.view);
+        me.look(CAMP);
+        run(me, "camp");
+        var c = live();
+        var s = new Settler(UUID.randomUUID(), "Asta");
+        s.state = RESIDENT;
+        s.arrivalPoint = new CodaBlockPos(20, 64, 0);
+        c.settlers.put(s.id, s);
+        c.recordResidents();
+        run(me, "job", s.shortId(), "farmer");
+        check(s.profession == Settler.Profession.FARMER && s.jobChosen && stored(t).settler(s.id).orElseThrow().jobChosen, "/frontier job sets and saves a chosen job");
+        run(me, "job", s.shortId(), "labourer");
+        check(s.profession == Settler.Profession.LABOURER && !s.jobChosen, "labourer lets the settler choose again");
+        run(me, "job", s.shortId(), "wizard");
+        check(me.last().contains("lumberjack, farmer, miner"), "Unknown jobs are refused with the list");
+        me.position = new CodaPosition("minecraft:overworld", 2.5, 64, 2.5, 270, 0); // facing east
+        me.look(new CodaBlockPos(6, 64, 0));
+        run(me, "mine");
+        check(new CodaBlockPos(6, 64, 0).equals(stored(t).mineEntrance) && stored(t).mineDirection.equals("east"), "/frontier mine takes the looked-at block and the facing direction");
+        me.look(new CodaBlockPos(70, 64, 0));
+        run(me, "mine");
+        check(me.last().contains("inside your land") && stored(t).mineEntrance.equals(new CodaBlockPos(6, 64, 0)), "A mine outside the land is refused");
+        me.replies.clear(); me.raw.clear();
+        run(me, "status");
+        check(me.said("Work: 1 labourer") && me.said("mine 6 64 0 facing east, 0 blocks dug"), "Status shows jobs and the mine");
     }
 }
