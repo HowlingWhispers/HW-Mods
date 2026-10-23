@@ -1,11 +1,13 @@
-Frontier 0.3.1: settlers find their way.
+Frontier 0.3.2: clearing in the right order.
 
-Fixes from the first 0.3.0 play test: arrivals stood still at the edge of the land until pushed, and the pioneer could not reach the building site.
+From the 0.3.1 play test: the builder broke leaves by hand first and never fetched an axe, because the tree stood just outside the plot with only its leaves hanging over it.
 
-- Settlers walk through grass, ferns, flowers, bushes and leaf litter, and can stand among them. Before, only bare ground counted, so in a forest there was often nowhere to stand by the campfire or the building site.
-- When the direct way is refused, a settler walks to the best reachable spot towards its goal, fanning out sideways around trees and slopes, in steps as short as 4 blocks. Any distance works, not just the land around the campfire.
-- A settler that has not moved for 4 seconds steps aside by itself, the way your nudge freed them.
-- An arrival that finds no way in at all for 45 seconds is brought to the campfire, and you are told.
-- Trees on the building site are felled whole with an axe from the stockpile, top first, so no trunk is left hanging over the new home. The builder walks right up to the trunk to reach the top.
+Clearing now always follows the same order, and /frontier settlers shows the step:
+
+1. (1/3) Trees. The builder fetches an axe from the stockpile, then fells every natural tree that stands on the plot or hangs its leaves over it, nearest first, whole and from the top. The logs go to the stockpile and count towards the log cabin.
+2. (2/3) Leaves and plants still on the site, top down, by hand.
+3. (3/3) The ground inside the walls, by hand.
+
+Without an axe in the stockpile the builder waits at step 1 and says so. Trees outside your land and anything you built are never touched.
 
 Requires H.O.W.L. 0.0.46+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

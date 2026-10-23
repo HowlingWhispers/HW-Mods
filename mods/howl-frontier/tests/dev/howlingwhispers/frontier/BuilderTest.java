@@ -218,8 +218,21 @@ public final class BuilderTest {
             if ((x < minX || x > maxX || z < minZ || z > maxZ) && t.world.block(feet).map(b -> b.air()).orElse(false))
                 t.world.blocks.put(feet, block((x + z) % 2 == 0 ? "minecraft:fern" : "minecraft:short_grass", Map.of(), false));
         }
+        // A second tree just outside the walls whose leaves hang over the site.
+        var beside = new CodaBlockPos(maxX + 2, project.level + 1, (minZ + maxZ) / 2);
+        t.world.blocks.remove(beside);
+        t.world.tree(beside, 5, "minecraft:oak", true);
+        int harvestedBefore = t.world.harvested.size();
         var builder = t.c().settlers.values().stream().filter(s -> !s.terminal()).findFirst().orElseThrow();
+        check(t.sim.builder.treesOverSite(t.world, t.c()).size() == 2, "Both the tree on the site and the one leaning over it are to be felled");
         until(t, 900, () -> t.c().project == null || t.c().project.phase == Settlement.Project.Phase.BUILD);
+        var cut = t.world.harvested.subList(harvestedBefore, t.world.harvested.size());
+        int firstLeaf = cut.indexOf("minecraft:oak_leaves");
+        check(cut.size() > 0 && cut.getFirst().equals("minecraft:oak_log") && (firstLeaf < 0 || cut.subList(0, firstLeaf).stream().filter(h -> h.equals("minecraft:oak_log")).count() == 11),
+                "Order: both trees (11 logs) are felled before any leaves are cleared: " + cut);
+        boolean besideGone = true;
+        for (int y = 0; y < 5; y++) besideGone &= !t.world.block(FrontierSimulation.add(beside, 0, y, 0)).orElseThrow().id().endsWith("_log");
+        check(besideGone, "The tree leaning over the site was felled whole");
         boolean felled = true;
         for (int y = 0; y < 6; y++) felled &= !t.world.block(new CodaBlockPos(first.x(), first.y() + y, first.z())).orElseThrow().id().endsWith("_log");
         check(felled, "Every log of the tree is gone, including those above the house: " + builder.activity);
