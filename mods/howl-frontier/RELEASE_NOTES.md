@@ -1,15 +1,18 @@
-Frontier 0.3.2: clearing in the right order, and a builder crash fixed.
+Frontier 0.4.0: houses dug into the ground, on a real foundation.
 
-Fixed: "Update failed: Invalid transfer size". A builder fetching more than 64 of one item from the stockpile (the 78 logs for a log cabin) asked for too many at once, so the builder stopped working. It now takes up to 64 at a time and comes back for the rest.
+From the 0.3.2 play test: the builder laid the floor on top of the grass instead of digging it in, and used logs for the floor.
 
-From the 0.3.1 play test: the builder broke leaves by hand first and never fetched an axe, because the tree stood just outside the plot with only its leaves hanging over it.
+Houses now sit in the ground:
 
-Clearing now always follows the same order, and /frontier settlers shows the step:
+1. Clearing step (3/3) digs out the top layer of ground inside the walls. Stone comes out with a pickaxe from the stockpile.
+2. Any dip under the plot, up to 3 blocks deep, is filled from the bottom with the earth that was dug out.
+3. The foundation goes into the dug-out layer, level with the land around it: cobblestone under a log cabin, the house's own material under sandstone, terracotta and cobblestone houses.
+4. The walls and roof go up on the foundation.
 
-1. (1/3) Trees. The builder fetches an axe from the stockpile, then fells every natural tree that stands on the plot or hangs its leaves over it, nearest first, whole and from the top. The logs go to the stockpile and count towards the log cabin.
-2. (2/3) Leaves and plants still on the site, top down, by hand.
-3. (3/3) The ground inside the walls, by hand.
+A log cabin now needs 53 logs and 25 cobblestone. Short of cobblestone, a builder with a mine (/frontier mine) and a pickaxe in the stockpile puts the axe back, takes the pickaxe and digs rock until there is enough.
 
-Without an axe in the stockpile the builder waits at step 1 and says so. Trees outside your land and anything you built are never touched.
+Your hut from 0.3.x: if its builder already started it on top of the grass, they take down what they placed for it, top first, put everything back in the stockpile and build it again the new way. Nothing else is touched. If a bed was already placed, pick it up yourself; settlers cannot take beds down.
+
+Not yet: settlers do not use a crafting table, so floors and walls are still logs. Crafting at a workbench next to the stockpile is planned next and needs a small H.O.W.L. update (see DESIGN.md, hook L8).
 
 Requires H.O.W.L. 0.0.46+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

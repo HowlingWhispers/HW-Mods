@@ -90,6 +90,7 @@ final class FrontierStore {
                 p.setProperty(k + "project.level", "" + j.level);
                 p.setProperty(k + "project.phase", j.phase.name());
                 p.setProperty(k + "project.step", "" + j.step);
+                p.setProperty(k + "project.layout", "" + j.layout);
                 p.setProperty(k + "project.road", cells(j.road));
                 var pal = j.palette;
                 p.setProperty(k + "project.palette", String.join("|", pal.name(), pal.frame(), pal.wall(), pal.floor(), pal.roof(), pal.door(), pal.reason()));
@@ -159,6 +160,8 @@ final class FrontierStore {
                         readCells(required(p, k + "project.road")));
                 project.phase = Settlement.Project.Phase.valueOf(required(p, k + "project.phase"));
                 project.step = integer(p, k + "project.step", 0, 16 * 16 * 16);
+                // Added in 0.4.0: a project saved without a layout was started on the old raised layout.
+                project.layout = optionalInteger(p, k + "project.layout", Settlement.Project.RAISED, Settlement.Project.RAISED, Settlement.Project.SUNK);
                 c.project = project;
             }
             // Added in 0.2.3: optional, so 0.2.0-0.2.2 worlds keep loading.

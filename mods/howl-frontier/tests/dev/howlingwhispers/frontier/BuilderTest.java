@@ -18,6 +18,10 @@ public final class BuilderTest {
         waitsForDoorAndResumesAfterReopen();
         statusShowsBuilding();
         treeOnSiteIsFelledWhole();
+        foundationIsSunkIntoTheGround();
+        dipsUnderTheFoundationAreFilled();
+        oldRaisedHutIsTakenDownAndRebuilt();
+        builderMinesRockForTheFoundation();
         finish("builder checks");
     }
 
@@ -56,6 +60,7 @@ public final class BuilderTest {
         t.world.stock(STOCK, "minecraft:oak_sapling", 16);
         t.world.stock(STOCK, "minecraft:spruce_door", 1);
         t.world.stock(STOCK, "minecraft:blue_bed", 1);
+        t.world.stock(STOCK, "minecraft:cobblestone", 25); // the foundation under the cabin
         until(t, 200, () -> pioneer(t) != null && pioneer(t).state == RESIDENT);
         var p = pioneer(t);
         check(p != null && p.state == RESIDENT, "The pioneer arrives and settles");
@@ -69,11 +74,12 @@ public final class BuilderTest {
         check(t.c().project == null && t.c().homesBuilt == 1, "The cabin is finished (" + p.activity + ")");
         check(t.world.announcements.stream().anyMatch(a -> a.contains("A new home is finished")), "Players are told the home is finished");
         long logs = t.world.blocks.values().stream().filter(b -> b.id().equals("minecraft:oak_log")).count();
-        check(t.world.placedBlocks.size() == 80, "78 logs, a door and a bed were placed (" + t.world.placedBlocks.size() + ")");
-        check(t.world.harvested.stream().filter(h -> h.equals("minecraft:oak_log")).count() >= 78, "Every log came from felling real trees");
+        check(t.world.placedBlocks.size() == 80, "25 cobblestone, 53 logs, a door and a bed were placed (" + t.world.placedBlocks.size() + ")");
+        check(t.world.stocked(STOCK, "minecraft:cobblestone") == 0, "The 25 cobblestone went into the foundation");
+        check(t.world.harvested.stream().filter(h -> h.equals("minecraft:oak_log")).count() >= 53, "Every log came from felling real trees");
         check(t.world.stocked(STOCK, "minecraft:spruce_door") == 0 && t.world.stocked(STOCK, "minecraft:blue_bed") == 0, "The door and bed from the stockpile were used");
         // The cabin's door faces the square side, and its bed counts as a sheltered home.
-        var door = t.world.blocks.entrySet().stream().filter(e -> e.getKey().y() > 64 && e.getValue().id().equals("minecraft:spruce_door")
+        var door = t.world.blocks.entrySet().stream().filter(e -> e.getKey().y() > 63 && e.getValue().id().equals("minecraft:spruce_door")
                 && "lower".equals(e.getValue().properties().get("half"))).findFirst().orElseThrow();
         check(door.getValue().properties().get("facing").equals(project.facing), "The door faces the road side: " + project.facing);
         var bed = t.world.blocks.entrySet().stream().filter(e -> e.getValue().id().equals("minecraft:blue_bed") && "head".equals(e.getValue().properties().get("part"))).findFirst().orElseThrow();
@@ -241,5 +247,133 @@ public final class BuilderTest {
         for (int y = 0; y < 6; y++) felled &= !t.world.block(new CodaBlockPos(first.x(), first.y() + y, first.z())).orElseThrow().id().endsWith("_log");
         check(felled, "Every log of the tree is gone, including those above the house: " + builder.activity);
         check(t.world.hands.values().stream().anyMatch(h -> h != null && h.endsWith("_axe")), "The tree was felled with an axe from the stockpile");
+    }
+
+    /** The plot's footprint columns, from the project's steps. */
+    static Set<int[]> columns(List<FrontierBuilder.Step> steps) {
+        Map<String, int[]> cols = new LinkedHashMap<>();
+        for (var st : steps) cols.put(st.pos().x() + "," + st.pos().z(), new int[]{st.pos().x(), st.pos().z()});
+        return new LinkedHashSet<>(cols.values());
+    }
+
+    /** 0.4.0: the top layer of ground is dug out and the foundation laid in it; walls stand on top. */
+    static void foundationIsSunkIntoTheGround() throws Exception {
+        var t = meadow(0);
+        t.world.stock(STOCK, "minecraft:cobblestone", 78);
+        t.world.stock(STOCK, "minecraft:oak_door", 1);
+        t.world.stock(STOCK, "minecraft:red_bed", 1);
+        until(t, 400, () -> t.c().project != null);
+        var project = t.c().project;
+        check(project.layout == Settlement.Project.SUNK, "New projects use the sunk layout");
+        var steps = t.sim.builder.steps(project);
+        check(steps.stream().filter(st -> st.role().equals("foundation")).allMatch(st -> st.pos().y() == project.level && st.item().equals("minecraft:cobblestone"))
+                && steps.stream().filter(st -> st.role().equals("foundation")).count() == 25, "The bottom layer is a 5x5 cobblestone foundation at ground level");
+        check(steps.stream().filter(st -> !st.role().equals("foundation")).allMatch(st -> st.pos().y() > project.level), "Walls, door, bed and roof stand on the foundation");
+        until(t, 2000, () -> t.c().project == null);
+        check(t.c().homesBuilt == 1, "The house is finished");
+        boolean sunk = true, nothingUnder = true;
+        for (int[] col : columns(steps)) {
+            sunk &= t.world.block(new CodaBlockPos(col[0], project.level, col[1])).orElseThrow().id().equals("minecraft:cobblestone");
+            nothingUnder &= t.world.block(new CodaBlockPos(col[0], project.level - 1, col[1])).orElseThrow().solid();
+        }
+        check(sunk, "Every column of the footprint has cobblestone where the grass was");
+        check(nothingUnder, "The foundation rests on solid ground everywhere");
+        check(t.world.harvested.stream().filter(h -> h.equals("minecraft:grass_block")).count() >= 25, "The top layer of ground was dug out by hand");
+    }
+
+    /** A dip under the plot is filled from the bottom with the earth dug out of it before the foundation goes in. */
+    static void dipsUnderTheFoundationAreFilled() throws Exception {
+        var t = meadow(0);
+        t.world.stock(STOCK, "minecraft:cobblestone", 78);
+        t.world.stock(STOCK, "minecraft:oak_door", 1);
+        t.world.stock(STOCK, "minecraft:red_bed", 1);
+        t.sim.builder.autoStart = false;
+        until(t, 400, () -> t.sim.planner.surveyed(t.c()) >= FrontierPlanner.cells(t.c().territory()).size() && pioneer(t) != null && pioneer(t).state == RESIDENT);
+        t.sim.builder.autoStart = true;
+        t.sim.builder.maybeStart(t.world, t.c());
+        var project = t.c().project;
+        check(project != null, "A home is planned");
+        var steps = t.sim.builder.steps(project);
+        int[] dip = columns(steps).iterator().next();
+        var previous = t.world.ground;
+        t.world.ground = (x, z) -> x == dip[0] && z == dip[1] ? project.level - 3 : previous.applyAsInt(x, z); // a 2-deep hole under one corner
+        until(t, 2000, () -> t.c().project == null);
+        check(t.c().homesBuilt == 1, "The house is finished over the dip: " + (pioneer(t) == null ? "" : pioneer(t).activity));
+        check(t.world.block(new CodaBlockPos(dip[0], project.level - 1, dip[1])).orElseThrow().solid()
+                && t.world.block(new CodaBlockPos(dip[0], project.level - 2, dip[1])).orElseThrow().solid(), "Both blocks of the dip were filled");
+        check(t.world.block(new CodaBlockPos(dip[0], project.level, dip[1])).orElseThrow().id().equals("minecraft:cobblestone"), "The foundation sits on the filled dip");
+        check(t.world.stocked(STOCK, "minecraft:cobblestone") == 0, "The dip was filled with dug-out earth, not the house's cobblestone");
+    }
+
+    /**
+     * A 0.3.x save: the hut was started on top of the grass. The builder takes down only what they
+     * placed (stone needs a pickaxe), puts it in the stockpile and builds again, sunk.
+     */
+    static void oldRaisedHutIsTakenDownAndRebuilt() throws Exception {
+        var t = meadow(0);
+        t.world.stock(STOCK, "minecraft:cobblestone", 78);
+        t.world.stock(STOCK, "minecraft:oak_door", 1);
+        t.world.stock(STOCK, "minecraft:red_bed", 1);
+        t.world.stock(STOCK, "minecraft:stone_pickaxe", 1);
+        t.sim.builder.autoStart = false;
+        until(t, 400, () -> t.sim.planner.surveyed(t.c()) >= FrontierPlanner.cells(t.c().territory()).size() && pioneer(t) != null && pioneer(t).state == RESIDENT);
+        t.sim.builder.autoStart = true;
+        t.sim.builder.maybeStart(t.world, t.c());
+        var project = t.c().project;
+        // Make it a 0.3.2 project that had laid its floor and a few wall blocks on the grass.
+        project.layout = Settlement.Project.RAISED;
+        project.phase = Settlement.Project.Phase.BUILD;
+        var old = FrontierBuilder.geometry(project, Settlement.Project.RAISED).steps();
+        for (int i = 0; i < 30; i++) t.world.blocks.put(old.get(i).pos(), block(old.get(i).item(), Map.of(), true));
+        t.world.stock(STOCK, "minecraft:cobblestone", -30); // those 30 came out of the stockpile
+        project.step = 30;
+        t.sim.save();
+        // As written by 0.3.2: no layout line at all.
+        try (var files = java.nio.file.Files.walk(t.root)) {
+            for (var f : files.filter(f -> f.getFileName().toString().equals("frontier.properties")).toList()) {
+                var lines = java.nio.file.Files.readAllLines(f).stream().filter(l -> !l.contains("project.layout")).toList();
+                java.nio.file.Files.write(f, lines);
+            }
+        }
+        t.reopen();
+        check(t.c().project != null && t.c().project.layout == Settlement.Project.RAISED, "A saved project without a layout is the old raised kind");
+        // A player's own cobblestone next to the hut is never touched.
+        var yours = new CodaBlockPos(old.getFirst().pos().x() - 2, project.level + 1, old.getFirst().pos().z());
+        t.world.blocks.put(yours, block("minecraft:cobblestone", Map.of(), true));
+        until(t, 30, () -> t.c().project.phase == Settlement.Project.Phase.TEARDOWN);
+        check(t.c().project.phase == Settlement.Project.Phase.TEARDOWN, "The builder starts taking the old hut down");
+        check(t.world.announcements.stream().anyMatch(a -> a.contains("take down the hut started the old way")), "Players are told why");
+        until(t, 1500, () -> t.c().project == null || t.c().project.layout == Settlement.Project.SUNK);
+        check(t.c().project != null && t.c().project.layout == Settlement.Project.SUNK && t.c().project.phase == Settlement.Project.Phase.CLEAR, "Then it starts again on the sunk layout");
+        boolean gone = true;
+        for (int i = 0; i < 30; i++) gone &= !t.world.block(old.get(i).pos()).orElseThrow().id().equals("minecraft:cobblestone") || old.get(i).pos().y() == project.level;
+        check(gone, "Every block of the old hut above the ground was taken down");
+        check(t.world.hands.values().stream().anyMatch(h -> "minecraft:stone_pickaxe".equals(h)), "Cobblestone came down with the pickaxe from the stockpile");
+        until(t, 2500, () -> t.c().project == null);
+        check(t.c().homesBuilt == 1, "The house is built again, sunk: " + (pioneer(t) == null ? "" : pioneer(t).activity));
+        check(t.world.block(yours).orElseThrow().id().equals("minecraft:cobblestone"), "Your own cobblestone beside the hut was left alone");
+        check(t.world.stocked(STOCK, "minecraft:cobblestone") == 0, "The old hut's cobblestone was used again, none lost");
+    }
+
+    /** A log cabin with no cobblestone: the builder puts the axe back, takes a pickaxe and digs rock in the mine. */
+    static void builderMinesRockForTheFoundation() throws Exception {
+        var t = meadow(16);
+        t.world.stock(STOCK, "minecraft:stone_axe", 1);
+        t.world.stock(STOCK, "minecraft:stone_pickaxe", 1);
+        t.world.stock(STOCK, "minecraft:oak_sapling", 16);
+        t.world.stock(STOCK, "minecraft:spruce_door", 1);
+        t.world.stock(STOCK, "minecraft:blue_bed", 1);
+        // A rock face east of the campfire, in the town square, where no house is ever planned.
+        var entrance = new CodaBlockPos(6, 64, 0);
+        for (int i = 0; i < 20; i++) for (int y = 64; y <= 65; y++) t.world.blocks.put(new CodaBlockPos(6 + i, y, 0), block("minecraft:stone", Map.of(), true));
+        t.c().mineEntrance = entrance;
+        t.c().mineDirection = "east";
+        until(t, 400, () -> t.c().project != null);
+        check(t.c().project != null && t.c().project.palette.name().equals("oak log cabin"), "A log cabin is planned");
+        until(t, 3000, () -> pioneer(t) != null && pioneer(t).activity.startsWith("Mining rock for the foundation"));
+        check(pioneer(t) != null && pioneer(t).activity.startsWith("Mining rock for the foundation"), "With no cobblestone, the builder goes mining: " + (pioneer(t) == null ? "" : pioneer(t).activity));
+        until(t, 5000, () -> t.c().project == null);
+        check(t.c().homesBuilt == 1, "The cabin is finished on a foundation of mined rock: " + (pioneer(t) == null ? "" : pioneer(t).activity));
+        check(t.world.harvested.stream().filter(h -> h.equals("minecraft:stone")).count() >= 25, "At least 25 stone were mined for the foundation");
     }
 }

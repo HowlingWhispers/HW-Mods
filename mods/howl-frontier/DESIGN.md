@@ -142,7 +142,7 @@ Each settlement builds in a material palette chosen from what its land offers:
 
 | Land | Palette |
 | --- | --- |
-| 4 or more natural trees | Wood of the most common local tree (logs for the frame, planks for walls, floor and roof) |
+| 4 or more natural trees | Wood of the most common local tree: logs for the frame, planks for walls and roof once settlers can craft (L8); logs everywhere until then. Cobblestone foundation |
 | Mostly sand or sandstone | Sandstone |
 | Mostly terracotta or red sand | Terracotta, using the most common local colour for walls |
 | Anything else | Cobblestone |
@@ -150,6 +150,30 @@ Each settlement builds in a material palette chosen from what its land offers:
 Blueprints name **roles** (frame, wall, floor, roof, door, bed) instead of blocks,
 so one blueprint fits every palette. All palette blocks can be gathered by the jobs:
 lumberjacks bring logs, and miners also dig sandstone and terracotta.
+
+### Foundations (0.4.0)
+
+Houses are dug into the ground, not laid on it. The planner's level for a plot is the
+typical height of its ground surface. The builder digs out that top layer inside the
+footprint (by hand, or with a pickaxe from the stockpile for stone) and lays the
+blueprint's bottom layer there as the **foundation**: cobblestone under wood houses, the
+house's own material under sandstone, terracotta and cobblestone houses. Walls stand on
+the foundation, so the floor is level with the land around the house.
+
+Before the foundation goes in, every column must rest on solid ground. Dips under it, up
+to 3 blocks deep, are filled from the bottom with the earth dug out of the plot (or
+cobblestone); a deeper hollow pauses the build with its position.
+
+A builder short of cobblestone digs it: if a mine is set (`/frontier mine`) and there is
+a pickaxe in the stockpile, they put their axe back, take the pickaxe and mine rock until
+there is enough. Otherwise they say what is missing.
+
+Projects saved by 0.3.x were laid out on top of the ground. If nothing of such a house
+stands yet it simply switches to the sunk layout. If it was started, the builder first
+takes it down, top first: only the blocks they placed for it (its own steps and the top
+half of its door), never anything else. Everything goes back to the stockpile and is
+used again. A bed already placed is left for the player to pick up, because settlers
+cannot take beds down.
 
 ### Mountain homes and underground villages (later)
 
@@ -175,6 +199,36 @@ repository is touched. L6 shipped in H.O.W.L. 0.0.46 (`CodaLivingWorld.place` an
 | L5 | Cancellable break, place and use events | Soft-claim enforcement, campfire screen, giving tools to settlers |
 | L6 | Settler places a block or bed from a real carried item (0.0.46) | Builders and cabins |
 | L7 | Server particles or a client overlay | Visible border |
+| L8 | Settler crafts at a crafting table (proposed for 0.0.47, below) | Planks, then plank houses; later doors, beds and tools |
+
+### L8: crafting at a workbench (proposal for H.O.W.L. 0.0.47)
+
+```java
+/**
+ * Craft {@code times} of one vanilla crafting-table recipe, as a player at that table would.
+ * The settler must be loaded, alive and within 3 blocks of a minecraft:crafting_table at
+ * {@code workbench}; that table must be within 3 blocks of the chest or barrel at {@code supplies}.
+ * Ingredients come from the settler's own inventory first, then from the supplies; results and
+ * any vanilla remainders (empty buckets...) go into the settler's inventory. Each craft is
+ * all-or-nothing: if the ingredients or the room for the result are missing, that craft and every
+ * later one change nothing. Returns how many crafts were done (0..times).
+ * Only recipes of the vanilla crafting-table type are accepted; unknown ids throw.
+ */
+default int craft(UUID id, CodaBlockPos workbench, CodaBlockPos supplies, String recipeId, int times) throws Exception
+```
+
+The loader looks the recipe up in the game's own recipe manager, so results always match
+what a player would get, and no recipe data is copied into Frontier. Frontier then finds a
+crafting table placed within 3 blocks of the stockpile, has the builder turn logs into
+planks there when a plank house needs them, and switches wood palettes to log frames
+with plank walls, roof and floor. Nothing is crafted without a real table and real items.
+
+### A settler's multi-tool (idea, later)
+
+One tool that works as an axe, pickaxe and shovel for settlers, like the Paxel idea from
+other mods, so a builder does not walk back to swap tools. It needs a new item and its
+recipe (native registry hooks already exist in the loader), a durability rule, and a
+decision on whether players may use it too.
 
 ## Release plan
 
@@ -185,5 +239,7 @@ repository is touched. L6 shipped in H.O.W.L. 0.0.46 (`CodaLivingWorld.place` an
 | 0.2.4 | Settlement planner: terrain survey, cell roles, roads, plot choice and material palette, shown with /frontier plan. Nothing is built yet | Nothing new |
 | 0.3.0 | Builders: roads, then the starter hut on the planned plot, in the land's palette, from real stockpile items; door and bed from the stockpile | L6 (0.0.46) |
 | 0.3.x | Death events, owner from placement, soft-claim enforcement, campfire screen | L1, L2, L5 |
-| 0.4.0 | Mountain homes and underground villages; expeditions | L6, plus an entity storage hook for expeditions |
-| 0.5.0 | Starting locations, visible border | L3, L4, L7 |
+| 0.4.0 | Houses dug into the ground on a foundation, dips filled, builders mine rock for it; 0.3.x huts taken down and rebuilt | Nothing new |
+| 0.4.x | Crafting at a workbench next to the stockpile; plank houses | L8 (0.0.47) |
+| 0.5.0 | Mountain homes and underground villages; expeditions | L6, plus an entity storage hook for expeditions |
+| 0.6.0 | Starting locations, visible border | L3, L4, L7 |
