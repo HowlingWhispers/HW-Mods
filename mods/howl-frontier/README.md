@@ -21,7 +21,8 @@ Use a new world. 0.1.x settlements are not carried over: their old
 3. **Set a stockpile.** Look at a single chest or a barrel inside your land and use
    `/frontier stockpile`. Keep bread, cooked food, carrots, beetroot or apples in it.
 4. **Build beds.** Each later settler needs a free bed inside your land with a solid
-   roof 2-6 blocks above its head. Placed beds count at once; older ones are found by
+   roof 2-6 blocks above its head. A bed that does not count is reported when you place it, and
+   `/frontier status` lists it with the reason (no roof, something right above the pillow). Placed beds count at once; older ones are found by
    a slow background scan. Settlers arrive at five-minute intervals.
 5. **Grow.** Every 5 residents at once unlock one more ring of chunks: 3x3, 5x5, 7x7...
    Land never shrinks.
@@ -92,6 +93,19 @@ down what they built of it, puts everything back in the stockpile and builds it 
 foundation. A bed that was already placed is yours to pick up first. Builders never break or replace anything you built or placed; they stop and say
 what is in the way. `/frontier status` shows the Building line. Progress is saved after
 every block.
+
+## Settings
+
+`config/howl_frontier/howl-frontier.properties` in the Frontier profile (created on first start, never
+overwritten). Changes apply the next time a world is opened.
+
+| Setting | Default | Range | What it does |
+| --- | --- | --- | --- |
+| `place_per_second` | 1 | 0.25 - 8 | Blocks a settler places per second while building |
+| `break_per_second` | 1 | 0.25 - 8 | Blocks a settler breaks per second: clearing, taking down, mining, felling |
+
+The startup log shows the pace in use. A settler who waited never catches up in one burst:
+at most one second's worth of actions is saved.
 
 ## Commands
 

@@ -1,15 +1,13 @@
-Frontier 0.4.1: one shared mine the miners choose and dig themselves.
+Frontier 0.4.3: place and break speed settings, and beds that do not count are explained.
 
-From the 0.4.0 play test: setting a mine by hand was fiddly, and miners walked over the hill above a cave mine instead of into it, then said the path was blocked.
+From the play test:
 
-- A pickaxe in the stockpile is all a miner needs. /frontier mine is no longer required.
-- There is one mine for the whole settlement. The first miner chooses the place (open or hilly ground near the stockpile, away from homes, roads and fields) and every miner works there, one at the face at a time.
-- The mine is a stairway: down one block per step for 8 steps, three blocks high so settlers can walk it, then level.
-- Settlers walk to the mouth first and down the steps, and back out the same way to eat, sleep or unload. No more climbing over the hill.
-- If the mine reaches water, lava, sand, gravel or a block miners do not dig, it is closed safely and the miners choose another place. When it is finished, they choose a new one.
-- Builders who need cobblestone use the same mine; a pickaxe in the stockpile is enough.
-- Want a particular spot? /frontier mine still sets a straight tunnel where you look (it must be reachable on foot). /frontier mine auto lets the miners choose again.
+- "I placed two beds and there is only one settler, but status says all beds are claimed." A settler's bed needs air right above the pillow and a solid roof 2-6 blocks above it; the second bed had none, so it was silently ignored. Now placing such a bed tells you at once, /frontier status lists it with the reason ("Bed at x y z: it has no roof 2-6 blocks above the pillow"), and Arrivals points at it. Add a roof and it counts.
+- "There is no Frontier config to set place and break speed." There is now: config/howl_frontier/howl-frontier.properties in the Frontier profile (%APPDATA%\.howlingshispers\nightly\profiles\frontier\minecraft), created on first start.
+  - place_per_second (default 1, 0.25 to 8): blocks a settler places per second while building.
+  - break_per_second (default 1, 0.25 to 8): blocks broken per second while clearing, taking down, mining and felling.
+  Changes apply the next time a world is opened. The startup log shows the pace in use.
 
-Not yet: crafting at a workbench (planks, sticks, ladders) needs a small H.O.W.L. update and comes next.
+Also includes 0.4.2: miners keep digging on their own instead of standing still until nudged.
 
 Requires H.O.W.L. 0.0.46+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

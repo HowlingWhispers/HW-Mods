@@ -22,6 +22,7 @@ public final class JobsTest {
         minersShareOneStairwayTheyChoseThemselves();
         playerMineIsReachedThroughItsMouth();
         unsafeStairwayIsClosedAndAnotherChosen();
+        minerKeepsDiggingWithTheRealPathfinder();
         fullStockpileIsReported();
         noToolsMeansNoJob();
         olderSavesStillLoad();
@@ -163,6 +164,7 @@ public final class JobsTest {
         t.sim.planner.surveyAll(t.world, t.c());
         // Underground the fake pathfinder only finds short ways, like the real one from far away.
         t.world.reachable = (actor, p) -> p.y() >= 64 || actor.distanceSquared(p) <= 3.5 * 3.5;
+        t.world.vanillaAccuracy = true;
         Set<String> together = new HashSet<>();
         int[] maxProgress = {0};
         CodaBlockPos[] firstMine = {null};
@@ -183,7 +185,7 @@ public final class JobsTest {
         var col4 = FrontierJobs.mineFeet(e, firstDirection[0], "stairs", 4);
         check(col4.y() == e.y() - 4, "The stairway goes one block down per step");
         check(maxProgress[0] > 20 && t.world.block(col4).orElseThrow().air() && t.world.block(FrontierSimulation.add(col4, 0, 1, 0)).orElseThrow().air()
-                && t.world.block(FrontierSimulation.add(col4, 0, 2, 0)).orElseThrow().air(), "Steps are dug three high so settlers can walk down (progress " + maxProgress[0] + ")");
+                && t.world.block(FrontierSimulation.add(col4, 0, 2, 0)).orElseThrow().air(), "Steps are dug three high so settlers can walk down (progress " + maxProgress[0] + ") " + a.activity + " / " + b.activity + " / " + t.world.announcements.stream().filter(x -> x.contains("mine")).toList());
         var plot = t.sim.planner.nextPlot(t.c());
         check(plot == null || !FrontierPlanner.CellPos.of(e).equals(plot.cell()), "No home is planned on top of the mine");
         t.reopen();
@@ -205,6 +207,7 @@ public final class JobsTest {
         for (int x = 8; x <= 24; x++) for (int y = 64; y <= 72; y++) for (int z = -3; z <= 3; z++)
             t.world.blocks.put(new CodaBlockPos(x, y, z), block("minecraft:stone", Map.of(), true));
         t.world.reachable = (actor, p) -> p.x() < 8 || actor.distanceSquared(p) <= 3.5 * 3.5; // inside the hill only short steps work
+        t.world.vanillaAccuracy = true;
         t.c().mineEntrance = new CodaBlockPos(8, 64, 0);
         t.c().mineDirection = "east";
         until(t, 400, () -> t.c().mineProgress >= 12);
@@ -230,5 +233,29 @@ public final class JobsTest {
         check(t.world.announcements.stream().anyMatch(x -> x.contains("reached water")), "Players are told the mine was closed and why");
         check(t.c().mineEntrance != null && !t.c().mineEntrance.equals(first), "Another place was chosen");
         check(t.world.block(under).orElseThrow().fluid(), "The water was not dug into");
+    }
+
+    /**
+     * The 0.4.1 play test: Asta dug one block, then stood still until nudged. The loader's pathfinder
+     * ignores a target within a block, and she was asked to step exactly one column forward.
+     */
+    static void minerKeepsDiggingWithTheRealPathfinder() throws Exception {
+        var t = new Camp();
+        var s = camp(t);
+        t.world.vanillaAccuracy = true;
+        t.world.food = 60;
+        t.world.stock(STOCK, "minecraft:stone_pickaxe", 1);
+        t.sim.planner.surveyAll(t.world, t.c());
+        until(t, 60, () -> t.c().mineEntrance != null);
+        int[] stuck = {0, 0};
+        int last = t.c().mineProgress;
+        for (int i = 0; i < 600; i++) {
+            t.seconds(1);
+            if (t.c().mineProgress == last && s.profession == MINER && !s.delivering && s.activity.startsWith("Walking down")) stuck[0]++; else stuck[0] = 0;
+            stuck[1] = Math.max(stuck[1], stuck[0]);
+            last = t.c().mineProgress;
+        }
+        check(t.c().mineProgress >= 40, "With the real pathfinder's rules the miner keeps digging on her own (progress " + t.c().mineProgress + ", " + s.activity + ")");
+        check(stuck[1] < 10, "She never stands walking on the spot for long (" + stuck[1] + " seconds)");
     }
 }
