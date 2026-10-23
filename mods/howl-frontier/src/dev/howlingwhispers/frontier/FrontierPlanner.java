@@ -221,13 +221,15 @@ final class FrontierPlanner {
 
     // ---- Materials --------------------------------------------------------------------------------
 
-    Palette palette() {
+    Palette palette() { return palette(false); }
+
+    Palette palette(boolean crafting) {
         Map<String, Integer> logs = new HashMap<>(), surface = new HashMap<>();
         for (var s : surveys.values()) {
             s.treeLogs().forEach((k, v) -> logs.merge(k, v, Integer::sum));
             s.surface().forEach((k, v) -> surface.merge(k, v, Integer::sum));
         }
-        return Palette.choose(logs, surface);
+        return Palette.choose(logs, surface, crafting);
     }
 
     // ---- Roads and plots --------------------------------------------------------------------------

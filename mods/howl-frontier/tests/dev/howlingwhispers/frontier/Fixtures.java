@@ -232,6 +232,61 @@ final class Fixtures {
             return true;
         }
 
+        // ---- Crafting, mirroring CodaLoader 0.0.47 craft() (L8) -------------------------------------
+        final List<String> crafted = new ArrayList<>();
+        /** Vanilla recipes as the real client defines them: ingredients (a "#planks" tag), result count, grid size. */
+        record FakeRecipe(Map<String, Integer> ingredients, String result, int count, int width, int height) {}
+        static FakeRecipe fakeRecipe(String id) {
+            String name = id.replace("minecraft:", "");
+            for (String wood : Palette.WOODS) {
+                if (name.equals(wood + "_planks")) return new FakeRecipe(Map.of("minecraft:" + wood + "_log", 1), id, 4, 1, 1);
+                if (name.equals(wood + "_door")) return new FakeRecipe(Map.of("minecraft:" + wood + "_planks", 6), id, 3, 2, 3);
+            }
+            for (String colour : FrontierCrafting.COLOURS)
+                if (name.equals(colour + "_bed")) return new FakeRecipe(Map.of("minecraft:" + colour + "_wool", 3, "#planks", 3), id, 1, 3, 2);
+            return switch (name) {
+                case "stick" -> new FakeRecipe(Map.of("#planks", 2), id, 4, 1, 2);
+                case "crafting_table" -> new FakeRecipe(Map.of("#planks", 4), id, 1, 2, 2);
+                case "ladder" -> new FakeRecipe(Map.of("minecraft:stick", 7), id, 3, 3, 3);
+                default -> null;
+            };
+        }
+        public int craft(UUID id, CodaBlockPos workbench, CodaBlockPos supplies, String recipeId, int times) {
+            if (times < 1 || times > 64) throw new IllegalArgumentException("Craft 1 to 64 times");
+            var r = fakeRecipe(recipeId);
+            if (r == null) throw new IllegalArgumentException("Unknown recipe: " + recipeId);
+            if (!actors.containsKey(id)) return 0;
+            if (workbench == null) { if (r.width() > 2 || r.height() > 2) return 0; }
+            else {
+                var table = block(workbench);
+                if (table.isEmpty() || !table.get().id().equals("minecraft:crafting_table") || !near(id, workbench, 3)) return 0;
+                double dx = workbench.x() - supplies.x(), dy = workbench.y() - supplies.y(), dz = workbench.z() - supplies.z();
+                if (dx * dx + dy * dy + dz * dz > 9) return 0;
+            }
+            var chest = supplies != null && near(id, supplies, 3) ? chest(supplies) : null;
+            int done = 0;
+            for (int t = 0; t < times; t++) {
+                var bag = new LinkedHashMap<>(bag(id));
+                var box = chest == null ? null : new LinkedHashMap<>(chest);
+                boolean ok = true;
+                for (var e : r.ingredients().entrySet())
+                    for (int k = 0; k < e.getValue() && ok; k++) ok = takeOne(bag, e.getKey()) || (box != null && takeOne(box, e.getKey()));
+                if (!ok) break;
+                bag.merge(r.result(), r.count(), Integer::sum);
+                if (slots(bag) > 8) break;
+                bags.put(id, bag);
+                if (box != null) { chest.clear(); chest.putAll(box); }
+                crafted.add(r.result());
+                done++;
+            }
+            return done;
+        }
+        private static boolean takeOne(Map<String, Integer> items, String ingredient) {
+            for (var key : new ArrayList<>(items.keySet()))
+                if (ingredient.equals("#planks") ? key.endsWith("_planks") : key.equals(ingredient)) { take(items, key, 1); return true; }
+            return false;
+        }
+
         // ---- Placement, mirroring CodaLoader 0.0.46 place() and shapePath() ----------------------------
         final List<CodaBlockPos> placedBlocks = new ArrayList<>();
         private boolean replaceable(CodaBlockPos p) {
@@ -371,6 +426,9 @@ final class Fixtures {
         String session = "session-1";
         /** Whether settlers start building homes on their own (kept across reopening). */
         boolean autoBuild = true;
+        /** Whether the loader offers crafting (H.O.W.L. 0.0.47). Off by default: older tests are about 0.0.46 behaviour. */
+        boolean crafting;
+        { sim.crafting.enabled = false; }
 
         Camp() throws Exception { this(Files.createTempDirectory("frontier-test-"), new World()); }
         Camp(Path root, World world) { this.root = root; this.world = world; this.view = new View(root, world); }
@@ -386,6 +444,7 @@ final class Fixtures {
         void reopen() {
             sim = new FrontierSimulation();
             sim.builder.autoStart = autoBuild;
+            sim.crafting.enabled = crafting;
             session = session + "-reopened";
             seconds(1);
         }

@@ -37,6 +37,7 @@ final class FrontierSimulation {
     private final Set<String> logged = new HashSet<>();
     final FrontierJobs jobs = new FrontierJobs(this);
     final FrontierPace pace = new FrontierPace();
+    final FrontierCrafting crafting = new FrontierCrafting(this);
     final FrontierPlanner planner = new FrontierPlanner();
     final FrontierBuilder builder = new FrontierBuilder(this, jobs);
     /** The current update's world view, for reading stockpile contents. Valid only during the update. */

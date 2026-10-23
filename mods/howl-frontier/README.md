@@ -81,18 +81,35 @@ planned plot. A resident without a tool job becomes the builder, the pioneer fir
    foundation goes into the dug-out layer, level with the land around it.
 4. **Build.** The starter hut (5x5, door facing the road, bed inside) goes up on the foundation.
 
-Materials follow the land: a log cabin on a cobblestone foundation where trees grow
-(53 logs and 25 cobblestone), otherwise sandstone, terracotta or cobblestone throughout.
+Materials follow the land: where trees grow, a **plank house** on a cobblestone foundation
+(log corner posts, plank walls and roof; with H.O.W.L. 0.0.47+), or a log cabin on older
+H.O.W.L.; otherwise sandstone, terracotta or cobblestone throughout.
 The builder takes them from the stockpile, fells trees for logs itself when it has an axe,
 and digs rock in the settlement's mine for cobblestone when there is a pickaxe in the
-stockpile. **Put a door and a bed in the stockpile**: Frontier cannot craft yet
-(a crafting table next to the stockpile is planned; see DESIGN.md).
+stockpile. Doors and beds are crafted at the workbench (H.O.W.L. 0.0.47+; see Crafting);
+on older H.O.W.L., put a door and a bed in the stockpile.
 
 A hut started by Frontier 0.3.x sat on top of the grass. After updating, its builder takes
 down what they built of it, puts everything back in the stockpile and builds it again on a
 foundation. A bed that was already placed is yours to pick up first. Builders never break or replace anything you built or placed; they stop and say
 what is in the way. `/frontier status` shows the Building line. Progress is saved after
 every block.
+
+## Crafting (H.O.W.L. 0.0.47+)
+
+Settlers craft with the game's own recipes and real items:
+
+- **Planks** from logs, and **sticks** and a **crafting table** from planks, need no table.
+- Doors, beds and ladders need a **workbench**: a crafting table within 3 blocks of the
+  stockpile. If there is none, a settler makes one from 4 planks and sets it up beside the
+  stockpile.
+- A builder short of planks or a door makes them, felling trees for logs first when there is
+  an axe in the stockpile. A **bed** is made from **3 wool of one colour** and 3 planks; without
+  wool the builder asks for a bed or wool.
+- Everything crafted goes into the stockpile first, like any other delivery.
+
+On H.O.W.L. 0.0.46 nothing is crafted: houses are log cabins and builders ask for doors and
+beds, as before. Frontier switches crafting on by itself when the loader has it.
 
 ## Settings
 

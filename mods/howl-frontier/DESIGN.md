@@ -223,7 +223,7 @@ repository is touched. L6 shipped in H.O.W.L. 0.0.46 (`CodaLivingWorld.place` an
 | L7 | Server particles or a client overlay | Visible border |
 | L8 | Settler crafts at a crafting table (proposed for 0.0.47, below) | Planks, then plank houses; later doors, beds and tools |
 
-### L8: crafting at a workbench (proposal for H.O.W.L. 0.0.47)
+### L8: crafting at a workbench (H.O.W.L. 0.0.47)
 
 ```java
 /**
@@ -238,6 +238,10 @@ repository is touched. L6 shipped in H.O.W.L. 0.0.46 (`CodaLivingWorld.place` an
  */
 default int craft(UUID id, CodaBlockPos workbench, CodaBlockPos supplies, String recipeId, int times) throws Exception
 ```
+
+As built: `workbench == null` crafts in the 2x2 grid a player carries (planks, sticks, a
+crafting table). Frontier calls it by reflection, so the same JAR runs on 0.0.46 with
+crafting off.
 
 The loader looks the recipe up in the game's own recipe manager, so results always match
 what a player would get, and no recipe data is copied into Frontier. Frontier then finds a
@@ -263,6 +267,7 @@ decision on whether players may use it too.
 | 0.3.x | Death events, owner from placement, soft-claim enforcement, campfire screen | L1, L2, L5 |
 | 0.4.0 | Houses dug into the ground on a foundation, dips filled, builders mine rock for it; 0.3.x huts taken down and rebuilt | Nothing new |
 | 0.4.1 | One shared mine the miners choose and dig as a walkable stairway; walking in and out through its mouth | Nothing new |
-| 0.4.x | Crafting at a workbench next to the stockpile: planks, sticks, ladders; plank houses | L8 (0.0.47) |
+| 0.4.2-0.4.3 | Miners keep digging; place/break speed settings; uncounted beds explained | Nothing new |
+| 0.4.4 | Crafting: planks, sticks, a workbench placed by the stockpile, doors, beds from wool, ladders; plank houses. Off on older loaders | L8 (0.0.47) |
 | 0.5.0 | Mountain homes and underground villages; expeditions | L6, plus an entity storage hook for expeditions |
 | 0.6.0 | Starting locations, visible border | L3, L4, L7 |

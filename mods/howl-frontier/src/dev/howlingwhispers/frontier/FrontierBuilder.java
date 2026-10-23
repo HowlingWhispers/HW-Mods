@@ -73,7 +73,7 @@ final class FrontierBuilder {
         if (planner.surveyed(c) < FrontierPlanner.cells(c.territory()).size()) return;
         var plot = planner.nextPlot(c);
         if (plot == null) return;
-        var palette = planner.palette();
+        var palette = planner.palette(sim.crafting.enabled);
         c.project = new Settlement.Project(STARTER, plot.cell(), plot.doorFacing(), plot.level(), palette, plot.road());
         c.project.phase = plot.road().isEmpty() ? CLEAR : ROAD;
         sim.save();
@@ -515,7 +515,19 @@ final class FrontierBuilder {
         }
         String item = itemFor(world, view, c, s, step);
         if (item == null) {
-            s.activity = "Building: needs " + describe(step) + " in the stockpile";
+            // Make it if it can be made: planks from logs, a door from planks, a bed from wool and planks.
+            String wanted = switch (step.role()) {
+                case "door" -> p.palette.door();
+                case "bed" -> FrontierCrafting.bedFromWool(stockpileItems(view, c));
+                default -> step.item();
+            };
+            int count = 0;
+            for (int i = p.step; i < steps.size(); i++) if (matches(steps.get(i), wanted == null ? step.item() : wanted)) count++;
+            if (wanted != null && sim.crafting.craftFor(world, view, c, s, actor, wanted, Math.max(1, count))) return;
+            String why = s.activity;
+            s.activity = "Building: needs " + describe(step) + " in the stockpile"
+                    + (step.role().equals("bed") && sim.crafting.enabled ? " (or 3 wool of one colour to make one)" : "");
+            if (why != null && why.startsWith("Crafting ")) s.activity = "Building: " + why.substring("Crafting ".length());
             gatherIfPossible(world, view, c, s, actor, step);
             return;
         }
@@ -684,7 +696,9 @@ final class FrontierBuilder {
             if (!s.activity.isEmpty()) s.activity = "Mining rock for " + what + ": " + s.activity.toLowerCase(Locale.ROOT);
             return;
         }
-        if (!FrontierJobs.isLog(step.item())) return;
+        boolean fromLogs = FrontierJobs.isLog(step.item())
+                || (sim.crafting.enabled && (FrontierCrafting.isPlanks(step.item()) || step.role().equals("door")));
+        if (!fromLogs) return;
         // equip() succeeds when an axe is already in hand, or in reach at the stockpile.
         if (!hasInStockpile(view, c, FrontierJobs.AXES) && !world.equip(s.id, c.stockpile, FrontierJobs.AXES)) return;
         jobs.lumberjackFor(world, c, s, actor);

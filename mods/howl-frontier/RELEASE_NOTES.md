@@ -1,13 +1,18 @@
-Frontier 0.4.3: place and break speed settings, and beds that do not count are explained.
+Frontier 0.4.4: settlers craft, and build plank houses instead of all-log cabins.
 
-From the play test:
+From the play test: "They ask me to craft a door or a bed or anything except logs. They do not craft and use planks, only logs, and that is a waste of materials."
 
-- "I placed two beds and there is only one settler, but status says all beds are claimed." A settler's bed needs air right above the pillow and a solid roof 2-6 blocks above it; the second bed had none, so it was silently ignored. Now placing such a bed tells you at once, /frontier status lists it with the reason ("Bed at x y z: it has no roof 2-6 blocks above the pillow"), and Arrivals points at it. Add a roof and it counts.
-- "There is no Frontier config to set place and break speed." There is now: config/howl_frontier/howl-frontier.properties in the Frontier profile (%APPDATA%\.howlingshispers\nightly\profiles\frontier\minecraft), created on first start.
-  - place_per_second (default 1, 0.25 to 8): blocks a settler places per second while building.
-  - break_per_second (default 1, 0.25 to 8): blocks broken per second while clearing, taking down, mining and felling.
-  Changes apply the next time a world is opened. The startup log shows the pace in use.
+With H.O.W.L. 0.0.47 (CodaLauncher Nightly installs it automatically), settlers use the game's own recipes and real items:
 
-Also includes 0.4.2: miners keep digging on their own instead of standing still until nudged.
+- Planks from logs (4 planks from every log), sticks and a crafting table from planks, all without a table.
+- A workbench: a crafting table within 3 blocks of the stockpile. If there is none, a settler makes one and sets it up beside the stockpile.
+- Doors, beds and ladders at the workbench. A builder short of a door makes one; a bed is made from 3 wool of one colour and 3 planks.
+- New homes where trees grow are plank houses: log corner posts, plank walls and roof, on the cobblestone foundation. Far fewer logs than the old 53-log cabin.
+- A builder short of planks fells trees for logs first when there is an axe in the stockpile.
+- Everything crafted goes into the stockpile first.
 
-Requires H.O.W.L. 0.0.46+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.
+On H.O.W.L. 0.0.46 nothing changes: log cabins, and builders ask for doors and beds. Frontier turns crafting on by itself once the loader has it. A house already being built keeps the materials it was planned with.
+
+Also includes 0.4.2 and 0.4.3: miners keep digging on their own; place/break speed settings; beds that do not count are explained.
+
+Requires H.O.W.L. 0.0.46+ (crafting needs 0.0.47) and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

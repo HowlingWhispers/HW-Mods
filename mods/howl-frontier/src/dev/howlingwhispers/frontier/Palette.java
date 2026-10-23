@@ -19,6 +19,12 @@ record Palette(String name, String frame, String wall, String floor, String roof
         return new Palette(species.replace('_', ' ') + " log cabin", log, log, log, log, "minecraft:" + species + "_door", reason);
     }
 
+    /** With crafting (H.O.W.L. 0.0.47+): log corner posts, plank walls and roof; 4 planks from every log. */
+    static Palette woodPlanks(String species, String reason) {
+        String log = "minecraft:" + species + "_log", planks = "minecraft:" + species + "_planks";
+        return new Palette(species.replace('_', ' ') + " plank house", log, planks, planks, planks, "minecraft:" + species + "_door", reason);
+    }
+
     static Palette sandstone(String reason) {
         return new Palette("sandstone", "minecraft:sandstone", "minecraft:sandstone", "minecraft:sandstone", "minecraft:sandstone", "minecraft:oak_door", reason);
     }
@@ -36,12 +42,16 @@ record Palette(String name, String frame, String wall, String floor, String roof
      * {@code surface} counts the blocks found at ground level.
      */
     static Palette choose(Map<String, Integer> treeLogs, Map<String, Integer> surface) {
+        return choose(treeLogs, surface, false);
+    }
+
+    static Palette choose(Map<String, Integer> treeLogs, Map<String, Integer> surface, boolean crafting) {
         int trees = treeLogs.values().stream().mapToInt(Integer::intValue).sum();
         if (trees >= TREES_FOR_WOOD) {
             String log = treeLogs.entrySet().stream().max(Map.Entry.<String, Integer>comparingByValue().thenComparing(Map.Entry.comparingByKey(Comparator.reverseOrder())))
                     .orElseThrow().getKey();
             String species = log.replace("minecraft:", "").replace("_log", "");
-            if (WOODS.contains(species)) return wood(species, trees + " trees in your land");
+            if (WOODS.contains(species)) return crafting ? woodPlanks(species, trees + " trees in your land") : wood(species, trees + " trees in your land");
         }
         int sand = 0, terracotta = 0, total = 0;
         String colour = null;
