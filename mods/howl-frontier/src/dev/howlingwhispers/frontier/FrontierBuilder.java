@@ -468,7 +468,7 @@ final class FrontierBuilder {
         ledger.remove(s.id);
         int need = 0;
         for (int i = p.step; i < steps.size(); i++) if (matches(steps.get(i), item)) need++;
-        int got = world.collect(s.id, c.stockpile, CodaItemFilter.only(item), Math.max(1, Math.min(need, 64 * 8)));
+        int got = world.collect(s.id, c.stockpile, CodaItemFilter.only(item), Math.max(1, Math.min(need, 64))); // the loader moves at most 64 per call; the next second collects more
         if (got > 0) ledger.computeIfAbsent(s.id, k -> new HashMap<>()).merge(item, got, Integer::sum);
         s.activity = got > 0 ? "Carrying " + got + " " + item.replace("minecraft:", "").replace('_', ' ') + " to the site" : "The stockpile has no " + item;
     }
