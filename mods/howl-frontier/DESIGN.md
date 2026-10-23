@@ -188,7 +188,9 @@ builders who need rock. Only one settler digs at the face at a time; others wait
   down, then a 2-high level tunnel to 32 steps. Dirt and grass come away by hand; stone needs
   a pickaxe.
 - **Walking:** to the mouth first (the block in front of the first step), then down the dug
-  steps two at a time. Settlers inside the mine heading anywhere else walk back up the same
+  steps three (or two) at a time, never one: the loader's pathfinder (accuracy 1) treats a
+  target within a block as reached and does not move. Digging starts as soon as the face is
+  within reach (0.4.2). Settlers inside the mine heading anywhere else walk back up the same
   way. This replaces aiming straight at the face, which led over the hill above it.
 - **Safety:** water, lava, sand or gravel next to the next block, or a block miners do not
   dig, closes a chosen mine (players are told why) and a new place is chosen. A finished mine

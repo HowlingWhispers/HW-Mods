@@ -2,7 +2,7 @@
   "schema": 1,
   "id": "howl_frontier",
   "name": "H.O.W.L. Frontier",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "minecraft": "26.4-snapshot-3",
   "entrypoint": "dev.howlingwhispers.frontier.FrontierMod",
   "description": "Found a settlement with a campfire, welcome a pioneer and settlers, and grow your land one ring for every five residents.",

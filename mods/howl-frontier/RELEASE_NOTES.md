@@ -1,15 +1,11 @@
-Frontier 0.4.1: one shared mine the miners choose and dig themselves.
+Frontier 0.4.2: miners keep digging on their own.
 
-From the 0.4.0 play test: setting a mine by hand was fiddly, and miners walked over the hill above a cave mine instead of into it, then said the path was blocked.
+From the 0.4.1 play test: Asta dug a block, then stood still in the mine until nudged, dug one more, and stopped again.
 
-- A pickaxe in the stockpile is all a miner needs. /frontier mine is no longer required.
-- There is one mine for the whole settlement. The first miner chooses the place (open or hilly ground near the stockpile, away from homes, roads and fields) and every miner works there, one at the face at a time.
-- The mine is a stairway: down one block per step for 8 steps, three blocks high so settlers can walk it, then level.
-- Settlers walk to the mouth first and down the steps, and back out the same way to eat, sleep or unload. No more climbing over the hill.
-- If the mine reaches water, lava, sand, gravel or a block miners do not dig, it is closed safely and the miners choose another place. When it is finished, they choose a new one.
-- Builders who need cobblestone use the same mine; a pickaxe in the stockpile is enough.
-- Want a particular spot? /frontier mine still sets a straight tunnel where you look (it must be reachable on foot). /frontier mine auto lets the miners choose again.
+Why: after each block she was sent exactly one step forward. The game's pathfinder counts anything within one block as already reached, so it planned no movement at all, and she kept waiting to arrive.
 
-Not yet: crafting at a workbench (planks, sticks, ladders) needs a small H.O.W.L. update and comes next.
+Now:
+- A miner digs as soon as the face is within reach, wherever she stands in the mine, instead of insisting on the exact step behind it.
+- When she does need to move, she walks three steps ahead (or two), never one, so the pathfinder always moves her.
 
 Requires H.O.W.L. 0.0.46+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.
