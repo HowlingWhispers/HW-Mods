@@ -64,7 +64,7 @@ final class FrontierBuilder {
         c.project = new Settlement.Project(STARTER, plot.cell(), plot.doorFacing(), plot.level(), palette, plot.road());
         c.project.phase = plot.road().isEmpty() ? CLEAR : ROAD;
         sim.save();
-        world.announce(Chat.good("A new home is planned") + Chat.label(": a " + palette.name() + " at ") + Chat.value(plot.cell().minX() + " " + plot.cell().minZ())
+        world.announce(Chat.good("A new home is planned") + Chat.label(": " + ("aeiou".indexOf(palette.name().charAt(0)) >= 0 ? "an " : "a ") + palette.name() + " at ") + Chat.value(plot.cell().minX() + " " + plot.cell().minZ())
                 + Chat.label(plot.road().isEmpty() ? "." : ", with " + plot.road().size() + " cell" + (plot.road().size() == 1 ? "" : "s") + " of road first."));
     }
 
