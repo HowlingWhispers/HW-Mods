@@ -34,6 +34,8 @@ final class FrontierSimulation {
     private final ArrayDeque<CodaBlockPlacements.Placement> placements = new ArrayDeque<>();
     private final Set<String> logged = new HashSet<>();
     final FrontierJobs jobs = new FrontierJobs(this);
+    final FrontierPlanner planner = new FrontierPlanner();
+    final FrontierBuilder builder = new FrontierBuilder(this, jobs);
     /** The current update's world view, for reading stockpile contents. Valid only during the update. */
     private CodaWorldView view;
 
@@ -58,6 +60,8 @@ final class FrontierSimulation {
             scanCursor = 0;
             refusedArrivals.clear();
             jobs.clear();
+            planner.clear();
+            builder.clear();
             logged.clear();
             try {
                 var opened = new FrontierStore(next);
@@ -141,6 +145,9 @@ final class FrontierSimulation {
         }
         c.elapsed += 20;
         guard("Scanning the land", () -> scanLand(world, c));
+        guard("Surveying the land", () -> planner.tick(world, c));
+        guard("Planning a home", () -> builder.maybeStart(world, c));
+        guard("Choosing a builder", () -> assignBuilder(world, c));
         if (c.elapsed % 100 == 0) guard("Re-checking beds", () -> recheckBeds(world, c));
         if (!guard("Checking stockpile food", () -> foodAvailable = hasFood(view, c))) foodAvailable = false;
         for (var s : new ArrayList<>(c.settlers.values())) {
@@ -518,6 +525,23 @@ final class FrontierSimulation {
 
     private void work(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
         jobs.work(world, view, c, s, actor);
+    }
+
+    /** A project needs one builder: the pioneer if free, otherwise any resident whose job was not chosen by the owner. */
+    private void assignBuilder(CodaLivingWorld world, Settlement c) throws Exception {
+        if (c.project == null) return;
+        Settler pick = null;
+        for (var s : c.settlers.values()) {
+            if (!s.resident()) continue;
+            if (s.profession == Settler.Profession.BUILDER) return;
+            if (s.jobChosen) continue;
+            if (pick == null || (s.pioneer && !pick.pioneer)) pick = s;
+        }
+        if (pick == null) return;
+        pick.profession = Settler.Profession.BUILDER;
+        pick.target = null;
+        save();
+        world.announce(Chat.good(pick.name + " will build the new home."));
     }
 
     private void noteResidents(CodaLivingWorld world, Settlement c) throws Exception {

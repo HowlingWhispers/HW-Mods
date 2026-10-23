@@ -100,10 +100,71 @@ Reset and retire never change world blocks or player inventories. Dismissed
 settlers who are loaded leave with what they carry; absent ones are removed when
 their chunk next loads, so they can never return as duplicates.
 
+## Settlement planning
+
+The settlement plans itself. The player can veto, but never has to place a plot.
+Settlers only ever build what the planner has approved.
+
+### The grid
+
+The land is divided into **cells of 8x8 blocks**, aligned with chunks (2x2 cells per
+chunk). Every cell gets one role from a survey of the real terrain:
+
+| Role | Meaning |
+| --- | --- |
+| Square | The campfire's chunk. Never built on |
+| Open | Flat, safe and empty: a possible plot or road |
+| Forest | 3 or more natural trees: kept for lumberjacks; roads may cross it after felling |
+| Farm | Farmland is already there |
+| Yours | Blocks that are not natural (planks, cobblestone, glass, doors, chests...). Never touched |
+| Water | Water in the cell |
+| Hazard | Lava nearby, a drop over 4 blocks within 3 blocks, a hollow under the floor, or loose ground (sand, gravel) |
+| Steep | The ground varies by more than 2 blocks. A road may cross it if it varies by 4 or less |
+| Unknown | Not loaded yet, or not surveyed yet |
+
+### Roads first
+
+A plot is only used once a road connects it to the square. Roads are planned
+automatically as the cheapest route over the grid from the square: they prefer flat
+open cells, avoid forest, and never climb more than 1 block per 2 blocks walked. A
+road never crosses water, hazards or your builds. A building's door faces its road.
+
+### Choosing plots
+
+When the settlement needs a building (for example, a new home for the next settler),
+the planner picks the open cell with the best score: close to the square by road,
+flat, and not next to hazards. A house sits in its 8x8 cell with a 1-block margin on
+the road side, so buildings never touch.
+
+### Materials follow the land
+
+Each settlement builds in a material palette chosen from what its land offers:
+
+| Land | Palette |
+| --- | --- |
+| 4 or more natural trees | Wood of the most common local tree (logs for the frame, planks for walls, floor and roof) |
+| Mostly sand or sandstone | Sandstone |
+| Mostly terracotta or red sand | Terracotta, using the most common local colour for walls |
+| Anything else | Cobblestone |
+
+Blueprints name **roles** (frame, wall, floor, roof, door, bed) instead of blocks,
+so one blueprint fits every palette. All palette blocks can be gathered by the jobs:
+lumberjacks bring logs, and miners also dig sandstone and terracotta.
+
+### Mountain homes and underground villages (later)
+
+Some buildings are dug instead of built. A mountain home is carved into a slope that
+is solid rock, and an underground village grows from a shaft. They follow one extra
+rule: **every dug room keeps at least 2 solid blocks on every side**, except its own
+entrance, so a dig never breaks through the far side of a mountain, into a cave, or
+into water or lava. Before a dig starts, the planner checks the whole volume plus that
+shell. Steep cells that are solid rock become candidates for mountain homes.
+
 ## CodaLoader contract (proposal, needs approval)
 
-None of these exist in H.O.W.L. 0.0.45. Each is a separate CodaLoader change
-with its own version bump, proposed before that repository is touched.
+Each is a separate CodaLoader change with its own version bump, proposed before that
+repository is touched. L6 shipped in H.O.W.L. 0.0.46 (`CodaLivingWorld.place` and
+`shapePath`); the others do not exist yet.
 
 | # | Hook | Frontier uses it for |
 | --- | --- | --- |
@@ -112,7 +173,7 @@ with its own version bump, proposed before that repository is touched.
 | L3 | Player first-join event, teleport and respawn point | Starting locations |
 | L4 | Biome and surface sampling for unloaded positions | Safe starting-location search |
 | L5 | Cancellable break, place and use events | Soft-claim enforcement, campfire screen, giving tools to settlers |
-| L6 | Settler places a block or bed from a real carried item | Builders and cabins |
+| L6 | Settler places a block or bed from a real carried item (0.0.46) | Builders and cabins |
 | L7 | Server particles or a client overlay | Visible border |
 
 ## Release plan
@@ -121,6 +182,8 @@ with its own version bump, proposed before that repository is touched.
 | --- | --- | --- |
 | 0.2.0-0.2.2 | Camp, territory and expansion, pioneer, recruitment, needs, lifecycle, reset and retire, styled chat | Nothing new |
 | 0.2.3 | Lumberjack, farmer and miner jobs inside the territory, chosen from stockpile tools | Nothing new |
-| 0.3.0 | Death events, owner from placement, soft-claim enforcement, campfire screen | L1, L2, L5 |
-| 0.4.0 | Builder and first cabin | L6 |
+| 0.2.4 | Settlement planner: terrain survey, cell roles, roads, plot choice and material palette, shown with /frontier plan. Nothing is built yet | Nothing new |
+| 0.3.0 | Builders: roads, then the starter hut on the planned plot, in the land's palette, from real stockpile items; door and bed from the stockpile | L6 (0.0.46) |
+| 0.3.x | Death events, owner from placement, soft-claim enforcement, campfire screen | L1, L2, L5 |
+| 0.4.0 | Mountain homes and underground villages; expeditions | L6, plus an entity storage hook for expeditions |
 | 0.5.0 | Starting locations, visible border | L3, L4, L7 |

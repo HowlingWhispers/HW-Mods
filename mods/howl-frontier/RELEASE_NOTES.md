@@ -1,13 +1,12 @@
-Frontier 0.2.3: settlers go to work.
+Frontier 0.3.0: settlers build their own homes.
 
-Residents now pick a job from the tools in your stockpile and work your land with real items:
-- Axe: lumberjack. Cuts natural trees in your land (up to 6 logs tall), replants a sapling from the stockpile, and brings the logs home. Log houses and trees with player-placed leaves are never touched.
-- Hoe: farmer, once crops grow on farmland in your land. Harvests ripe wheat, carrots, potatoes and beetroot, replants with the real seeds, and delivers the rest.
-- Pickaxe: miner, once you set a mine. Look at the block where the tunnel starts, face its direction, and use /frontier mine. Miners dig a 2-high tunnel up to 32 blocks, and stop at the edge of your land, at water, lava, sand or gravel, and at anything that is not stone, dirt or ore.
-- /frontier job <id> <lumberjack|farmer|miner|labourer> chooses a job yourself; labourer lets them pick again.
-- Workers fetch their own tool from the stockpile and unload whenever they carry a lot. If the stockpile is full they say so and keep what they carry.
-- /frontier status shows who does which job and how far the mine has got.
+When every settler has a bed, the settlement starts the next home on the plot its plan chose. A free resident becomes the builder (the pioneer first) and builds it with real items, block by block.
 
-Nothing is created from nothing: every log, crop and stone comes from the world, and every tool from your stockpile.
+- Roads come first. The builder fetches a shovel from the stockpile and turns grass and dirt into paths along the planned road, cutting natural trees in the way with an axe from the stockpile.
+- Then the plot is cleared of grass, dirt, sand, plants and natural trees. Anything you built or placed is never removed: the builder stops and tells you what is in the way.
+- Then the starter hut goes up from the bottom: a floor, walls with two windows, a door facing the road, a roof and a bed inside. A free bed means the next settler can arrive.
+- Materials follow the land: a log cabin where trees grow, otherwise sandstone, terracotta or cobblestone. The builder takes them from the stockpile and gathers logs itself when there are trees and an axe. Put a door and a bed in the stockpile; Frontier cannot craft yet.
+- /frontier status shows a Building line: where, which stage, who builds and what is still missing. /frontier plan shows the project on the map.
+- Progress is saved after every block, so leaving and reopening the world resumes where it stopped.
 
-Requires H.O.W.L. 0.0.45+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.
+Requires H.O.W.L. 0.0.46+ (settlers place real blocks) and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

@@ -18,6 +18,8 @@ public final class FrontierMod implements CodaMod {
         CodaWorldView.class.getMethod("living", String.class);
         CodaCommandContext.class.getMethod("targetBlock");
         CodaLivingWorld.class.getMethod("rename", UUID.class, String.class);
+        CodaLivingWorld.class.getMethod("place", UUID.class, CodaBlockPos.class, String.class, CodaBlockPos.class); // H.O.W.L. 0.0.46
+        CodaLivingWorld.class.getMethod("shapePath", UUID.class, CodaBlockPos.class);
         Path marker = context.gameDirectory().resolve("config/howl-play-mode.txt");
         boolean enabled = Files.isRegularFile(marker) && !Files.isSymbolicLink(marker) && Files.size(marker) < 64
                 && Files.readString(marker).trim().equals("frontier");
@@ -33,7 +35,7 @@ public final class FrontierMod implements CodaMod {
                     if (!player.position().dimension().equals("minecraft:overworld"))
                         throw new IllegalArgumentException("Frontier settlements belong in the Overworld");
                     var world = view.living("minecraft:overworld")
-                            .orElseThrow(() -> new IllegalStateException("H.O.W.L. 0.0.45 single-player living-world support is required"));
+                            .orElseThrow(() -> new IllegalStateException("H.O.W.L. 0.0.46 single-player living-world support is required"));
                     commands.run(player, view, world, args);
                 } catch (IllegalArgumentException refused) {
                     player.reply(Chat.refused(refused.getMessage()));

@@ -22,7 +22,7 @@ final class Settler {
         boolean present() { return this == COMMITTED || this == ARRIVING || this == RESIDENT; }
     }
 
-    enum Profession { LABOURER, LUMBERJACK, MINER, FARMER }
+    enum Profession { LABOURER, LUMBERJACK, MINER, FARMER, BUILDER }
 
     private static final Map<State, Set<State>> ALLOWED = Map.of(
             State.COMMITTED, EnumSet.of(State.ARRIVING, State.RETIRED),

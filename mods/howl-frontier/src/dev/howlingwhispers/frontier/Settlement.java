@@ -29,6 +29,34 @@ final class Settlement {
     CodaBlockPos mineEntrance;
     String mineDirection = "north";
     int mineProgress;
+    /** Grid cells that already carry a road the settlers laid. Roads stay roads. */
+    final LinkedHashSet<FrontierPlanner.CellPos> roads = new LinkedHashSet<>();
+    /** The building under construction, or null. Fixed when it starts, so a changing plan never moves it. */
+    Project project;
+    int homesBuilt;
+
+    /** A building in progress: where, which way it faces, in which materials, and how far it has got. */
+    static final class Project {
+        enum Phase { ROAD, CLEAR, BUILD }
+        final String blueprint;
+        final FrontierPlanner.CellPos cell;
+        final String facing;
+        final int level;
+        final Palette palette;
+        final List<FrontierPlanner.CellPos> road;
+        Phase phase = Phase.ROAD;
+        int step;
+
+        Project(String blueprint, FrontierPlanner.CellPos cell, String facing, int level, Palette palette, List<FrontierPlanner.CellPos> road) {
+            this.blueprint = blueprint;
+            this.cell = cell;
+            this.facing = facing;
+            this.level = level;
+            this.palette = palette;
+            this.road = List.copyOf(road);
+        }
+    }
+
     /** Bed heads the player keeps for themselves. Settlers never claim these. */
     final LinkedHashSet<CodaBlockPos> keptBeds = new LinkedHashSet<>();
 

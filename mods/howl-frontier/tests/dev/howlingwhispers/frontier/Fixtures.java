@@ -218,6 +218,59 @@ final class Fixtures {
             return true;
         }
 
+        // ---- Placement, mirroring CodaLoader 0.0.46 place() and shapePath() ----------------------------
+        final List<CodaBlockPos> placedBlocks = new ArrayList<>();
+        private boolean replaceable(CodaBlockPos p) {
+            var b = block(p);
+            return b.isPresent() && !b.get().fluid() && (b.get().air() || !b.get().solid());
+        }
+        public boolean place(UUID id, CodaBlockPos target, String state, CodaBlockPos supplies) {
+            var m = java.util.regex.Pattern.compile("([a-z0-9_.-]+:[a-z0-9_./-]+)(?:\\[(.*)\\])?").matcher(state);
+            if (!m.matches()) throw new IllegalArgumentException("Invalid block state: " + state);
+            String blockId = m.group(1);
+            Map<String, String> props = new HashMap<>();
+            if (m.group(2) != null) for (String pair : m.group(2).split(",")) props.put(pair.split("=")[0], pair.split("=")[1]);
+            CodaBlockPos other = null;
+            Map<String, String> otherProps = null;
+            if (blockId.endsWith("_door")) {
+                if ("upper".equals(props.get("half"))) throw new IllegalArgumentException("Place a door by its lower half");
+                props.put("half", "lower");
+                other = new CodaBlockPos(target.x(), target.y() + 1, target.z());
+                otherProps = new HashMap<>(props);
+                otherProps.put("half", "upper");
+            } else if (blockId.endsWith("_bed")) {
+                if ("head".equals(props.get("part"))) throw new IllegalArgumentException("Place a bed by its foot");
+                props.put("part", "foot");
+                String facing = props.getOrDefault("facing", "north");
+                int dx = facing.equals("east") ? 1 : facing.equals("west") ? -1 : 0, dz = facing.equals("south") ? 1 : facing.equals("north") ? -1 : 0;
+                other = new CodaBlockPos(target.x() + dx, target.y(), target.z() + dz);
+                otherProps = new HashMap<>(props);
+                otherProps.put("part", "head");
+                otherProps.put("occupied", "false");
+                props.put("occupied", "false");
+            }
+            if (!actors.containsKey(id) || !near(id, target, 6) || !replaceable(target) || (other != null && !replaceable(other))) return false;
+            for (var a : actors.values()) if (Math.floor(a.x()) == target.x() && Math.floor(a.z()) == target.z() && (int) Math.floor(a.y()) == target.y()) return false;
+            Map<String, Integer> from = bag(id).containsKey(blockId) ? bag(id) : supplies != null && near(id, supplies, 3) ? chest(supplies) : null;
+            if (from == null || !from.containsKey(blockId)) return false;
+            take(from, blockId, 1);
+            boolean solid = !blockId.endsWith("_door") && !blockId.endsWith("_bed");
+            blocks.put(target, Fixtures.block(blockId, props, solid));
+            if (other != null) blocks.put(other, Fixtures.block(blockId, otherProps, false));
+            placedBlocks.add(target);
+            return true;
+        }
+        public boolean shapePath(UUID id, CodaBlockPos target) {
+            String held = hands.get(id);
+            if (held == null || !held.endsWith("_shovel") || !near(id, target, 6)) return false;
+            var b = block(target);
+            var above = block(new CodaBlockPos(target.x(), target.y() + 1, target.z()));
+            if (b.isEmpty() || above.isEmpty() || !above.get().air()) return false;
+            if (!Set.of("minecraft:grass_block", "minecraft:dirt", "minecraft:coarse_dirt", "minecraft:podzol", "minecraft:mycelium", "minecraft:rooted_dirt").contains(b.get().id())) return false;
+            blocks.put(target, Fixtures.block("minecraft:dirt_path", Map.of(), true));
+            return true;
+        }
+
         // ---- Building helpers for tests -------------------------------------------------------------
         /** A tree: logs from {@code base} upward, a 5x5 canopy around the top two logs and one above. */
         void tree(CodaBlockPos base, int height, String wood, boolean naturalLeaves) {
@@ -262,7 +315,8 @@ final class Fixtures {
             List<CodaItemInventoryView.Slot> slots = new ArrayList<>();
             slots.add(new CodaItemInventoryView.Slot(0, "minecraft:bread", world.food, 64));
             var chest = world.chest(p);
-            if (chest != null) for (var e : chest.entrySet()) slots.add(new CodaItemInventoryView.Slot(slots.size(), e.getKey(), e.getValue(), 64));
+            if (chest != null) for (var e : chest.entrySet())
+                for (int left = e.getValue(); left > 0; left -= 64) slots.add(new CodaItemInventoryView.Slot(slots.size(), e.getKey(), Math.min(64, left), 64));
             return Optional.of(new CodaItemInventoryView(p, slots));
         }
         @Override public Optional<CodaLivingWorld> living(String d) { return Optional.of(world); }
@@ -301,6 +355,8 @@ final class Fixtures {
         FrontierSimulation sim = new FrontierSimulation();
         long tick;
         String session = "session-1";
+        /** Whether settlers start building homes on their own (kept across reopening). */
+        boolean autoBuild = true;
 
         Camp() throws Exception { this(Files.createTempDirectory("frontier-test-"), new World()); }
         Camp(Path root, World world) { this.root = root; this.world = world; this.view = new View(root, world); }
@@ -315,6 +371,7 @@ final class Fixtures {
         /** As if the world were closed and opened again: a new simulation and session read the saved file. */
         void reopen() {
             sim = new FrontierSimulation();
+            sim.builder.autoStart = autoBuild;
             session = session + "-reopened";
             seconds(1);
         }

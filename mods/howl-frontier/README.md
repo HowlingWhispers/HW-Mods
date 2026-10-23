@@ -1,6 +1,6 @@
-# H.O.W.L. Frontier 0.2
+# H.O.W.L. Frontier 0.3
 
-A settlement play mode for Minecraft Java 26.4 Snapshot 3 and H.O.W.L. 0.0.45+.
+A settlement play mode for Minecraft Java 26.4 Snapshot 3 and H.O.W.L. 0.0.46+.
 0.2 is a rebuild from scratch; see [DESIGN.md](DESIGN.md) for the rules and the plan.
 
 ## Delivery and world isolation
@@ -43,7 +43,31 @@ Residents pick a job from the tools in the stockpile and fetch the tool themselv
 Work happens in daylight, only inside your land, and only with real items. Lumberjacks never
 cut log houses or trees with player-placed leaves. Miners stop at water, lava, sand, gravel,
 the edge of your land, and anything that is not stone, dirt or ore. Workers unload when they
-carry a lot; a full stockpile is reported and nothing is lost. Building comes later.
+carry a lot; a full stockpile is reported and nothing is lost.
+
+## The settlement plan
+
+Frontier surveys your land in cells of 8x8 blocks and plans the settlement itself:
+where homes go, which roads lead to them, and what they are built from. See
+[DESIGN.md](DESIGN.md) for the full rules. `/frontier plan` shows the plan as a map,
+and `/frontier plan here` explains the spot you look at.
+
+## Building
+
+When every settler has a bed and the survey is complete, the next home starts on the
+planned plot. A resident without a tool job becomes the builder, the pioneer first.
+
+1. **Road.** With a shovel from the stockpile the builder turns grass and dirt into paths
+   along the planned road, and cuts natural trees in the way with an axe from the stockpile.
+2. **Clear.** Grass, dirt, sand, gravel, plants and natural trees are removed from the plot.
+3. **Build.** The starter hut (5x5, door facing the road, bed inside) goes up from the floor.
+
+Materials follow the land: a log cabin where trees grow (78 logs), otherwise sandstone,
+terracotta or cobblestone. The builder takes them from the stockpile, and fells trees for
+logs itself when it has an axe. **Put a door and a bed in the stockpile**: Frontier cannot
+craft yet. Builders never break or replace anything you built or placed; they stop and say
+what is in the way. `/frontier status` shows the Building line. Progress is saved after
+every block.
 
 ## Commands
 
@@ -55,6 +79,7 @@ carry a lot; a full stockpile is reported and nothing is lost. Building comes la
 | `/frontier keepbed` | Keep the bed you are looking at for yourself (again to share it) |
 | `/frontier job <id> <lumberjack\|farmer\|miner\|labourer>` | Choose a settler's job; `labourer` lets them pick |
 | `/frontier mine` | Start a mine at the block you look at, tunnelling the way you face |
+| `/frontier plan [here]` | Show the settlement plan, or explain the spot you look at |
 | `/frontier name <id> <username>` | Rename a settler; their skin follows that Minecraft account |
 | `/frontier retire <id>` | Remove a settler who is lost (refused while they are alive and nearby) |
 | `/frontier reset`, then `reset confirm` | Start over. Settlers leave; your buildings and items stay |

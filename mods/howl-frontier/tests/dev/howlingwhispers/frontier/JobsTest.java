@@ -28,6 +28,8 @@ public final class JobsTest {
     /** A settlement with a stockpile and one resident labourer standing by the campfire. */
     static Settler camp(Camp t) throws Exception {
         t.found();
+        t.autoBuild = false; // these tests are about jobs; BuilderTest covers building
+        t.sim.builder.autoStart = false;
         t.c().pioneerCommitted = true;
         t.world.blocks.put(STOCK, block("minecraft:chest", Map.of("type", "single"), true));
         t.c().stockpile = STOCK;

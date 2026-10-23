@@ -17,7 +17,7 @@ import java.util.regex.Pattern;
  * Meaning never depends on colour alone: the words still say it.
  */
 final class Chat {
-    private static final String S = "§";
+    static final String S = "§";
     static final String RESET = S + "r", BOLD = S + "l";
     static final String GOLD = S + "6", GRAY = S + "7", DARK_GRAY = S + "8", WHITE = S + "f";
     static final String GREEN = S + "a", YELLOW = S + "e", RED = S + "c", DARK_AQUA = S + "3";

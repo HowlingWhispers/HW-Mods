@@ -40,7 +40,9 @@ final class FrontierJobs {
             "minecraft:coal_ore", "minecraft:deepslate_coal_ore", "minecraft:iron_ore", "minecraft:deepslate_iron_ore",
             "minecraft:copper_ore", "minecraft:deepslate_copper_ore", "minecraft:gold_ore", "minecraft:deepslate_gold_ore",
             "minecraft:redstone_ore", "minecraft:deepslate_redstone_ore", "minecraft:lapis_ore", "minecraft:deepslate_lapis_ore",
-            "minecraft:diamond_ore", "minecraft:deepslate_diamond_ore", "minecraft:emerald_ore", "minecraft:deepslate_emerald_ore");
+            "minecraft:diamond_ore", "minecraft:deepslate_diamond_ore", "minecraft:emerald_ore", "minecraft:deepslate_emerald_ore",
+            "minecraft:sandstone", "minecraft:red_sandstone", "minecraft:terracotta", "minecraft:white_terracotta", "minecraft:orange_terracotta",
+            "minecraft:yellow_terracotta", "minecraft:brown_terracotta", "minecraft:red_terracotta", "minecraft:light_gray_terracotta");
     static final Set<String> FALLING = Set.of("minecraft:sand", "minecraft:red_sand", "minecraft:gravel", "minecraft:suspicious_sand", "minecraft:suspicious_gravel");
 
     private final FrontierSimulation sim;
@@ -94,7 +96,8 @@ final class FrontierJobs {
             idle(world, c, s, actor, "Waiting at the campfire. Set a stockpile with /frontier stockpile");
             return;
         }
-        if (s.delivering || world.carried(s.id) >= CARRY_LIMIT) {
+        // Builders carry their building materials on purpose; everyone else unloads when the bag fills.
+        if (s.delivering || (s.profession != BUILDER && world.carried(s.id) >= CARRY_LIMIT)) {
             deliver(world, c, s, actor);
             return;
         }
@@ -103,6 +106,13 @@ final class FrontierJobs {
             case LUMBERJACK -> lumberjack(world, c, s, actor);
             case FARMER -> farmer(world, c, s, actor);
             case MINER -> miner(world, c, s, actor);
+            case BUILDER -> {
+                if (!sim.builder.work(world, view, c, s, actor)) {
+                    s.profession = LABOURER;
+                    s.jobChosen = false;
+                    idle(world, c, s, actor, "Nothing to build right now");
+                }
+            }
             case LABOURER -> idle(world, c, s, actor, "No job yet. Put an axe, a hoe (with crops planted) or a pickaxe (with /frontier mine) in the stockpile");
         }
     }
@@ -169,6 +179,11 @@ final class FrontierJobs {
     }
 
     // ---- Lumberjack ----------------------------------------------------------------------------
+
+    /** For builders who fell trees for their own building. */
+    void lumberjackFor(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
+        lumberjack(world, c, s, actor);
+    }
 
     private void lumberjack(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
         if (!tool(world, c, s, actor, AXES, "an axe")) return;
@@ -344,7 +359,7 @@ final class FrontierJobs {
         if (b.isEmpty()) { s.activity = "Mining paused: the tunnel is in an unloaded area"; return; }
         if (b.get().air()) { c.mineProgress++; sim.save(); return; }
         String id = b.get().id();
-        if (!MINEABLE.contains(id)) { s.activity = "Mining paused at " + id.replace("minecraft:", "") + ": miners only dig stone, dirt and ore"; return; }
+        if (!MINEABLE.contains(id)) { s.activity = "Mining paused at " + id.replace("minecraft:", "") + ": miners only dig stone, dirt, ore, sandstone and terracotta"; return; }
         for (int[] n : new int[][]{{1, 0, 0}, {-1, 0, 0}, {0, 1, 0}, {0, 0, 1}, {0, 0, -1}}) {
             var near = world.block(add(cell, n[0], n[1], n[2]));
             if (near.isEmpty() || near.get().fluid() || FALLING.contains(near.get().id())) {
