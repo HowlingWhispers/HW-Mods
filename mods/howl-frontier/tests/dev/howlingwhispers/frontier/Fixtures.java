@@ -87,10 +87,16 @@ final class Fixtures {
             names.put(id, name);
             return true;
         }
+        /** Native pathfinding range (the loader allows 32; real routes through forest often give up sooner). */
+        int walkRange = 32, wedgedWalks;
+        final Set<CodaBlockPos> wedged = new HashSet<>();
         public boolean walk(UUID id, CodaBlockPos p, double speed) {
             var a = actors.get(id);
             // Loader: the entity must exist, the target be within 32 blocks and loaded, and a path must reach it.
-            if (!paths || a == null || a.distanceSquared(p) > 32 * 32 || block(p).isEmpty()) return false;
+            if (!paths || a == null || a.distanceSquared(p) > walkRange * walkRange || block(p).isEmpty()) return false;
+            // A settler wedged somewhere accepts long paths but does not move; a short step frees it, like a nudge.
+            if (wedged.contains(new CodaBlockPos((int) Math.floor(a.x()), (int) Math.floor(a.y()), (int) Math.floor(a.z())))
+                    && a.distanceSquared(p) > 4 * 4) { wedgedWalks++; return true; }
             actors.put(id, new Actor(id, p.x() + .5, p.y(), p.z() + .5, a.health(), false));
             return true;
         }

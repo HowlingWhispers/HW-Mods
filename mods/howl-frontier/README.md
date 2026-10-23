@@ -59,7 +59,8 @@ planned plot. A resident without a tool job becomes the builder, the pioneer fir
 
 1. **Road.** With a shovel from the stockpile the builder turns grass and dirt into paths
    along the planned road, and cuts natural trees in the way with an axe from the stockpile.
-2. **Clear.** Grass, dirt, sand, gravel, plants and natural trees are removed from the plot.
+2. **Clear.** Natural trees on the plot are felled whole with an axe from the stockpile, then
+   grass, dirt, sand, gravel and plants are removed by hand.
 3. **Build.** The starter hut (5x5, door facing the road, bed inside) goes up from the floor.
 
 Materials follow the land: a log cabin where trees grow (78 logs), otherwise sandstone,

@@ -425,6 +425,17 @@ final class FrontierSimulation {
             }
             return;
         }
+        if (pendingRescue.contains(s.id) && world.actor(s.id).isEmpty()) {
+            var spot = nearCamp(world, c);
+            if (spot != null && world.spawn(s.id, s.name, spot)) {
+                pendingRescue.remove(s.id);
+                progress.remove(s.id);
+                s.arrivalPoint = spot;
+                save();
+            }
+            return;
+        }
+        pendingRescue.remove(s.id);
         var entity = world.actor(s.id);
         if (entity.isEmpty()) {
             // Absent is not dead: keep the bed, pause hunger and work.
@@ -447,8 +458,12 @@ final class FrontierSimulation {
                 noteResidents(world, c);
                 save();
                 world.announce(Chat.good(s.name + " has joined your settlement."));
+            } else if (stuckSeconds(s) >= RESCUE && rescue(world, c, s)) {
+                return;
             } else if (!(s.bed != null ? navigate(world, s, s.bed, .65) : moveNear(world, s, c.campfire))) {
                 s.activity = "Arrival path blocked: clear a route to the " + (s.bed != null ? "bed at " + text(s.bed) : "campfire");
+            } else {
+                s.activity = stuckSeconds(s) >= STUCK ? "Finding a way to the campfire" : s.pioneer ? "Walking to the campfire" : "Walking into the camp";
             }
             return;
         }
@@ -544,6 +559,24 @@ final class FrontierSimulation {
         world.announce(Chat.good(pick.name + " will build the new home."));
     }
 
+    /** An arrival that cannot find any way in for a while is brought to the campfire instead. */
+    private boolean rescue(CodaLivingWorld world, Settlement c, Settler s) throws Exception {
+        var spot = nearCamp(world, c);
+        if (spot == null) return false;
+        world.discard(s.id);
+        if (!world.spawn(s.id, s.name, spot)) {
+            pendingRescue.add(s.id);
+            s.activity = "Finding a way to the campfire";
+            return true;
+        }
+        progress.remove(s.id);
+        s.arrivalPoint = spot;
+        save();
+        world.announce(Chat.label(s.name + " found a way through to the campfire."));
+        return true;
+    }
+    private final Set<UUID> pendingRescue = new HashSet<>();
+
     private void noteResidents(CodaLivingWorld world, Settlement c) throws Exception {
         if (c.recordResidents())
             world.announce(Chat.heading("Your land grew!") + Chat.label(" " + c.peakResidents() + " residents unlocked ") + Chat.good(c.territory().describe()) + Chat.label("."));
@@ -551,20 +584,78 @@ final class FrontierSimulation {
 
     // ---- Movement -------------------------------------------------------------------------
 
+    /** Runtime only: where each moving settler stood, to notice when one is stuck. */
+    private static final class Progress { double x, y, z; long second = -10; int still; boolean left; }
+    private final Map<UUID, Progress> progress = new HashMap<>();
+    /** Seconds without moving before a stuck settler steps aside, and (arrivals) before it is brought in. */
+    static final int STUCK = 4, RESCUE = 45;
+    static final int[] DETOUR_DISTANCES = {22, 14, 8, 4};
+    static final int[][] DETOUR_ANGLES = {{0, 30, -30}, {60, -60, 90, -90}};
+
+    /** How many seconds this settler has been trying to move without getting anywhere. */
+    int stuckSeconds(Settler s) {
+        var p = progress.get(s.id);
+        return p == null || (camp() != null && camp().elapsed / 20 - p.second > 2) ? 0 : p.still;
+    }
+
+    /**
+     * Walk towards a target of any distance. Native pathfinding reaches about 32 blocks and gives up
+     * on some routes (trees, slopes, water), so when the direct way is refused the settler walks to
+     * the best reachable spot in the target's direction instead, fanning out sideways around
+     * obstacles. A settler that has not moved for a few seconds first steps aside, the way a nudge
+     * from the player frees it.
+     */
     boolean navigate(CodaLivingWorld world, Settler s, CodaBlockPos target, double speed) throws Exception {
         var actor = world.actor(s.id);
         if (actor.isEmpty()) return false;
         var at = actor.get();
-        CodaBlockPos next = target;
-        if (at.distanceSquared(target) > 28 * 28) {
-            // Native pathfinding has a limited range: walk via a standing point about 22 blocks along.
-            double dx = target.x() + .5 - at.x(), dz = target.z() + .5 - at.z(), length = Math.sqrt(dx * dx + dz * dz);
-            if (length < 1) return false;
-            var midpoint = new CodaBlockPos((int) Math.floor(at.x() + dx * 22 / length), (int) Math.floor(at.y()), (int) Math.floor(at.z() + dz * 22 / length));
-            next = standing(world, midpoint, 2);
-            if (next == null) return false;
+        var pr = progress.computeIfAbsent(s.id, k -> new Progress());
+        long now = camp() == null ? 0 : camp().elapsed / 20;
+        if (now != pr.second) {
+            double moved = Math.pow(at.x() - pr.x, 2) + Math.pow(at.y() - pr.y, 2) + Math.pow(at.z() - pr.z, 2);
+            if (now - pr.second > 2 || moved > .5 * .5) { pr.x = at.x(); pr.y = at.y(); pr.z = at.z(); pr.still = 0; }
+            else pr.still++;
+            pr.second = now;
         }
-        return world.walk(s.id, next, speed);
+        double dx = target.x() + .5 - at.x(), dz = target.z() + .5 - at.z(), length = Math.sqrt(dx * dx + dz * dz);
+        double heading = Math.atan2(dz, dx);
+        boolean stuck = pr.still >= STUCK;
+        if (stuck && pr.still % STUCK == 0) {
+            // Step aside first: a short walk to any free spot re-plans from somewhere else.
+            pr.left = !pr.left;
+            for (int a : new int[]{pr.left ? 90 : -90, pr.left ? -90 : 90, 180, 45, -45})
+                if (tryWalk(world, s, at, heading + Math.toRadians(a), 3, speed)) return true;
+        }
+        if (!stuck && length <= 28 && world.walk(s.id, target, speed)) return true;
+        if (stuck && length <= 28 && pr.still % STUCK != 0 && world.walk(s.id, target, speed)) return true;
+        // Mostly forward first, at every distance; then wider around obstacles.
+        for (int[] angles : DETOUR_ANGLES)
+            for (int distance : DETOUR_DISTANCES) {
+                if (distance >= length + 2) continue;
+                for (int a : angles)
+                    if (tryWalk(world, s, at, heading + Math.toRadians(pr.left ? -a : a), distance, speed)) return true;
+            }
+        return false;
+    }
+
+    private boolean tryWalk(CodaLivingWorld world, Settler s, CodaLivingWorld.Actor at, double angle, int distance, double speed) throws Exception {
+        var spot = new CodaBlockPos((int) Math.floor(at.x() + Math.cos(angle) * distance), (int) Math.floor(at.y()), (int) Math.floor(at.z() + Math.sin(angle) * distance));
+        var stand = standing(world, spot, 1);
+        return stand != null && world.walk(s.id, stand, speed);
+    }
+
+    /** A spot near the campfire where a settler can appear, for bringing in a stuck arrival. */
+    CodaBlockPos nearCamp(CodaLivingWorld world, Settlement c) throws Exception {
+        CodaBlockPos best = null;
+        int bestDistance = Integer.MAX_VALUE;
+        for (int x = -8; x <= 8; x++)
+            for (int z = -8; z <= 8; z++) {
+                int d = x * x + z * z;
+                if (d < 4 || d >= bestDistance) continue;
+                var p = groundIn(world, c.campfire.x() + x, c.campfire.z() + z, c.campfire.y());
+                if (p != null && c.territory().contains(p)) { best = p; bestDistance = d; }
+            }
+        return best;
     }
 
     boolean moveNear(CodaLivingWorld world, Settler s, CodaBlockPos target) throws Exception {
@@ -586,7 +677,7 @@ final class FrontierSimulation {
                             var feet = world.block(p);
                             var head = world.block(add(p, 0, 1, 0));
                             var floor = world.block(add(p, 0, -1, 0));
-                            if (feet.isPresent() && head.isPresent() && floor.isPresent() && passable(feet.get()) && head.get().air()
+                            if (feet.isPresent() && head.isPresent() && floor.isPresent() && passable(feet.get()) && passable(head.get())
                                     && (floor.get().solid() || floor.get().id().equals("minecraft:farmland")) && !floor.get().fluid()
                                     && !Set.of("minecraft:campfire", "minecraft:soul_campfire", "minecraft:magma_block", "minecraft:cactus").contains(floor.get().id()))
                                 return p;
@@ -594,9 +685,14 @@ final class FrontierSimulation {
         return null;
     }
 
-    private static boolean passable(CodaLivingWorld.Block b) {
-        return b.air() || Set.of("minecraft:wheat", "minecraft:carrots", "minecraft:potatoes", "minecraft:beetroots", "minecraft:short_grass").contains(b.id())
-                || b.id().endsWith("_sapling");
+    /** Blocks that hurt, trap or burn a settler walking through them. */
+    static final Set<String> HARMFUL = Set.of("minecraft:fire", "minecraft:soul_fire", "minecraft:sweet_berry_bush", "minecraft:cobweb",
+            "minecraft:powder_snow", "minecraft:wither_rose", "minecraft:campfire", "minecraft:soul_campfire", "minecraft:cactus",
+            "minecraft:magma_block", "minecraft:pointed_dripstone", "minecraft:lava", "minecraft:water");
+
+    /** Anything a settler walks through: air, grass, flowers, ferns, bushes, crops, leaf litter. */
+    static boolean passable(CodaLivingWorld.Block b) {
+        return b.air() || (!b.solid() && !b.fluid() && !HARMFUL.contains(b.id()) && !b.id().endsWith("_door") && !b.id().endsWith("_bed"));
     }
 
     // ---- Stockpile ------------------------------------------------------------------------
