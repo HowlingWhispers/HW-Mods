@@ -205,9 +205,13 @@ public final class BuilderTest {
         var t = meadow(16);
         t.world.stock(STOCK, "minecraft:stone_axe", 1);
         t.world.stock(STOCK, "minecraft:oak_sapling", 16);
-        until(t, 400, () -> t.c().project != null);
+        // Start the project at a known moment, before anything is cleared or built.
+        t.sim.builder.autoStart = false;
+        until(t, 400, () -> pioneer(t) != null && pioneer(t).state == RESIDENT && t.sim.planner.surveyed(t.c()) >= FrontierPlanner.cells(t.c().territory()).size());
+        t.sim.builder.autoStart = true;
+        t.sim.builder.maybeStart(t.world, t.c());
         var project = t.c().project;
-        check(project != null, "A home is planned");
+        check(project != null && project.phase != Settlement.Project.Phase.BUILD, "A home is planned and not yet cleared");
         var steps = t.sim.builder.steps(project);
         var first = steps.stream().filter(st -> st.pos().y() == project.level + 1).skip(12).findFirst().orElseThrow().pos();
         t.world.tree(first, 6, "minecraft:oak", true); // as tall as a settler can reach the top of
