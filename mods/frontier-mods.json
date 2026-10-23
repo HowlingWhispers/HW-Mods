@@ -7,7 +7,7 @@
       "modId": "howl_frontier",
       "name": "H.O.W.L. Frontier",
       "channel": "nightly",
-      "minimumLoader": "0.0.45",
+      "minimumLoader": "0.0.46",
       "requiredLoaderClass": "dev/howlingwhispers/codaloader/bootstrap/CodaSettlerAvatarTransformer.class"
     }
   ]

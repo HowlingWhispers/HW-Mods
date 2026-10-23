@@ -96,7 +96,8 @@ final class FrontierJobs {
             idle(world, c, s, actor, "Waiting at the campfire. Set a stockpile with /frontier stockpile");
             return;
         }
-        if (s.delivering || world.carried(s.id) >= CARRY_LIMIT) {
+        // Builders carry their building materials on purpose; everyone else unloads when the bag fills.
+        if (s.delivering || (s.profession != BUILDER && world.carried(s.id) >= CARRY_LIMIT)) {
             deliver(world, c, s, actor);
             return;
         }
@@ -105,6 +106,13 @@ final class FrontierJobs {
             case LUMBERJACK -> lumberjack(world, c, s, actor);
             case FARMER -> farmer(world, c, s, actor);
             case MINER -> miner(world, c, s, actor);
+            case BUILDER -> {
+                if (!sim.builder.work(world, view, c, s, actor)) {
+                    s.profession = LABOURER;
+                    s.jobChosen = false;
+                    idle(world, c, s, actor, "Nothing to build right now");
+                }
+            }
             case LABOURER -> idle(world, c, s, actor, "No job yet. Put an axe, a hoe (with crops planted) or a pickaxe (with /frontier mine) in the stockpile");
         }
     }
@@ -171,6 +179,11 @@ final class FrontierJobs {
     }
 
     // ---- Lumberjack ----------------------------------------------------------------------------
+
+    /** For builders who fell trees for their own building. */
+    void lumberjackFor(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
+        lumberjack(world, c, s, actor);
+    }
 
     private void lumberjack(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
         if (!tool(world, c, s, actor, AXES, "an axe")) return;

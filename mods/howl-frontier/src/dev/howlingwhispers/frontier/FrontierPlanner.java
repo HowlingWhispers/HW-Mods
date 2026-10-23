@@ -17,7 +17,7 @@ final class FrontierPlanner {
     static final int SURVEY_EVERY = 2;
 
     enum Role {
-        SQUARE("Square", Chat.GRAY), OPEN("Open", Chat.GREEN), FOREST("Forest", Chat.S + "2"), FARM("Farm", Chat.GOLD),
+        SQUARE("Square", Chat.GRAY), ROAD("Road", Chat.YELLOW), OPEN("Open", Chat.GREEN), FOREST("Forest", Chat.S + "2"), FARM("Farm", Chat.GOLD),
         YOURS("Your builds", Chat.WHITE), WATER("Water", Chat.S + "9"), HAZARD("Hazard", Chat.RED), STEEP("Steep", Chat.S + "5"),
         UNKNOWN("Not surveyed yet", Chat.DARK_GRAY);
 
@@ -140,6 +140,7 @@ final class FrontierPlanner {
         int centreY = c.campfire.y();
         Map<String, Integer> surface = new HashMap<>(), treeLogs = new HashMap<>();
         if (square(c, cell)) return new Survey(cell, Role.SQUARE, "the campfire's chunk is the town square", 0, 0, centreY, 0, treeLogs, surface);
+        if (c.roads.contains(cell)) return new Survey(cell, Role.ROAD, "a road the settlers laid", centreY, centreY, centreY, 0, treeLogs, surface);
         int x0 = cell.minX(), z0 = cell.minZ();
         Column[][] cols = new Column[CELL + 2 * MARGIN][CELL + 2 * MARGIN];
         int hint = centreY;
@@ -234,7 +235,7 @@ final class FrontierPlanner {
     /** Can a road run through this cell? */
     private static boolean roadable(Survey s) {
         return s != null && switch (s.role()) {
-            case SQUARE, OPEN, FOREST -> true;
+            case SQUARE, ROAD, OPEN, FOREST -> true;
             case STEEP -> s.maxY() - s.minY() <= MAX_ROAD_RISE;
             default -> false;
         };
@@ -242,6 +243,7 @@ final class FrontierPlanner {
 
     private static int cost(Survey s) {
         return switch (s.role()) {
+            case ROAD -> 0;
             case FOREST -> 4;
             case STEEP -> 2;
             default -> 1;
@@ -267,7 +269,7 @@ final class FrontierPlanner {
                 var next = at.step(d[0], d[1]);
                 var s = surveys.get(next);
                 if (!roadable(s) || !t.contains(new CodaBlockPos(next.minX(), 0, next.minZ()))) continue;
-                if (here.role() != Role.SQUARE && Math.abs(s.level() - here.level()) > MAX_ROAD_RISE) continue;
+                if (here.role() != Role.SQUARE && here.role() != Role.ROAD && s.role() != Role.ROAD && Math.abs(s.level() - here.level()) > MAX_ROAD_RISE) continue;
                 int nd = dist.get(at) + cost(s);
                 if (nd < dist.getOrDefault(next, Integer.MAX_VALUE)) {
                     dist.put(next, nd);
@@ -279,15 +281,18 @@ final class FrontierPlanner {
         }
         Plot best = null;
         int bestScore = Integer.MAX_VALUE;
+        Set<CellPos> reserved = new HashSet<>();
+        if (c.project != null) { reserved.add(c.project.cell); reserved.addAll(c.project.road); }
         for (var s : surveys.values()) {
-            if (s.role() != Role.OPEN) continue;
+            if (s.role() != Role.OPEN || reserved.contains(s.cell())) continue;
             for (int[] d : dirs) {
                 var neighbour = s.cell().step(d[0], d[1]);
                 var ns = surveys.get(neighbour);
                 if (!dist.containsKey(neighbour) || ns == null) continue;
-                if (ns.role() != Role.SQUARE && Math.abs(ns.level() - s.level()) > MAX_ROAD_RISE) continue;
+                if (ns.role() != Role.SQUARE && ns.role() != Role.ROAD && Math.abs(ns.level() - s.level()) > MAX_ROAD_RISE) continue;
                 List<CellPos> road = new ArrayList<>();
-                for (var at = neighbour; surveys.get(at).role() != Role.SQUARE; at = from.get(at)) road.addFirst(at);
+                // Only cells that still need a road are listed; existing roads are free to use.
+                for (var at = neighbour; surveys.get(at).role() != Role.SQUARE; at = from.get(at)) if (surveys.get(at).role() != Role.ROAD) road.addFirst(at);
                 if (road.contains(s.cell())) continue;
                 int score = dist.get(neighbour) * 10 + (s.maxY() - s.minY()) * 3 + Math.abs(s.level() - c.campfire.y());
                 if (score < bestScore || (score == bestScore && compare(s.cell(), best.cell()) < 0)) {

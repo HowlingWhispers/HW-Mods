@@ -162,8 +162,9 @@ shell. Steep cells that are solid rock become candidates for mountain homes.
 
 ## CodaLoader contract (proposal, needs approval)
 
-None of these exist in H.O.W.L. 0.0.45. Each is a separate CodaLoader change
-with its own version bump, proposed before that repository is touched.
+Each is a separate CodaLoader change with its own version bump, proposed before that
+repository is touched. L6 shipped in H.O.W.L. 0.0.46 (`CodaLivingWorld.place` and
+`shapePath`); the others do not exist yet.
 
 | # | Hook | Frontier uses it for |
 | --- | --- | --- |
@@ -172,7 +173,7 @@ with its own version bump, proposed before that repository is touched.
 | L3 | Player first-join event, teleport and respawn point | Starting locations |
 | L4 | Biome and surface sampling for unloaded positions | Safe starting-location search |
 | L5 | Cancellable break, place and use events | Soft-claim enforcement, campfire screen, giving tools to settlers |
-| L6 | Settler places a block or bed from a real carried item | Builders and cabins |
+| L6 | Settler places a block or bed from a real carried item (0.0.46) | Builders and cabins |
 | L7 | Server particles or a client overlay | Visible border |
 
 ## Release plan
@@ -182,7 +183,7 @@ with its own version bump, proposed before that repository is touched.
 | 0.2.0-0.2.2 | Camp, territory and expansion, pioneer, recruitment, needs, lifecycle, reset and retire, styled chat | Nothing new |
 | 0.2.3 | Lumberjack, farmer and miner jobs inside the territory, chosen from stockpile tools | Nothing new |
 | 0.2.4 | Settlement planner: terrain survey, cell roles, roads, plot choice and material palette, shown with /frontier plan. Nothing is built yet | Nothing new |
-| 0.3.0 | Builders: roads, then the starter hut on the planned plot, in the land's palette; the pioneer places the bed from the stockpile | L6 |
+| 0.3.0 | Builders: roads, then the starter hut on the planned plot, in the land's palette, from real stockpile items; door and bed from the stockpile | L6 (0.0.46) |
 | 0.3.x | Death events, owner from placement, soft-claim enforcement, campfire screen | L1, L2, L5 |
 | 0.4.0 | Mountain homes and underground villages; expeditions | L6, plus an entity storage hook for expeditions |
 | 0.5.0 | Starting locations, visible border | L3, L4, L7 |
