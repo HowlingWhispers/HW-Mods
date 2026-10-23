@@ -274,7 +274,11 @@ final class FrontierBuilder {
             return;
         }
         if (!near(world, s, actor, pos, "Taking down the old hut")) return;
-        if (world.harvest(s.id, pos, block.id(), c.stockpile, tools)) s.activity = "Taking down the old hut (" + (targets.size() - 1) + " blocks left)";
+        if (!sim.pace.take(s.id, false)) return;
+        if (world.harvest(s.id, pos, block.id(), c.stockpile, tools)) {
+            s.activity = "Taking down the old hut (" + (targets.size() - 1) + " blocks left)";
+            if (sim.pace.more(s.id, false)) teardown(world, view, c, s, world.actor(s.id).orElse(actor), p);
+        }
         else if (world.carried(s.id) > 0) s.delivering = true;
         else s.activity = "Taking down the old hut: could not take the " + block.id().replace("minecraft:", "").replace('_', ' ') + " at " + text(pos);
     }
@@ -391,6 +395,7 @@ final class FrontierBuilder {
         for (int h = height - 1; h >= 0; h--) {
             var target = add(base, 0, h, 0);
             if (actor.distanceSquared(target) > REACH * REACH) continue;
+            if (!sim.pace.take(s.id, false)) { s.activity = "Felling a tree on the building site"; return; }
             if (world.harvest(s.id, target, id, c.stockpile, FrontierJobs.AXES)) s.activity = "Felling a tree on the building site";
             else if (world.carried(s.id) > 0) s.delivering = true;
             else s.activity = "Clearing the building site: could not fell the tree at " + text(base);
@@ -437,12 +442,14 @@ final class FrontierBuilder {
                     return;
                 }
                 if (!near(world, s, actor, pos, label)) return;
+                if (!sim.pace.take(s.id, false)) { s.activity = label; return; }
                 if (!world.harvest(s.id, pos, block.id(), c.stockpile, tools)) {
                     if (world.carried(s.id) > 0) s.delivering = true;
                     else s.activity = "Building paused: cannot clear " + block.id().replace("minecraft:", "") + (tools.isEmpty() ? " by hand" : "") + " at " + text(pos);
                     return;
                 }
                 s.activity = label;
+                if (sim.pace.more(s.id, false)) clear(world, view, c, s, world.actor(s.id).orElse(actor), p);
                 return;
             }
         p.phase = BUILD;
@@ -518,11 +525,13 @@ final class FrontierBuilder {
         }
         if (!near(world, s, actor, step.pos(), "Building the " + c.project.palette.name())) return;
         String state = item.equals(step.item()) ? step.state() : item + step.state().substring(step.item().length());
+        if (!sim.pace.take(s.id, true)) { s.activity = "Building: " + p.step + "/" + steps.size() + " blocks"; return; }
         if (world.place(s.id, step.pos(), state, c.stockpile)) {
             ledger.getOrDefault(s.id, new HashMap<>()).computeIfPresent(item, (k, n) -> n > 1 ? n - 1 : null);
             p.step++;
             sim.save();
             s.activity = "Building: " + p.step + "/" + steps.size() + " blocks";
+            if (sim.pace.more(s.id, true) && c.project == p) build(world, view, c, s, world.actor(s.id).orElse(actor), p);
         } else {
             ledger.remove(s.id); // the bag may not hold what the ledger says: re-collect next time
             s.activity = "Building paused: could not place " + describe(step) + " at " + text(step.pos());
@@ -573,6 +582,7 @@ final class FrontierBuilder {
         }
         if (!carries(world, s, item)) { fetch(world, view, c, s, actor, item, 8); return false; }
         if (!near(world, s, actor, lowest, "Filling a dip under the foundation")) return false;
+        if (!sim.pace.take(s.id, true)) { s.activity = "Filling a dip under the foundation"; return false; }
         if (world.place(s.id, lowest, item, c.stockpile)) {
             ledger.getOrDefault(s.id, new HashMap<>()).computeIfPresent(item, (k, n) -> n > 1 ? n - 1 : null);
             s.activity = "Filling a dip under the foundation";

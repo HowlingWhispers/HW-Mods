@@ -219,6 +219,7 @@ final class FrontierJobs {
             return;
         }
         String log = world.block(top).orElseThrow().id();
+        if (!sim.pace.take(s.id, false)) { s.activity = "Felling a tree"; return; }
         if (!world.harvest(s.id, top, log, c.stockpile, AXES)) {
             if (world.carried(s.id) > 0) s.delivering = true;
             else {
@@ -398,10 +399,12 @@ final class FrontierJobs {
         s.target = face;
         if (!walkToFace(world, c, s, actor, face)) return;
         Set<String> tools = CLEAR_BY_HAND.contains(id) ? Set.of() : PICKS;
+        if (!sim.pace.take(s.id, false)) { s.activity = "Mining"; return; }
         if (world.harvest(s.id, face, id, c.stockpile, tools)) {
             c.mineProgress++;
             sim.save();
             s.activity = "Mining";
+            if (sim.pace.more(s.id, false)) miner(world, c, s, world.actor(s.id).orElse(actor));
         } else if (world.carried(s.id) > 0) {
             s.target = null;
             s.delivering = true;

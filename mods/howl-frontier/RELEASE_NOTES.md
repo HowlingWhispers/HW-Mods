@@ -1,11 +1,13 @@
-Frontier 0.4.2: miners keep digging on their own.
+Frontier 0.4.3: place and break speed settings, and beds that do not count are explained.
 
-From the 0.4.1 play test: Asta dug a block, then stood still in the mine until nudged, dug one more, and stopped again.
+From the play test:
 
-Why: after each block she was sent exactly one step forward. The game's pathfinder counts anything within one block as already reached, so it planned no movement at all, and she kept waiting to arrive.
+- "I placed two beds and there is only one settler, but status says all beds are claimed." A settler's bed needs air right above the pillow and a solid roof 2-6 blocks above it; the second bed had none, so it was silently ignored. Now placing such a bed tells you at once, /frontier status lists it with the reason ("Bed at x y z: it has no roof 2-6 blocks above the pillow"), and Arrivals points at it. Add a roof and it counts.
+- "There is no Frontier config to set place and break speed." There is now: config/howl_frontier/howl-frontier.properties in the Frontier profile (%APPDATA%\.howlingshispers\nightly\profiles\frontier\minecraft), created on first start.
+  - place_per_second (default 1, 0.25 to 8): blocks a settler places per second while building.
+  - break_per_second (default 1, 0.25 to 8): blocks broken per second while clearing, taking down, mining and felling.
+  Changes apply the next time a world is opened. The startup log shows the pace in use.
 
-Now:
-- A miner digs as soon as the face is within reach, wherever she stands in the mine, instead of insisting on the exact step behind it.
-- When she does need to move, she walks three steps ahead (or two), never one, so the pathfinder always moves her.
+Also includes 0.4.2: miners keep digging on their own instead of standing still until nudged.
 
 Requires H.O.W.L. 0.0.46+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

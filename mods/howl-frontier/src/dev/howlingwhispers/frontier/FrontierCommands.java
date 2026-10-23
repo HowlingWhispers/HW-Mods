@@ -93,7 +93,13 @@ final class FrontierCommands {
                 + label(", ") + (leaving > 0 ? bad(leaving + " leaving") : muted("0 leaving")));
         int free = c.freeBeds().size();
         player.reply(field("Beds", value(c.beds.size() + " sheltered")) + label(", ") + (free > 0 ? good(free + " free") : warn("0 free"))
-                + (c.keptBeds.isEmpty() ? "" : label(", ") + value(c.keptBeds.size() + " kept for you")));
+                + (c.keptBeds.isEmpty() ? "" : label(", ") + value(c.keptBeds.size() + " kept for you"))
+                + (sim.uncountedBeds.isEmpty() ? "" : label(", ") + warn(sim.uncountedBeds.size() + " not counted")));
+        int listed = 0;
+        for (var e : sim.uncountedBeds.entrySet()) {
+            if (listed++ == 3) { player.reply(label("  ...and " + (sim.uncountedBeds.size() - 3) + " more")); break; }
+            player.reply(label("  Bed at ") + value(text(e.getKey())) + label(": ") + warn(e.getValue()));
+        }
         player.reply(field("Arrivals", arrival(sim.arrivalStatus)));
         player.reply(field("Building", building(world, c)));
         Map<Settler.Profession, Integer> jobs = new EnumMap<>(Settler.Profession.class);

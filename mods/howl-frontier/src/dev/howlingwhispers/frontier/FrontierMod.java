@@ -43,10 +43,12 @@ public final class FrontierMod implements CodaMod {
             });
         });
         if (enabled) {
+            sim.pace.configure(FrontierConfig.load(context.configDirectory()));
             context.registerServerTick("frontier", sim::tick);
             context.registerBlockPlacement(sim::placed);
         }
         System.out.println("[Frontier] " + version() + ", mode=" + (enabled ? "Frontier" : "inactive") + ", H.O.W.L. " + context.loaderVersion());
+        if (enabled) System.out.println("[Frontier] Settler pace: " + sim.pace.config().describe() + " (" + context.configDirectory().resolve(FrontierConfig.FILE) + ")");
     }
 
     /** For tests: the simulation behind the registered command. */

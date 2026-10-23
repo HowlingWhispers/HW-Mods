@@ -32,8 +32,11 @@ final class FrontierSimulation {
     /** Spots where the loader refused a spawn this session; never offered again until the world reopens. */
     private final Set<CodaBlockPos> refusedArrivals = new HashSet<>();
     private final ArrayDeque<CodaBlockPlacements.Placement> placements = new ArrayDeque<>();
+    /** Beds in the land that settlers cannot use, and why. Runtime only: rebuilt by placement and the sweep. */
+    final Map<CodaBlockPos, String> uncountedBeds = new LinkedHashMap<>();
     private final Set<String> logged = new HashSet<>();
     final FrontierJobs jobs = new FrontierJobs(this);
+    final FrontierPace pace = new FrontierPace();
     final FrontierPlanner planner = new FrontierPlanner();
     final FrontierBuilder builder = new FrontierBuilder(this, jobs);
     /** The current update's world view, for reading stockpile contents. Valid only during the update. */
@@ -59,6 +62,7 @@ final class FrontierSimulation {
             errorCount = 0;
             scanCursor = 0;
             refusedArrivals.clear();
+            uncountedBeds.clear();
             jobs.clear();
             planner.clear();
             builder.clear();
@@ -186,8 +190,20 @@ final class FrontierSimulation {
                     establish(world, p.position(), null);
             } else if (c != null) {
                 CodaBlockPos head = bedHead(world, p.position());
-                if (head != null && c.territory().contains(head) && !c.keptBeds.contains(head)
-                        && c.beds.size() < Settlement.MAX_BEDS && shelteredBed(world, head)) c.beds.add(head);
+                if (head == null || c.keptBeds.contains(head)) continue;
+                if (!c.territory().contains(head)) {
+                    world.announce(Chat.warn("That bed is outside your land, so settlers will not use it.") + Chat.label(" Your land is " + c.territory().describe() + "."));
+                    continue;
+                }
+                String problem = bedProblem(world, head);
+                if (problem == null && c.beds.size() < Settlement.MAX_BEDS) {
+                    c.beds.add(head);
+                    uncountedBeds.remove(head);
+                } else if (problem != null) {
+                    uncountedBeds.put(head, problem);
+                    world.announce(Chat.warn("That bed does not count for settlers yet: " + problem + ".")
+                            + Chat.label(" A settler's bed needs air right above the pillow and a solid roof 2-6 blocks above it."));
+                }
             }
         }
     }
@@ -229,14 +245,26 @@ final class FrontierSimulation {
             boolean head = b.get().id().endsWith("_bed") && "head".equals(b.get().properties().get("part"));
             if (head && !c.keptBeds.contains(p) && shelteredBed(world, p)) {
                 if (c.beds.size() < Settlement.MAX_BEDS) c.beds.add(p);
-            } else c.beds.remove(p);
+                uncountedBeds.remove(p);
+            } else {
+                c.beds.remove(p);
+                if (head && !c.keptBeds.contains(p)) uncountedBeds.put(p, bedProblem(world, p));
+                else uncountedBeds.remove(p);
+            }
         }
     }
 
     private void recheckBeds(CodaLivingWorld world, Settlement c) throws Exception {
         for (var bed : new ArrayList<>(c.beds)) {
             var b = world.block(bed);
-            if (b.isPresent() && !shelteredBed(world, bed)) c.beds.remove(bed);
+            if (b.isPresent() && !shelteredBed(world, bed)) {
+                c.beds.remove(bed);
+                if (b.get().id().endsWith("_bed")) uncountedBeds.put(bed, bedProblem(world, bed));
+            }
+        }
+        for (var bed : new ArrayList<>(uncountedBeds.keySet())) {
+            var b = world.block(bed);
+            if (b.isPresent() && !b.get().id().endsWith("_bed")) uncountedBeds.remove(bed);
         }
     }
 
@@ -251,6 +279,14 @@ final class FrontierSimulation {
     }
 
     /** A bed head with headroom and a solid roof two to six blocks above it. */
+    /** Why a bed head is not a settler's bed, in words for players; null when it is sheltered. */
+    static String bedProblem(CodaLivingWorld world, CodaBlockPos p) throws Exception {
+        if (shelteredBed(world, p)) return null;
+        var above = world.block(add(p, 0, 1, 0));
+        if (above.isPresent() && !above.get().air()) return "something is right above the pillow";
+        return "it has no roof 2-6 blocks above the pillow";
+    }
+
     static boolean shelteredBed(CodaLivingWorld world, CodaBlockPos p) throws Exception {
         var b = world.block(p);
         if (b.isEmpty() || !b.get().id().endsWith("_bed") || !"head".equals(b.get().properties().get("part"))) return false;
@@ -309,7 +345,8 @@ final class FrontierSimulation {
             // Kept beds are never in c.beds, so an empty list means no usable bed exists.
             arrivalStatus = c.beds.isEmpty()
                     ?"Waiting for a bed: no sheltered beds in your territory yet. A bed needs a solid roof 2-6 blocks above its head"
-                    : "Waiting for a bed: every sheltered bed is claimed. Build another one";
+                    : "Waiting for a bed: every sheltered bed is claimed. Build another one"
+                            + (uncountedBeds.isEmpty() ? "" : ", or give a roof to the bed at " + text(uncountedBeds.keySet().iterator().next()));
             return;
         }
         c.arrivalTimer = Math.max(0, c.arrivalTimer - 20);
@@ -539,6 +576,7 @@ final class FrontierSimulation {
     }
 
     private void work(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
+        pace.second(s.id);
         jobs.work(world, view, c, s, actor);
     }
 
