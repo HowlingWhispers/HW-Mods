@@ -144,6 +144,8 @@ final class Fixtures {
             return moved;
         }
         public int collect(UUID id, CodaBlockPos p, CodaItemFilter f, int maximum) {
+            // Loader: MinecraftSingleplayerWorld.moveContainers refuses anything outside 1..64.
+            if (maximum < 1 || maximum > 64) throw new IllegalArgumentException("Invalid transfer size");
             var chest = chest(p);
             if (!near(id, p, 3) || chest == null) return 0;
             int moved = 0;

@@ -59,8 +59,9 @@ public final class SimulationTest {
         check(p.pioneer && p.bed == null, "The pioneer needs no bed");
         int fromCampfire = Math.max(Math.abs(p.arrivalPoint.x() - CAMP.x()), Math.abs(p.arrivalPoint.z() - CAMP.z()));
         check(t.c().territory().contains(p.arrivalPoint) && fromCampfire >= 12, "The pioneer appears near the edge of the territory");
-        t.seconds(2);
-        check(p.state == RESIDENT && t.c().peakResidents() == 1, "The pioneer walks to the campfire and becomes resident 1");
+        // Up to ~35 blocks: two walks (pathfinding reaches about 28) and a second to notice the arrival.
+        t.seconds(4);
+        check(p.state == RESIDENT && t.c().peakResidents() == 1, "The pioneer walks to the campfire and becomes resident 1: " + p.activity);
         t.seconds(400);
         check(t.world.spawned == 1, "Without beds, no one else arrives");
         check(t.sim.arrivalStatus.contains("no sheltered beds"), "Status explains that a bed is needed");

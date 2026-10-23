@@ -285,33 +285,82 @@ final class FrontierBuilder {
         if (near(world, s, actor, base, "Clearing the building site")) s.activity = "Clearing the building site: the tree at " + text(base) + " is too tall to reach";
     }
 
+    /**
+     * Clearing follows a fixed order, shown in the builder's activity:
+     * 1. trees: every natural tree with a log on the site or leaves reaching over it is felled whole,
+     *    with an axe from the stockpile, nearest first (the axe is fetched before anything else);
+     * 2. leaves and plants still on the site, top down, by hand;
+     * 3. ground (grass, dirt, sand...) inside the walls, top down, by hand.
+     */
     private void clear(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Settlement.Project p) throws Exception {
         if (world.carried(s.id) >= FrontierJobs.CARRY_LIMIT) { s.delivering = true; return; }
-        // Trees first, whole, so nothing is left hanging over the house.
-        for (var pos : sorted(footprintVolume)) {
-            var b = world.block(pos);
-            if (b.isPresent() && FrontierJobs.isLog(b.get().id())) { fellOnSite(world, view, c, s, actor, pos); return; }
-        }
-        for (var pos : sorted(footprintVolume)) {
-            var b = world.block(pos);
-            if (b.isEmpty()) { s.activity = "Waiting: the building site is not loaded"; return; }
-            var block = b.get();
-            if (block.air()) continue;
-            if (!clearable(block)) {
-                s.activity = "Building paused: " + block.id().replace("minecraft:", "") + " at " + text(pos) + " is in the way and cannot be cleared";
-                return;
-            }
-            if (!near(world, s, actor, pos, "Clearing the building site")) return;
-            if (!world.harvest(s.id, pos, block.id(), c.stockpile, Set.of())) {
-                if (world.carried(s.id) > 0) s.delivering = true;
-                else s.activity = "Building paused: cannot clear " + block.id().replace("minecraft:", "") + " by hand at " + text(pos);
-                return;
-            }
-            s.activity = "Clearing the building site";
+        var trees = treesOverSite(world, c);
+        if (!trees.isEmpty()) {
+            trees.sort(Comparator.comparingDouble(actor::distanceSquared));
+            fellOnSite(world, view, c, s, actor, trees.getFirst());
+            s.activity = "Clearing (1/3, " + trees.size() + " tree" + (trees.size() == 1 ? "" : "s") + " left): " + s.activity;
             return;
         }
+        for (int stage = 2; stage <= 3; stage++)
+            for (var pos : sorted(footprintVolume)) {
+                var b = world.block(pos);
+                if (b.isEmpty()) { s.activity = "Waiting: the building site is not loaded"; return; }
+                var block = b.get();
+                if (block.air()) continue;
+                boolean soft = !block.solid() || block.id().endsWith("_leaves");
+                if (stage == 2 && !soft) continue;
+                String label = stage == 2 ? "Clearing (2/3): leaves and plants" : "Clearing (3/3): levelling the ground";
+                if (!clearable(block)) {
+                    s.activity = "Building paused: " + block.id().replace("minecraft:", "") + " at " + text(pos) + " is in the way and cannot be cleared";
+                    return;
+                }
+                if (!near(world, s, actor, pos, label)) return;
+                if (!world.harvest(s.id, pos, block.id(), c.stockpile, Set.of())) {
+                    if (world.carried(s.id) > 0) s.delivering = true;
+                    else s.activity = "Building paused: cannot clear " + block.id().replace("minecraft:", "") + " by hand at " + text(pos);
+                    return;
+                }
+                s.activity = label;
+                return;
+            }
         p.phase = BUILD;
         sim.save();
+    }
+
+    /**
+     * One log of each natural tree that stands on the site or reaches over it with its leaves.
+     * Only trees inside the land; logs that are not part of a natural tree are left for the
+     * normal checks to report.
+     */
+    List<CodaBlockPos> treesOverSite(CodaLivingWorld world, Settlement c) throws Exception {
+        Map<CodaBlockPos, CodaBlockPos> bases = new LinkedHashMap<>();
+        for (var pos : footprintVolume) {
+            var b = world.block(pos);
+            if (b.isEmpty()) continue;
+            if (FrontierJobs.isLog(b.get().id())) { addTree(world, c, pos, bases, true); continue; }
+            if (!b.get().id().endsWith("_leaves") || "true".equals(b.get().properties().get("persistent"))) continue;
+            // Leaves over the site: find the trunk they grow from, up to 4 blocks away.
+            for (int dx = -4; dx <= 4; dx++)
+                for (int dz = -4; dz <= 4; dz++)
+                    for (int dy = -6; dy <= 0; dy++) {
+                        var q = add(pos, dx, dy, dz);
+                        var l = world.block(q);
+                        if (l.isPresent() && FrontierJobs.isLog(l.get().id())) addTree(world, c, q, bases, false);
+                    }
+        }
+        return new ArrayList<>(bases.values());
+    }
+
+    private void addTree(CodaLivingWorld world, Settlement c, CodaBlockPos log, Map<CodaBlockPos, CodaBlockPos> bases, boolean onSite) throws Exception {
+        String id = world.block(log).orElseThrow().id();
+        var base = log;
+        while (base.y() > log.y() - 32 && world.block(add(base, 0, -1, 0)).map(b -> b.id().equals(id)).orElse(false)) base = add(base, 0, -1, 0);
+        if (bases.containsKey(base)) return;
+        var below = world.block(add(base, 0, -1, 0));
+        boolean grounded = below.isPresent() && FrontierJobs.GROUND_FOR_TREES.contains(below.get().id());
+        if (!c.territory().contains(base)) return;
+        if (!onSite && (!grounded || !(felling.contains(base) || FrontierJobs.naturalCanopy(world, base, FrontierJobs.trunk(world, base))))) return;
+        bases.put(base, log);
     }
 
     private void build(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Settlement.Project p) throws Exception {
@@ -419,7 +468,7 @@ final class FrontierBuilder {
         ledger.remove(s.id);
         int need = 0;
         for (int i = p.step; i < steps.size(); i++) if (matches(steps.get(i), item)) need++;
-        int got = world.collect(s.id, c.stockpile, CodaItemFilter.only(item), Math.max(1, Math.min(need, 64 * 8)));
+        int got = world.collect(s.id, c.stockpile, CodaItemFilter.only(item), Math.max(1, Math.min(need, 64))); // the loader moves at most 64 per call; the next second collects more
         if (got > 0) ledger.computeIfAbsent(s.id, k -> new HashMap<>()).merge(item, got, Integer::sum);
         s.activity = got > 0 ? "Carrying " + got + " " + item.replace("minecraft:", "").replace('_', ' ') + " to the site" : "The stockpile has no " + item;
     }

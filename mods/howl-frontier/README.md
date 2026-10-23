@@ -59,8 +59,11 @@ planned plot. A resident without a tool job becomes the builder, the pioneer fir
 
 1. **Road.** With a shovel from the stockpile the builder turns grass and dirt into paths
    along the planned road, and cuts natural trees in the way with an axe from the stockpile.
-2. **Clear.** Natural trees on the plot are felled whole with an axe from the stockpile, then
-   grass, dirt, sand, gravel and plants are removed by hand.
+2. **Clear**, always in this order, shown as (1/3), (2/3), (3/3) in `/frontier settlers`:
+   1. fetch an axe and fell every natural tree that stands on the plot or hangs its leaves
+      over it, whole and from the top, nearest first;
+   2. clear the remaining leaves and plants by hand, top down;
+   3. level the ground inside the walls by hand.
 3. **Build.** The starter hut (5x5, door facing the road, bed inside) goes up from the floor.
 
 Materials follow the land: a log cabin where trees grow (78 logs), otherwise sandstone,
