@@ -33,6 +33,7 @@ final class FrontierCommands {
             case "reset" -> reset(player, c, args);
             case "job" -> job(player, c, args);
             case "mine" -> mine(player, world, c);
+            case "plan" -> plan(player, c, args);
             default -> throw new IllegalArgumentException("Unknown command. Use /frontier help");
         }
     }
@@ -48,6 +49,7 @@ final class FrontierCommands {
         player.reply(label("Jobs: settlers pick one from the stockpile's tools. ") + value("Axe") + label(" = lumberjack, ") + value("hoe")
                 + label(" = farmer (crops on farmland), ") + value("pickaxe") + label(" = miner (after ") + warn("/frontier mine") + label(")."));
         player.reply(warn("/frontier job <id> <lumberjack|farmer|miner|labourer>") + label(", ") + warn("mine") + label(" (look where the tunnel starts, face its direction)"));
+        player.reply(warn("/frontier plan") + label(" shows the settlement plan; ") + warn("plan here") + label(" (look at the ground) explains one spot."));
         player.reply(warn("/frontier name <id> <username>") + label(", ") + warn("retire <id>") + label(", ") + warn("reset") + label(", ")
                 + warn("camp") + label(" (look at a lit campfire)"));
     }
@@ -295,6 +297,57 @@ final class FrontierCommands {
         }
         player.reply(done("Mine set at " + text(start) + ", tunnelling " + facing + ". Miners dig a 2-high tunnel, up to "
                 + FrontierJobs.MAX_TUNNEL + " blocks or the edge of your land."));
+    }
+
+    private void plan(CodaCommandContext player, Settlement c, List<String> args) throws Exception {
+        var planner = sim.planner;
+        if (args.size() == 2 && args.get(1).equalsIgnoreCase("here")) {
+            var spot = lookedAt(player, "the ground");
+            var cell = FrontierPlanner.CellPos.of(spot);
+            if (!c.territory().contains(spot)) throw new IllegalArgumentException("That spot is outside your land (" + c.territory().describe() + ")");
+            var survey = planner.survey(cell);
+            if (survey.isEmpty()) {
+                player.reply(warn("Not surveyed yet. ") + label("The survey covers one 8x8 cell every " + FrontierPlanner.SURVEY_EVERY + " seconds; try again shortly."));
+                return;
+            }
+            var s = survey.get();
+            var plot = planner.nextPlot(c);
+            player.reply(heading("Plan") + label(" cell at ") + value(cell.minX() + " " + cell.minZ() + " to " + (cell.minX() + 7) + " " + (cell.minZ() + 7))
+                    + SEP + s.role().colour + s.role().label + RESET);
+            player.reply(field("Why", value(s.reason())) + (s.role() == FrontierPlanner.Role.UNKNOWN ? "" : SEP + label("ground ") + value(s.minY() + "-" + s.maxY())));
+            if (plot != null && plot.cell().equals(cell)) player.reply(good("This is the next home plot. Its door will face " + plot.doorFacing() + "."));
+            else if (plot != null && plot.road().contains(cell)) player.reply(warn("The road to the next home plot runs through here."));
+            return;
+        }
+        if (args.size() != 1) throw new IllegalArgumentException("Use /frontier plan, or look at the ground and use /frontier plan here");
+        long done = planner.surveyed(c), total = FrontierPlanner.cells(c.territory()).size();
+        var palette = planner.palette();
+        var plot = planner.nextPlot(c);
+        player.reply(heading("Plan") + label(" surveyed ") + (done == total ? good(done + "/" + total + " cells") : warn(done + "/" + total + " cells"))
+                + label(" (8x8 blocks each)"));
+        player.reply(field("Materials", value(palette.name())) + label(" - " + palette.reason()));
+        if (plot == null) {
+            player.reply(field("Next home", warn(done < total ? "still surveying the land" : "no suitable plot: every open cell is cut off or unsafe")));
+        } else {
+            int x = plot.cell().minX(), z = plot.cell().minZ();
+            player.reply(field("Next home", value("plot at " + x + " " + plot.level() + " " + z)) + label(", door facing " + plot.doorFacing() + ", ")
+                    + (plot.road().isEmpty() ? good("next to the square, no road needed") : warn(plot.road().size() + " cell" + (plot.road().size() == 1 ? "" : "s") + " of road to lay first")));
+            var hut = Blueprint.resource("starter_hut");
+            List<String> needs = new ArrayList<>();
+            hut.materials(palette).forEach((item, n) -> needs.add(n + " " + item.replace("minecraft:", "").replace('_', ' ')));
+            player.reply(field("Starter hut needs", value(String.join(", ", needs))));
+        }
+        var cell = FrontierPlanner.CellPos.of(feet(player));
+        for (String row : planner.map(c, plot, cell)) player.reply(row);
+        StringBuilder legend = new StringBuilder();
+        Set<FrontierPlanner.Role> shown = EnumSet.noneOf(FrontierPlanner.Role.class);
+        for (var each : FrontierPlanner.cells(c.territory())) planner.survey(each).ifPresentOrElse(s -> shown.add(s.role()), () -> shown.add(FrontierPlanner.Role.UNKNOWN));
+        for (var role : shown) legend.append(role.colour).append(FrontierPlanner.GLYPH).append(RESET).append(label(" " + role.label + "  "));
+        if (plot != null) legend.append(Chat.S + "d").append(FrontierPlanner.GLYPH).append(RESET).append(label(" next home  "))
+                .append(YELLOW).append(FrontierPlanner.GLYPH).append(RESET).append(label(" road  "));
+        legend.append(Chat.S + "b").append(FrontierPlanner.GLYPH).append(RESET).append(label(" you"));
+        player.reply(legend.toString());
+        player.reply(muted("North is up. Nothing is built yet: builders arrive in a later version."));
     }
 
     // ---- helpers ----------------------------------------------------------------------------

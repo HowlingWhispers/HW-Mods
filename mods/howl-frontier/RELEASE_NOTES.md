@@ -1,13 +1,15 @@
-Frontier 0.2.3: settlers go to work.
+Frontier 0.2.4: the settlement plans itself.
 
-Residents now pick a job from the tools in your stockpile and work your land with real items:
-- Axe: lumberjack. Cuts natural trees in your land (up to 6 logs tall), replants a sapling from the stockpile, and brings the logs home. Log houses and trees with player-placed leaves are never touched.
-- Hoe: farmer, once crops grow on farmland in your land. Harvests ripe wheat, carrots, potatoes and beetroot, replants with the real seeds, and delivers the rest.
-- Pickaxe: miner, once you set a mine. Look at the block where the tunnel starts, face its direction, and use /frontier mine. Miners dig a 2-high tunnel up to 32 blocks, and stop at the edge of your land, at water, lava, sand or gravel, and at anything that is not stone, dirt or ore.
-- /frontier job <id> <lumberjack|farmer|miner|labourer> chooses a job yourself; labourer lets them pick again.
-- Workers fetch their own tool from the stockpile and unload whenever they carry a lot. If the stockpile is full they say so and keep what they carry.
-- /frontier status shows who does which job and how far the mine has got.
+Your land is now surveyed in 8x8-block cells, and the settlement works out where it can build. Nothing is built yet: builders come in a later version, and they will only ever build what this plan allows.
 
-Nothing is created from nothing: every log, crop and stone comes from the world, and every tool from your stockpile.
+- /frontier plan shows a coloured map of your land: the town square, open ground, forest, farms, water, hazards, steep ground and your own builds, plus where you stand.
+- It picks the next home plot by itself and the road to it. Roads are laid first, follow the land, and never cross water, hazards or your builds. Doors face the road.
+- Unsafe spots are refused: cliffs and ravine edges (a drop of more than 4 blocks), caves or gaps under the floor, sand or gravel, water, and lava nearby.
+- Your builds are left alone: any cell with planks, cobblestone, glass, doors, paths, placed leaves or loose logs is never used.
+- Materials follow the land: wood from the local trees when there are enough, otherwise sandstone in deserts, terracotta in badlands, or cobblestone. /frontier plan shows what the starter hut would need.
+- Look at the ground and use /frontier plan here to see why that spot was accepted or refused.
+- Miners can now also dig sandstone and terracotta, so every material can be gathered.
+
+The survey covers one cell every 2 seconds, so a new settlement's plan is complete after about a minute of play.
 
 Requires H.O.W.L. 0.0.45+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

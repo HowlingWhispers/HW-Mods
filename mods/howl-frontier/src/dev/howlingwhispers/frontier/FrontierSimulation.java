@@ -34,6 +34,7 @@ final class FrontierSimulation {
     private final ArrayDeque<CodaBlockPlacements.Placement> placements = new ArrayDeque<>();
     private final Set<String> logged = new HashSet<>();
     final FrontierJobs jobs = new FrontierJobs(this);
+    final FrontierPlanner planner = new FrontierPlanner();
     /** The current update's world view, for reading stockpile contents. Valid only during the update. */
     private CodaWorldView view;
 
@@ -58,6 +59,7 @@ final class FrontierSimulation {
             scanCursor = 0;
             refusedArrivals.clear();
             jobs.clear();
+            planner.clear();
             logged.clear();
             try {
                 var opened = new FrontierStore(next);
@@ -141,6 +143,7 @@ final class FrontierSimulation {
         }
         c.elapsed += 20;
         guard("Scanning the land", () -> scanLand(world, c));
+        guard("Surveying the land", () -> planner.tick(world, c));
         if (c.elapsed % 100 == 0) guard("Re-checking beds", () -> recheckBeds(world, c));
         if (!guard("Checking stockpile food", () -> foodAvailable = hasFood(view, c))) foodAvailable = false;
         for (var s : new ArrayList<>(c.settlers.values())) {

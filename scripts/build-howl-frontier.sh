@@ -10,6 +10,8 @@ mapfile -d '' SOURCES < <(find "$MOD/src" -name '*.java' -print0)
 javac --release 21 -encoding UTF-8 -d "$MOD/build/api" "${API[@]}"
 javac --release 21 -encoding UTF-8 -cp "$MOD/build/api" -d "$MOD/build/classes" "${SOURCES[@]}"
 cp "$MOD/resources/coda.mod.json" "$MOD/build/classes/"
+# Game data (blueprints) ships inside the JAR, next to the classes.
+rm -rf "$MOD/build/classes/frontier" && cp -R "$MOD/resources/frontier" "$MOD/build/classes/frontier"
 VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/resources/coda.mod.json"))["version"])')"
 mapfile -d '' TESTS < <(find "$MOD/tests" -name '*.java' -print0)
 javac --release 21 -encoding UTF-8 -cp "$MOD/build/api:$MOD/build/classes" -d "$MOD/build/tests" "${TESTS[@]}"
@@ -27,5 +29,6 @@ with zipfile.ZipFile(sys.argv[1]) as z:
  m=json.loads(z.read('coda.mod.json'));assert m['id']=='howl_frontier' and m['minecraft']=='26.4-snapshot-3'
  assert m['entrypoint'].replace('.','/')+'.class' in z.namelist()
  assert not any(n.startswith('dev/howlingwhispers/codaloader/') for n in z.namelist())
+ assert 'frontier/blueprints/starter_hut.blueprint' in z.namelist(), 'blueprints missing from the JAR'
 print('PASS: Frontier identity, entrypoint and compile-only loader API')
 PY

@@ -45,6 +45,13 @@ cut log houses or trees with player-placed leaves. Miners stop at water, lava, s
 the edge of your land, and anything that is not stone, dirt or ore. Workers unload when they
 carry a lot; a full stockpile is reported and nothing is lost. Building comes later.
 
+## The settlement plan
+
+Frontier surveys your land in cells of 8x8 blocks and plans the settlement itself:
+where homes go, which roads lead to them, and what they are built from. See
+[DESIGN.md](DESIGN.md) for the full rules. `/frontier plan` shows the plan as a map,
+and `/frontier plan here` explains the spot you look at. Nothing is built yet.
+
 ## Commands
 
 | Command | What it does |
@@ -55,6 +62,7 @@ carry a lot; a full stockpile is reported and nothing is lost. Building comes la
 | `/frontier keepbed` | Keep the bed you are looking at for yourself (again to share it) |
 | `/frontier job <id> <lumberjack\|farmer\|miner\|labourer>` | Choose a settler's job; `labourer` lets them pick |
 | `/frontier mine` | Start a mine at the block you look at, tunnelling the way you face |
+| `/frontier plan [here]` | Show the settlement plan, or explain the spot you look at |
 | `/frontier name <id> <username>` | Rename a settler; their skin follows that Minecraft account |
 | `/frontier retire <id>` | Remove a settler who is lost (refused while they are alive and nearby) |
 | `/frontier reset`, then `reset confirm` | Start over. Settlers leave; your buildings and items stay |

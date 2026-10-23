@@ -1,0 +1,47 @@
+# Frontier blueprint, format 1.
+# Layers go bottom to top. Rows run from the back (north) to the front (south),
+# columns from west to east. The door is on the front, which faces the road.
+# Letters map to roles; the settlement's palette turns roles into real blocks.
+name: Starter hut
+size: 5 4 5
+anchor: 2 0 4
+
+legend:
+  .  air
+  _  keep
+  L  frame[axis=y]
+  P  wall
+  F  floor
+  R  roof
+  D  door[half=lower,facing=south,hinge=left]
+  d  door[half=upper,facing=south,hinge=left]
+  H  bed[part=head,facing=north]
+  T  bed[part=foot,facing=north]
+
+layer 0:
+  LFFFL
+  FFFFF
+  FFFFF
+  FFFFF
+  LFFFL
+
+layer 1:
+  LPPPL
+  PH..P
+  PT..P
+  P...P
+  LPDPL
+
+layer 2:
+  LPPPL
+  P....
+  ....P
+  P...P
+  LPdPL
+
+layer 3:
+  RRRRR
+  RRRRR
+  RRRRR
+  RRRRR
+  RRRRR
