@@ -80,6 +80,20 @@ final class FrontierStore {
             p.setProperty(k + "arrivalTimer", "" + c.arrivalTimer);
             p.setProperty(k + "pioneerCommitted", "" + c.pioneerCommitted);
             p.setProperty(k + "namesIssued", "" + c.namesIssued);
+            p.setProperty(k + "roads", cells(c.roads));
+            p.setProperty(k + "homesBuilt", "" + c.homesBuilt);
+            if (c.project != null) {
+                var j = c.project;
+                p.setProperty(k + "project.blueprint", j.blueprint);
+                p.setProperty(k + "project.cell", j.cell.x() + "," + j.cell.z());
+                p.setProperty(k + "project.facing", j.facing);
+                p.setProperty(k + "project.level", "" + j.level);
+                p.setProperty(k + "project.phase", j.phase.name());
+                p.setProperty(k + "project.step", "" + j.step);
+                p.setProperty(k + "project.road", cells(j.road));
+                var pal = j.palette;
+                p.setProperty(k + "project.palette", String.join("|", pal.name(), pal.frame(), pal.wall(), pal.floor(), pal.roof(), pal.door(), pal.reason()));
+            }
             put(p, k + "mineEntrance", c.mineEntrance);
             p.setProperty(k + "mineDirection", c.mineDirection);
             p.setProperty(k + "mineProgress", "" + c.mineProgress);
@@ -127,6 +141,26 @@ final class FrontierStore {
             c.arrivalTimer = integer(p, k + "arrivalTimer", 0, Settlement.ARRIVAL_INTERVAL);
             c.pioneerCommitted = bool(p, k + "pioneerCommitted");
             c.namesIssued = integer(p, k + "namesIssued", 0, 1_000_000);
+            // Added in 0.3.0: optional, so older worlds keep loading.
+            c.roads.addAll(readCells(p.getProperty(k + "roads", "")));
+            c.homesBuilt = optionalInteger(p, k + "homesBuilt", 0, 0, Settlement.MAX_POPULATION * 4);
+            if (p.getProperty(k + "project.blueprint") != null) {
+                String bp = required(p, k + "project.blueprint");
+                if (!bp.matches("[a-z0-9_]{1,40}")) throw new IllegalArgumentException("invalid blueprint id");
+                var cell = readCells(required(p, k + "project.cell"));
+                if (cell.size() != 1) throw new IllegalArgumentException("invalid project cell");
+                String facing = required(p, k + "project.facing");
+                if (!Set.of("north", "south", "east", "west").contains(facing)) throw new IllegalArgumentException("invalid project facing");
+                int level = integer(p, k + "project.level", -64, 319);
+                String[] pal = required(p, k + "project.palette").split("\\|", -1);
+                if (pal.length != 7) throw new IllegalArgumentException("invalid project palette");
+                for (int b = 1; b < 6; b++) if (!pal[b].matches("minecraft:[a-z0-9_]+")) throw new IllegalArgumentException("invalid palette block");
+                var project = new Settlement.Project(bp, cell.getFirst(), facing, level, new Palette(pal[0], pal[1], pal[2], pal[3], pal[4], pal[5], pal[6]),
+                        readCells(required(p, k + "project.road")));
+                project.phase = Settlement.Project.Phase.valueOf(required(p, k + "project.phase"));
+                project.step = integer(p, k + "project.step", 0, 16 * 16 * 16);
+                c.project = project;
+            }
             // Added in 0.2.3: optional, so 0.2.0-0.2.2 worlds keep loading.
             c.mineEntrance = inside(t, position(p.getProperty(k + "mineEntrance", "")), "mine entrance");
             c.mineDirection = p.getProperty(k + "mineDirection", "north");
@@ -198,6 +232,23 @@ final class FrontierStore {
         int n = Integer.parseInt(required(p, key));
         if (n < min || n > max) throw new IllegalArgumentException("invalid " + key);
         return n;
+    }
+    private static String cells(Collection<FrontierPlanner.CellPos> cells) {
+        StringJoiner j = new StringJoiner(";");
+        for (var c : cells) j.add(c.x() + "," + c.z());
+        return j.toString();
+    }
+    private static List<FrontierPlanner.CellPos> readCells(String text) {
+        List<FrontierPlanner.CellPos> out = new ArrayList<>();
+        if (text.isEmpty()) return out;
+        String[] parts = text.split(";");
+        if (parts.length > 4096) throw new IllegalArgumentException("too many cells");
+        for (String part : parts) {
+            String[] xz = part.split(",", -1);
+            if (xz.length != 2) throw new IllegalArgumentException("invalid cell " + part);
+            out.add(new FrontierPlanner.CellPos(Integer.parseInt(xz[0]), Integer.parseInt(xz[1])));
+        }
+        return out;
     }
     private static int optionalInteger(Properties p, String key, int fallback, int min, int max) {
         return p.getProperty(key) == null ? fallback : integer(p, key, min, max);

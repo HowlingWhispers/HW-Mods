@@ -10,9 +10,13 @@ record Palette(String name, String frame, String wall, String floor, String roof
     static final List<String> WOODS = List.of("oak", "spruce", "birch", "jungle", "acacia", "dark_oak", "mangrove", "cherry", "pale_oak");
     static final int TREES_FOR_WOOD = 4;
 
+    /**
+     * A log cabin: every part is logs, which lumberjacks gather directly. Settlers cannot craft
+     * planks yet; plank houses come with a crafting hook.
+     */
     static Palette wood(String species, String reason) {
-        String w = "minecraft:" + species;
-        return new Palette(species.replace('_', ' ') + " wood", w + "_log", w + "_planks", w + "_planks", w + "_planks", w + "_door", reason);
+        String log = "minecraft:" + species + "_log";
+        return new Palette(species.replace('_', ' ') + " log cabin", log, log, log, log, "minecraft:" + species + "_door", reason);
     }
 
     static Palette sandstone(String reason) {

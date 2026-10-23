@@ -1,15 +1,12 @@
-Frontier 0.2.4: the settlement plans itself.
+Frontier 0.3.0: settlers build their own homes.
 
-Your land is now surveyed in 8x8-block cells, and the settlement works out where it can build. Nothing is built yet: builders come in a later version, and they will only ever build what this plan allows.
+When every settler has a bed, the settlement starts the next home on the plot its plan chose. A free resident becomes the builder (the pioneer first) and builds it with real items, block by block.
 
-- /frontier plan shows a coloured map of your land: the town square, open ground, forest, farms, water, hazards, steep ground and your own builds, plus where you stand.
-- It picks the next home plot by itself and the road to it. Roads are laid first, follow the land, and never cross water, hazards or your builds. Doors face the road.
-- Unsafe spots are refused: cliffs and ravine edges (a drop of more than 4 blocks), caves or gaps under the floor, sand or gravel, water, and lava nearby.
-- Your builds are left alone: any cell with planks, cobblestone, glass, doors, paths, placed leaves or loose logs is never used.
-- Materials follow the land: wood from the local trees when there are enough, otherwise sandstone in deserts, terracotta in badlands, or cobblestone. /frontier plan shows what the starter hut would need.
-- Look at the ground and use /frontier plan here to see why that spot was accepted or refused.
-- Miners can now also dig sandstone and terracotta, so every material can be gathered.
+- Roads come first. The builder fetches a shovel from the stockpile and turns grass and dirt into paths along the planned road, cutting natural trees in the way with an axe from the stockpile.
+- Then the plot is cleared of grass, dirt, sand, plants and natural trees. Anything you built or placed is never removed: the builder stops and tells you what is in the way.
+- Then the starter hut goes up from the bottom: a floor, walls with two windows, a door facing the road, a roof and a bed inside. A free bed means the next settler can arrive.
+- Materials follow the land: a log cabin where trees grow, otherwise sandstone, terracotta or cobblestone. The builder takes them from the stockpile and gathers logs itself when there are trees and an axe. Put a door and a bed in the stockpile; Frontier cannot craft yet.
+- /frontier status shows a Building line: where, which stage, who builds and what is still missing. /frontier plan shows the project on the map.
+- Progress is saved after every block, so leaving and reopening the world resumes where it stopped.
 
-The survey covers one cell every 2 seconds, so a new settlement's plan is complete after about a minute of play.
-
-Requires H.O.W.L. 0.0.45+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.
+Requires H.O.W.L. 0.0.46+ (settlers place real blocks) and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

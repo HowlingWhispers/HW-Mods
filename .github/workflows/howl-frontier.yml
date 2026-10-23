@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: HowlingWhispers/HW-CodaLoader
-          ref: b2e8682ff0141f1c1f3b24b53219bf3ea6252ed8
+          ref: 2f921cd9c34429ecbd8e9247980d39175d2ccf74
           path: build-loader
       - uses: actions/setup-java@v4
         with:
@@ -44,7 +44,7 @@ jobs:
           printf 'frontier\n' > out/frontier-profile/config/howl-play-mode.txt
           java -jar build-loader/dist/CodaLoader.jar --loader-only out/frontier-profile > out/frontier-init.log
           VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/resources/coda.mod.json"))["version"])')"
-          grep -F "[Frontier] ${VERSION}, mode=Frontier, H.O.W.L. 0.0.45" out/frontier-init.log
+          grep -F "[Frontier] ${VERSION}, mode=Frontier, H.O.W.L. 0.0.46" out/frontier-init.log
           test -f out/frontier-profile/mods/hw-essentials.jar
           test -f out/frontier-profile/mods/coda-wolf-0.1.0-dev.jar
       - uses: actions/upload-artifact@v4
@@ -73,14 +73,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          gh release view v0.0.45 --repo HowlingWhispers/HW-CodaLoader
+          gh release view v0.0.46 --repo HowlingWhispers/HW-CodaLoader
           mkdir -p runtime-check
-          gh release download v0.0.45 --repo HowlingWhispers/HW-CodaLoader --pattern CodaLoader-v0.0.45-win64.zip --pattern update-manifest.json --dir runtime-check
+          gh release download v0.0.46 --repo HowlingWhispers/HW-CodaLoader --pattern CodaLoader-v0.0.46-win64.zip --pattern update-manifest.json --dir runtime-check
           python3 - <<'PYCODE'
           import hashlib,json,pathlib,zipfile
           root=pathlib.Path('runtime-check')
           m=json.loads((root/'update-manifest.json').read_text())
-          assert m['version']=='0.0.45' and m['bundle']=='CodaLoader-v0.0.45-win64.zip'
+          assert m['version']=='0.0.46' and m['bundle']=='CodaLoader-v0.0.46-win64.zip'
           archive=root/m['bundle']
           assert hashlib.sha256(archive.read_bytes()).hexdigest()==m['sha256']
           with zipfile.ZipFile(archive) as z: jar=z.read('CodaLoader.jar')
@@ -92,7 +92,7 @@ jobs:
               assert 'dev/howlingwhispers/codaloader/bootstrap/MinecraftLivingWorld.class' in z.namelist()
               assert 'dev/howlingwhispers/codaloader/bootstrap/CodaSettlerAvatarTransformer.class' in z.namelist()
               assert 'dev/howlingwhispers/codaloader/bootstrap/CodaSettlerAvatarLifecycle.class' in z.namelist()
-              assert json.loads(z.read('codaloader/runtime-version.json'))=={'version':'0.0.45','minecraft':'26.4-snapshot-3'}
+              assert json.loads(z.read('codaloader/runtime-version.json'))=={'version':'0.0.46','minecraft':'26.4-snapshot-3'}
           print('PASS: published runtime archive, inner JAR, compatibility classes and exact version verified')
           PYCODE
           mkdir -p runtime-check/profile/mods runtime-check/profile/config
@@ -100,7 +100,7 @@ jobs:
           printf 'frontier\n' > runtime-check/profile/config/howl-play-mode.txt
           java -jar runtime-check/CodaLoader.jar --loader-only runtime-check/profile > runtime-check/init.log
           VERSION="$(python3 -c 'import json;print(json.load(open("mods/howl-frontier/resources/coda.mod.json"))["version"])')"
-          grep -F "[Frontier] ${VERSION}, mode=Frontier, H.O.W.L. 0.0.45" runtime-check/init.log
+          grep -F "[Frontier] ${VERSION}, mode=Frontier, H.O.W.L. 0.0.46" runtime-check/init.log
           TAG="frontier-v${VERSION}"
           if gh release view "$TAG" >/dev/null 2>&1; then
             echo 'Published Frontier versions are immutable.'
