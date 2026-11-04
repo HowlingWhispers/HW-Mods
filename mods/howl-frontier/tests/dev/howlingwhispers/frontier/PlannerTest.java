@@ -130,7 +130,10 @@ public final class PlannerTest {
         for (int i = 0; i < 5; i++) t.world.tree(new CodaBlockPos(-14 + 6 * i, 64, -14), 5, "minecraft:spruce", true);
         t.sim.planner.surveyAll(t.world, t.c());
         var p = t.sim.planner.palette();
-        check(p.name().equals("spruce log cabin") && p.frame().equals("minecraft:spruce_log") && p.wall().equals("minecraft:spruce_log") && p.door().equals("minecraft:spruce_door"), "Trees nearby: a log cabin in the local wood");
+        check(p.name().equals("spruce plank house") && p.frame().equals("minecraft:spruce_log") && p.wall().equals("minecraft:spruce_planks")
+                && p.roof().equals("minecraft:spruce_planks") && p.door().equals("minecraft:spruce_door"), "Trees nearby: a plank house on a log frame, in the local wood");
+        check("dark_oak".equals(Palette.woodOf("minecraft:dark_oak_planks")) && "pale_oak".equals(Palette.woodOf("minecraft:pale_oak_door"))
+                && Palette.woodOf("minecraft:iron_door") == null && Palette.woodOf("minecraft:oak_log") == null, "The wood of planks and doors is read from the item");
         t = camp();
         t.world.ground = (x, z) -> 62;
         for (int x = -16; x < 32; x++) for (int z = -16; z < 32; z++) t.world.blocks.put(new CodaBlockPos(x, 62, z), block("minecraft:sandstone", Map.of(), true));
@@ -146,7 +149,7 @@ public final class PlannerTest {
         var hut = Blueprint.resource("starter_hut");
         check(hut.width == 5 && hut.height == 4 && hut.depth == 5 && hut.anchorZ == 4, "The starter hut loads from the mod");
         var oak = hut.materials(Palette.wood("oak", "test"));
-        check(oak.equals(new TreeMap<>(Map.of("minecraft:oak_log", 78, "minecraft:oak_door", 1, "minecraft:red_bed", 1))), "Oak log cabin needs no crafting: " + oak);
+        check(oak.equals(new TreeMap<>(Map.of("minecraft:oak_log", 12, "minecraft:oak_planks", 66, "minecraft:oak_door", 1, "minecraft:red_bed", 1))), "Oak plank house: a 12-log frame, planks for the rest: " + oak);
         var sand = hut.materials(Palette.sandstone("test"));
         check(sand.equals(new TreeMap<>(Map.of("minecraft:sandstone", 78, "minecraft:oak_door", 1, "minecraft:red_bed", 1))), "The same hut in sandstone: " + sand);
         check(Palette.wood("oak", "").resolve("frame", "axis=y").equals("minecraft:oak_log[axis=y]") && Palette.stone("").resolve("frame", "axis=y").equals("minecraft:cobblestone"),

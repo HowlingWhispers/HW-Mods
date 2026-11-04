@@ -11,12 +11,23 @@ record Palette(String name, String frame, String wall, String floor, String roof
     static final int TREES_FOR_WOOD = 4;
 
     /**
-     * A log cabin: every part is logs, which lumberjacks gather directly. Settlers cannot craft
-     * planks yet; plank houses come with a crafting hook.
+     * A plank house (0.4.4): a log frame, with plank walls, floor and roof. Lumberjacks bring the logs
+     * and the builder crafts the planks at the stockpile (H.O.W.L. 0.0.47, hook L8). Projects saved
+     * as log cabins keep their own palette and are finished in logs.
      */
     static Palette wood(String species, String reason) {
-        String log = "minecraft:" + species + "_log";
-        return new Palette(species.replace('_', ' ') + " log cabin", log, log, log, log, "minecraft:" + species + "_door", reason);
+        String log = "minecraft:" + species + "_log", planks = "minecraft:" + species + "_planks";
+        return new Palette(species.replace('_', ' ') + " plank house", log, planks, planks, planks, "minecraft:" + species + "_door", reason);
+    }
+
+    /** The wood of a plank or door item ("minecraft:dark_oak_planks" is dark_oak), or null. */
+    static String woodOf(String item) {
+        for (String suffix : List.of("_planks", "_door")) {
+            if (!item.startsWith("minecraft:") || !item.endsWith(suffix)) continue;
+            String species = item.substring("minecraft:".length(), item.length() - suffix.length());
+            return WOODS.contains(species) ? species : null;
+        }
+        return null;
     }
 
     static Palette sandstone(String reason) {

@@ -1,13 +1,10 @@
-Frontier 0.4.3: place and break speed settings, and beds that do not count are explained.
+Frontier 0.4.4: plank houses. Settlers craft.
 
-From the play test:
+Settlers can now use the game's own crafting recipes (H.O.W.L. 0.0.47):
 
-- "I placed two beds and there is only one settler, but status says all beds are claimed." A settler's bed needs air right above the pillow and a solid roof 2-6 blocks above it; the second bed had none, so it was silently ignored. Now placing such a bed tells you at once, /frontier status lists it with the reason ("Bed at x y z: it has no roof 2-6 blocks above the pillow"), and Arrivals points at it. Add a roof and it counts.
-- "There is no Frontier config to set place and break speed." There is now: config/howl_frontier/howl-frontier.properties in the Frontier profile (%APPDATA%\.howlingshispers\nightly\profiles\frontier\minecraft), created on first start.
-  - place_per_second (default 1, 0.25 to 8): blocks a settler places per second while building.
-  - break_per_second (default 1, 0.25 to 8): blocks broken per second while clearing, taking down, mining and felling.
-  Changes apply the next time a world is opened. The startup log shows the pace in use.
+- New homes in wooded land are plank houses: a log frame with plank walls and roof, on the cobblestone foundation. The builder turns logs into planks at the stockpile, in the 2x2 grid, so no table is needed. A house takes 20 logs instead of 53: 8 for the frame and 12 crafted into 45 planks. The spare planks stay in the stockpile.
+- Doors: if there is no door in the stockpile and a crafting table stands within 3 blocks of it, the builder makes one from six planks. The recipe gives three doors; the other two wait in the stockpile for the next houses. With no table, the builder says so and asks for a door or a table.
+- Nothing is crafted without real items, and doors only at a real table. Your table is never moved or taken.
+- A log cabin that was already started keeps its plan and is finished in logs.
 
-Also includes 0.4.2: miners keep digging on their own instead of standing still until nudged.
-
-Requires H.O.W.L. 0.0.46+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.
+Requires H.O.W.L. 0.0.47+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

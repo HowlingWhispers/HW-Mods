@@ -51,7 +51,7 @@ final class FrontierCommands {
         player.reply(warn("/frontier job <id> <lumberjack|farmer|miner|labourer>") + label(", ") + warn("mine") + label(" (optional: look where a tunnel should start, face its direction) or ") + warn("mine auto") + label(" (let miners choose)"));
         player.reply(warn("/frontier plan") + label(" shows the settlement plan; ") + warn("plan here") + label(" (look at the ground) explains one spot."));
         player.reply(label("Building: when every bed is taken, a settler builds the next home. Put a ") + value("door") + label(" and a ")
-                + value("bed") + label(" in the stockpile, plus an ") + value("axe") + label(" (log cabins) or the land's stone, and a ") + value("shovel") + label(" for roads."));
+                + value("bed") + label(" in the stockpile, plus an ") + value("axe") + label(" (plank houses: settlers craft the planks; a ") + value("crafting table") + label(" by the stockpile lets them make the door) or the land's stone, and a ") + value("shovel") + label(" for roads."));
         player.reply(warn("/frontier name <id> <username>") + label(", ") + warn("retire <id>") + label(", ") + warn("reset") + label(", ")
                 + warn("camp") + label(" (look at a lit campfire)"));
     }

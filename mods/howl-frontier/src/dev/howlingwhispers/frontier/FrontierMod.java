@@ -20,6 +20,7 @@ public final class FrontierMod implements CodaMod {
         CodaLivingWorld.class.getMethod("rename", UUID.class, String.class);
         CodaLivingWorld.class.getMethod("place", UUID.class, CodaBlockPos.class, String.class, CodaBlockPos.class); // H.O.W.L. 0.0.46
         CodaLivingWorld.class.getMethod("shapePath", UUID.class, CodaBlockPos.class);
+        CodaLivingWorld.class.getMethod("craft", UUID.class, CodaBlockPos.class, CodaBlockPos.class, String.class, int.class); // H.O.W.L. 0.0.47
         Path marker = context.gameDirectory().resolve("config/howl-play-mode.txt");
         boolean enabled = Files.isRegularFile(marker) && !Files.isSymbolicLink(marker) && Files.size(marker) < 64
                 && Files.readString(marker).trim().equals("frontier");

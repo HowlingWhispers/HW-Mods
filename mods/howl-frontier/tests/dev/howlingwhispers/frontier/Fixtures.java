@@ -285,6 +285,56 @@ final class Fixtures {
             return true;
         }
 
+        // ---- Crafting, mirroring CodaLoader 0.0.47 craft() (hook L8) ---------------------------------
+        /** False plays a loader older than 0.0.47, whose default craft() throws. */
+        boolean crafting = true;
+        final List<String> crafted = new ArrayList<>();
+        /** The vanilla recipes Frontier uses: planks fit the 2x2 grid, a door needs a table. */
+        record Recipe(Map<String, Integer> ingredients, String result, int count, boolean table) {}
+        static Recipe recipe(String id) {
+            for (String wood : Palette.WOODS) {
+                if (id.equals("minecraft:" + wood + "_planks")) return new Recipe(Map.of("minecraft:" + wood + "_log", 1), id, 4, false);
+                if (id.equals("minecraft:" + wood + "_door")) return new Recipe(Map.of("minecraft:" + wood + "_planks", 6), id, 3, true);
+            }
+            if (id.equals("minecraft:iron_ingot_from_smelting_iron_ore")) throw new IllegalArgumentException("Not a crafting-table recipe: " + id);
+            throw new IllegalArgumentException("Unknown recipe: " + id);
+        }
+        public int craft(UUID id, CodaBlockPos workbench, CodaBlockPos supplies, String recipeId, int times) {
+            if (!crafting) throw new UnsupportedOperationException("Settler crafting requires H.O.W.L. 0.0.47");
+            if (times < 1 || times > 64) throw new IllegalArgumentException("Craft 1 to 64 times");
+            var r = recipe(recipeId);
+            if (!actors.containsKey(id)) return 0;
+            if (workbench == null) { if (r.table()) return 0; }
+            else {
+                var t = block(workbench);
+                if (t.isEmpty() || !t.get().id().equals("minecraft:crafting_table") || !near(id, workbench, 3)) return 0;
+                double dx = workbench.x() - supplies.x(), dy = workbench.y() - supplies.y(), dz = workbench.z() - supplies.z();
+                if (dx * dx + dy * dy + dz * dz > 9) return 0;
+            }
+            var chest = supplies != null && near(id, supplies, 3) ? chest(supplies) : null;
+            int done = 0;
+            for (int n = 0; n < times; n++) {
+                var bag = new LinkedHashMap<>(bag(id));
+                var box = chest == null ? null : new LinkedHashMap<>(chest);
+                boolean ok = true;
+                for (var need : r.ingredients().entrySet()) {
+                    int left = need.getValue();
+                    int fromBag = Math.min(left, bag.getOrDefault(need.getKey(), 0));
+                    if (fromBag > 0) { take(bag, need.getKey(), fromBag); left -= fromBag; }
+                    int fromChest = box == null ? 0 : Math.min(left, box.getOrDefault(need.getKey(), 0));
+                    if (fromChest > 0) { take(box, need.getKey(), fromChest); left -= fromChest; }
+                    ok &= left == 0;
+                }
+                bag.merge(r.result(), r.count(), Integer::sum);
+                if (!ok || slots(bag) > 8) break; // all-or-nothing, and it stops at the first craft that fails
+                bags.put(id, bag);
+                if (chest != null) { chest.clear(); chest.putAll(box); }
+                crafted.add(recipeId);
+                done++;
+            }
+            return done;
+        }
+
         // ---- Building helpers for tests -------------------------------------------------------------
         /** A tree: logs from {@code base} upward, a 5x5 canopy around the top two logs and one above. */
         void tree(CodaBlockPos base, int height, String wood, boolean naturalLeaves) {
