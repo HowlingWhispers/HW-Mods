@@ -39,6 +39,7 @@ final class FrontierSimulation {
     final FrontierPace pace = new FrontierPace();
     final FrontierPlanner planner = new FrontierPlanner();
     final FrontierBuilder builder = new FrontierBuilder(this, jobs);
+    final FrontierRequests requests = new FrontierRequests(this);
     /** The current update's world view, for reading stockpile contents. Valid only during the update. */
     private CodaWorldView view;
 
@@ -577,6 +578,8 @@ final class FrontierSimulation {
 
     private void work(CodaLivingWorld world, Settlement c, Settler s, CodaLivingWorld.Actor actor) throws Exception {
         pace.second(s.id);
+        // What the owner asked for comes before the settler's own job.
+        if (requests.work(world, view, c, s, actor)) return;
         jobs.work(world, view, c, s, actor);
     }
 

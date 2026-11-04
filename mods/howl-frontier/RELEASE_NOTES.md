@@ -1,10 +1,12 @@
-Frontier 0.4.4: plank houses. Settlers craft.
+Frontier 0.4.5: ask your settlers for things.
 
-Settlers can now use the game's own crafting recipes (H.O.W.L. 0.0.47):
+New: `/frontier ask <name>` gives one settler a request. Requests come before their own job, in the order you gave them, during the day. Each settler takes up to 5, and they are saved with the world.
 
-- New homes in wooded land are plank houses: a log frame with plank walls and roof, on the cobblestone foundation. The builder turns logs into planks at the stockpile, in the 2x2 grid, so no table is needed. A house takes 20 logs instead of 53: 8 for the frame and 12 crafted into 45 planks. The spare planks stay in the stockpile.
-- Doors: if there is no door in the stockpile and a crafting table stands within 3 blocks of it, the builder makes one from six planks. The recipe gives three doors; the other two wait in the stockpile for the next houses. With no table, the builder says so and asks for a door or a table.
-- Nothing is crafted without real items, and doors only at a real table. Your table is never moved or taken.
-- A log cabin that was already started keeps its plan and is finished in logs.
+- `/frontier ask Asta craft oak_door 3`: Asta crafts it with the game's own recipe, from what is in the stockpile, and puts what she made back in the stockpile. Recipes bigger than 2x2 (doors, chests...) need a crafting table within 3 blocks of the stockpile. If something is missing, chat says what: the ingredients, the table, or that there is no such recipe. Smelting is not crafted.
+- `/frontier ask Asta come`: she comes to where you stand, waits a minute, then goes back to work.
+- `/frontier ask Asta` lists her requests; `/frontier ask Asta cancel` drops them.
+- `/frontier settlers` shows how many requests each settler has.
+
+Settlers can be named by name or by their short ID.
 
 Requires H.O.W.L. 0.0.47+ and CodaLauncher Nightly. Choose Frontier, then Nightly Play / Install-Repair.

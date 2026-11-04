@@ -32,6 +32,7 @@ final class FrontierCommands {
             case "retire" -> retire(player, world, c, args);
             case "reset" -> reset(player, c, args);
             case "job" -> job(player, c, args);
+            case "ask" -> ask(player, c, args);
             case "mine" -> mine(player, world, c, args);
             case "plan" -> plan(player, c, args);
             default -> throw new IllegalArgumentException("Unknown command. Use /frontier help");
@@ -52,6 +53,8 @@ final class FrontierCommands {
         player.reply(warn("/frontier plan") + label(" shows the settlement plan; ") + warn("plan here") + label(" (look at the ground) explains one spot."));
         player.reply(label("Building: when every bed is taken, a settler builds the next home. Put a ") + value("door") + label(" and a ")
                 + value("bed") + label(" in the stockpile, plus an ") + value("axe") + label(" (plank houses: settlers craft the planks; a ") + value("crafting table") + label(" by the stockpile lets them make the door) or the land's stone, and a ") + value("shovel") + label(" for roads."));
+        player.reply(warn("/frontier ask <name> craft <item> [count]") + label(" (from the stockpile; a ") + value("crafting table")
+                + label(" by it for bigger recipes), ") + warn("ask <name> come") + label(", ") + warn("ask <name> cancel") + label(", ") + warn("ask <name>") + label(" (their requests)"));
         player.reply(warn("/frontier name <id> <username>") + label(", ") + warn("retire <id>") + label(", ") + warn("reset") + label(", ")
                 + warn("camp") + label(" (look at a lit campfire)"));
     }
@@ -149,7 +152,8 @@ final class FrontierCommands {
             if (!all && s.terminal()) continue;
             player.reply(id(s.shortId()) + SEP + WHITE + BOLD + s.name + RESET + (s.pioneer ? GOLD + " (pioneer)" + RESET : "")
                     + SEP + state(s.state) + SEP + label(s.profession.name())
-                    + SEP + label("food ") + need(s.hunger) + SEP + label("loyalty ") + need(s.loyalty) + SEP + label(s.activity));
+                    + SEP + label("food ") + need(s.hunger) + SEP + label("loyalty ") + need(s.loyalty) + SEP + label(s.activity)
+                    + (s.requests.isEmpty() ? "" : SEP + value(s.requests.size() + " request" + (s.requests.size() == 1 ? "" : "s"))));
         }
         long past = c.count(DEAD) + c.count(DEPARTED) + c.count(RETIRED);
         if (!all && past > 0)
@@ -301,6 +305,69 @@ final class FrontierCommands {
         player.reply(done(next == Settler.Profession.LABOURER
                 ? s.name + " will pick a job from the stockpile's tools."
                 : s.name + " is now a " + next.name().toLowerCase(Locale.ROOT) + "."));
+    }
+
+    /**
+     * /frontier ask <name|id> [craft <item> [count] | come | cancel]: give one settler a request.
+     * Without a request it lists that settler's queue. Requests come before the settler's own job.
+     */
+    private void ask(CodaCommandContext player, Settlement c, List<String> args) throws Exception {
+        requireOwner(player, c);
+        String usage = "Use /frontier ask <name> craft <item> [count], ask <name> come, ask <name> cancel, or ask <name> to see their requests";
+        if (args.size() < 2) throw new IllegalArgumentException(usage);
+        Settler s = named(c, args.get(1));
+        if (args.size() == 2) {
+            if (s.requests.isEmpty()) { player.reply(label(s.name + " has no requests from you. " + usage + ".")); return; }
+            player.reply(heading(s.name + "'s requests") + label(" (first in line first):"));
+            int n = 1;
+            for (var r : s.requests) player.reply(label((n++) + ". " + r.describe()));
+            return;
+        }
+        String what = args.get(2).toLowerCase(Locale.ROOT);
+        if (what.equals("cancel")) {
+            if (args.size() != 3) throw new IllegalArgumentException(usage);
+            int dropped = s.requests.size();
+            var before = new ArrayList<>(s.requests);
+            s.requests.clear();
+            try { sim.save(); } catch (Exception failure) { s.requests.addAll(before); throw failure; }
+            player.reply(done(dropped == 0 ? s.name + " had no requests." : s.name + " dropped " + dropped + " request" + (dropped == 1 ? "" : "s") + " and goes back to work."));
+            return;
+        }
+        if (!s.resident()) throw new IllegalArgumentException(s.name + " is not a resident yet");
+        if (s.requests.size() >= FrontierRequests.MAX_QUEUE)
+            throw new IllegalArgumentException(s.name + " already has " + FrontierRequests.MAX_QUEUE + " requests. Wait, or use /frontier ask " + s.name + " cancel");
+        FrontierRequests.Request request;
+        switch (what) {
+            case "craft" -> {
+                if (args.size() < 4 || args.size() > 5) throw new IllegalArgumentException("Use /frontier ask " + s.name + " craft <item> [count], for example craft oak_door 3");
+                String item = args.get(3).toLowerCase(Locale.ROOT);
+                if (!item.contains(":")) item = "minecraft:" + item;
+                int count;
+                try { count = args.size() == 5 ? Integer.parseInt(args.get(4)) : 1; }
+                catch (NumberFormatException notNumber) { throw new IllegalArgumentException("The count must be a number from 1 to " + FrontierRequests.MAX_COUNT); }
+                request = FrontierRequests.Request.craft(item, count);
+            }
+            case "come" -> {
+                if (args.size() != 3) throw new IllegalArgumentException(usage);
+                if (!player.position().dimension().equals(c.dimension)) throw new IllegalArgumentException(s.name + " can only come to you in the settlement's world");
+                request = FrontierRequests.Request.come(feet(player));
+            }
+            default -> throw new IllegalArgumentException(usage);
+        }
+        s.requests.addLast(request);
+        try { sim.save(); } catch (Exception failure) { s.requests.removeLast(); throw failure; }
+        String when = s.requests.size() > 1 ? " after " + (s.requests.size() - 1) + " earlier request" + (s.requests.size() == 2 ? "" : "s") : " next";
+        player.reply(done(s.name + " will " + request.describe() + when + ".")
+                + label(request.kind == FrontierRequests.Kind.CRAFT ? " Ingredients come from the stockpile, and what is made goes into it." : "")
+                + label(" Settlers work on requests during the day."));
+    }
+
+    /** A settler by name (any case) or by an ID of at least 4 characters. */
+    private static Settler named(Settlement c, String nameOrId) {
+        for (var s : c.settlers.values()) if (!s.terminal() && s.name.equalsIgnoreCase(nameOrId)) return s;
+        var matches = c.matching(nameOrId, false);
+        if (matches.size() != 1) throw new IllegalArgumentException("No settler called " + nameOrId + ". Use a name or ID from /frontier settlers");
+        return matches.getFirst();
     }
 
     private void mine(CodaCommandContext player, CodaLivingWorld world, Settlement c, List<String> args) throws Exception {

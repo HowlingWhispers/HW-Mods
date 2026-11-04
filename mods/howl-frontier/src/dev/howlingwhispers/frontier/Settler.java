@@ -48,6 +48,8 @@ final class Settler {
     CodaBlockPos arrivalPoint;
     double hunger = 80, loyalty = 55;
     int hungerTicks;
+    /** What the owner asked this settler to do, first in line first (0.4.5). Saved. */
+    final ArrayDeque<FrontierRequests.Request> requests = new ArrayDeque<>();
 
     // Runtime only: rebuilt each session, never saved.
     String activity = "Arriving";

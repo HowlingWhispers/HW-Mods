@@ -95,10 +95,19 @@ file can hold several settlements; this release creates one per world.
 | `name <id> <username>` | Rename a settler; their skin follows the Minecraft account |
 | `retire <id>` | Remove a settler who is gone (refused while they are alive and loaded) |
 | `reset`, then `reset confirm` | Start over: dismiss all settlers and forget the camp |
+| `ask <name> craft <item> [count]`, `come`, `cancel` | Requests (0.4.5): a saved queue per settler, worked before their job |
 
 Reset and retire never change world blocks or player inventories. Dismissed
 settlers who are loaded leave with what they carry; absent ones are removed when
 their chunk next loads, so they can never return as duplicates.
+
+### Requests and talking to settlers
+
+0.4.5 adds requests: a short saved queue per settler (craft, come), worked first during the day,
+using only the same real actions as the jobs. This is also the layer a later conversation feature
+builds on: a language model may turn what the player says into **one request from this list**
+and reply in the settler's voice, but it never changes the world itself. Frontier validates every
+request exactly as if it were typed, and settlers keep working when no model is configured.
 
 ## Settlement planning
 

@@ -296,6 +296,8 @@ final class Fixtures {
                 if (id.equals("minecraft:" + wood + "_planks")) return new Recipe(Map.of("minecraft:" + wood + "_log", 1), id, 4, false);
                 if (id.equals("minecraft:" + wood + "_door")) return new Recipe(Map.of("minecraft:" + wood + "_planks", 6), id, 3, true);
             }
+            if (id.equals("minecraft:stick")) return new Recipe(Map.of("minecraft:oak_planks", 2), id, 4, false);
+            if (id.equals("minecraft:chest")) return new Recipe(Map.of("minecraft:oak_planks", 8), id, 1, true);
             if (id.equals("minecraft:iron_ingot_from_smelting_iron_ore")) throw new IllegalArgumentException("Not a crafting-table recipe: " + id);
             throw new IllegalArgumentException("Unknown recipe: " + id);
         }
