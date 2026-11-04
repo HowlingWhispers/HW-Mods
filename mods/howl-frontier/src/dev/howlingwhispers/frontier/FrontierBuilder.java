@@ -7,7 +7,7 @@ import static dev.howlingwhispers.frontier.FrontierSimulation.text;
 import static dev.howlingwhispers.frontier.Settlement.Project.Phase.*;
 
 /**
- * Builds what the planner chose, with real items and the loader's native placement (H.O.W.L. 0.0.46+).
+ * Builds what the planner chose, with real items and the loader's native placement (H.O.W.L. 0.0.46+), and crafting (0.0.47+).
  * Order: lay the road (a shovel makes dirt paths), clear the plot of natural ground and plants,
  * then place the blueprint layer by layer from the bottom. Progress is saved after every block,
  * and every step is checked against the world, so a reload or an interruption resumes cleanly.
@@ -364,7 +364,7 @@ final class FrontierBuilder {
     /**
      * A natural tree on the building site is felled whole with an axe, from the highest log in
      * reach downwards, so no trunk is left floating over the new home. Its logs go to the stockpile
-     * and count towards a log cabin.
+     * and are crafted into planks for a plank house.
      */
     private void fellOnSite(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, CodaBlockPos log) throws Exception {
         var base = log;
@@ -515,8 +515,9 @@ final class FrontierBuilder {
         }
         String item = itemFor(world, view, c, s, step);
         if (item == null) {
-            s.activity = "Building: needs " + describe(step) + " in the stockpile";
-            gatherIfPossible(world, view, c, s, actor, step);
+            if (craft(world, view, c, s, actor, p, step)) return;
+            s.activity = missing(world, c, step);
+            if (!(craftingMissing && step.item().endsWith("_planks"))) gatherIfPossible(world, view, c, s, actor, step);
             return;
         }
         if (!carries(world, s, item)) {
@@ -536,6 +537,122 @@ final class FrontierBuilder {
             ledger.remove(s.id); // the bag may not hold what the ledger says: re-collect next time
             s.activity = "Building paused: could not place " + describe(step) + " at " + text(step.pos());
         }
+    }
+
+    // ---- Crafting (0.4.4, H.O.W.L. 0.0.47 hook L8) ------------------------------------------------
+
+    /** How far a crafting table may stand from the stockpile, and a settler from both: the loader's rule. */
+    static final int TABLE_REACH = 3;
+    /** Set when the loader has no crafting hook (older than 0.0.47); builders then ask for planks instead. */
+    private boolean craftingMissing;
+
+    /**
+     * Make what a step needs with the game's own recipes, at the stockpile: planks from the land's
+     * logs in the 2x2 grid (no table needed), and a door from six planks at a crafting table placed
+     * within 3 blocks of the stockpile. The bag is emptied first and everything made goes into the
+     * stockpile, so the normal fetching takes it from there. Returns true while crafting (walking
+     * there or having crafted); false when there is nothing to craft it from.
+     */
+    private boolean craft(CodaLivingWorld world, CodaWorldView view, Settlement c, Settler s, CodaLivingWorld.Actor actor, Settlement.Project p, Step step) throws Exception {
+        if (craftingMissing || c.stockpile == null) return false;
+        boolean door = step.role().equals("door");
+        if (!door && !step.item().endsWith("_planks")) return false;
+        String wood = Palette.woodOf(step.item());
+        if (wood == null) return false;
+        String planks = "minecraft:" + wood + "_planks", log = "minecraft:" + wood + "_log";
+        var stock = stockpileItems(view, c);
+        int planksHave = stock.getOrDefault(planks, 0), logsHave = stock.getOrDefault(log, 0);
+        CodaBlockPos table = door ? craftingTable(world, c) : null;
+        if (door ? table == null || logsHave * 4 + planksHave < 6 : logsHave == 0) return false;
+        String what = door ? "a door at the crafting table" : planks.replace("minecraft:", "").replace('_', ' ');
+        // Within 3 blocks of the stockpile, and of the table too for a door.
+        if (actor.distanceSquared(c.stockpile) > TABLE_REACH * TABLE_REACH || (table != null && actor.distanceSquared(table) > TABLE_REACH * TABLE_REACH)) {
+            s.activity = "Walking to the stockpile to craft " + what;
+            var spot = table == null ? null : craftingSpot(world, c, table, actor);
+            if (table != null && spot == null) { s.activity = "Building: no room to stand within 3 blocks of both the stockpile and the crafting table at " + text(table); return true; }
+            if (spot == null ? !sim.moveNear(world, s, c.stockpile) : !sim.navigate(world, s, spot, .65)) s.activity = "Path blocked: cannot reach the stockpile to craft " + what;
+            return true;
+        }
+        if (!emptyBag(world, c, s)) { s.activity = "The stockpile is full: make room in it"; return true; }
+        int made;
+        try {
+            if (door) {
+                if (planksHave < 6) world.craft(s.id, null, c.stockpile, planks, (6 - planksHave + 3) / 4);
+                made = world.craft(s.id, table, c.stockpile, step.item(), 1);
+            } else {
+                int need = -planksHave;
+                for (int i = p.step; i < steps.size(); i++) if (steps.get(i).item().equals(planks) && !placed(world, steps.get(i))) need++;
+                made = world.craft(s.id, null, c.stockpile, planks, Math.max(1, Math.min(Math.min(16, logsHave), (need + 3) / 4)));
+            }
+        } catch (UnsupportedOperationException oldLoader) {
+            craftingMissing = true;
+            emptyBag(world, c, s);
+            return false;
+        }
+        int carried = world.carried(s.id);
+        boolean stored = emptyBag(world, c, s);
+        if (made == 0) { s.activity = "Building: could not craft " + what + " with the stockpile's " + (door ? "planks" : "logs"); return false; }
+        s.activity = (door ? "Crafted " + wood.replace('_', ' ') + " doors at the crafting table" : "Crafted " + carried + " " + what + " at the stockpile")
+                + (stored ? "" : ", but the stockpile is full: make room in it");
+        return true;
+    }
+
+    /** A crafting table within 3 blocks of the stockpile (the nearest), or null. Never one the settlers placed. */
+    static CodaBlockPos craftingTable(CodaLivingWorld world, Settlement c) throws Exception {
+        CodaBlockPos best = null;
+        int bestDistance = Integer.MAX_VALUE;
+        for (int dx = -TABLE_REACH; dx <= TABLE_REACH; dx++)
+            for (int dy = -TABLE_REACH; dy <= TABLE_REACH; dy++)
+                for (int dz = -TABLE_REACH; dz <= TABLE_REACH; dz++) {
+                    int d = dx * dx + dy * dy + dz * dz;
+                    if (d > TABLE_REACH * TABLE_REACH || d >= bestDistance) continue;
+                    var pos = add(c.stockpile, dx, dy, dz);
+                    if (world.block(pos).map(b -> b.id().equals("minecraft:crafting_table")).orElse(false)) { best = pos; bestDistance = d; }
+                }
+        return best;
+    }
+
+    /** A place to stand within reach of both the stockpile and the table, nearest the settler. */
+    private static CodaBlockPos craftingSpot(CodaLivingWorld world, Settlement c, CodaBlockPos table, CodaLivingWorld.Actor actor) throws Exception {
+        double limit = (TABLE_REACH - .3) * (TABLE_REACH - .3);
+        CodaBlockPos best = null;
+        double bestDistance = Double.MAX_VALUE;
+        for (int dx = -TABLE_REACH; dx <= TABLE_REACH; dx++)
+            for (int dy = -2; dy <= 2; dy++)
+                for (int dz = -TABLE_REACH; dz <= TABLE_REACH; dz++) {
+                    var spot = add(table, dx, dy, dz);
+                    if (!spot.equals(FrontierSimulation.standing(world, spot, 0))) continue;
+                    var feet = new CodaLivingWorld.Actor(actor.id(), spot.x() + .5, spot.y(), spot.z() + .5, 20, false);
+                    if (feet.distanceSquared(table) > limit || feet.distanceSquared(c.stockpile) > limit) continue;
+                    double d = actor.distanceSquared(spot);
+                    if (d < bestDistance) { best = spot; bestDistance = d; }
+                }
+        return best;
+    }
+
+    /** Put everything in the bag into the stockpile (one stack per call, as hauling does). True when the bag is empty. */
+    private boolean emptyBag(CodaLivingWorld world, Settlement c, Settler s) throws Exception {
+        for (int i = 0; i < 16 && world.carried(s.id) > 0; i++) if (world.deliver(s.id, c.stockpile) == 0) break;
+        ledger.remove(s.id);
+        return world.carried(s.id) == 0;
+    }
+
+    /** What the builder says when a step's item is missing and cannot be crafted now. */
+    private String missing(CodaLivingWorld world, Settlement c, Step step) throws Exception {
+        if (step.role().equals("door")) {
+            String wood = Palette.woodOf(step.item());
+            String from = wood == null ? "" : " or " + wood.replace('_', ' ') + " logs";
+            if (craftingMissing || c.stockpile == null) return "Building: needs a door in the stockpile";
+            return craftingTable(world, c) == null
+                    ? "Building: needs a door in the stockpile, or a crafting table within 3 blocks of it to make one" + (wood == null ? "" : " from " + wood.replace('_', ' ') + " planks")
+                    : "Building: needs a door in the stockpile, or 6 " + (wood == null ? "" : wood.replace('_', ' ') + " ") + "planks" + from + " to make one at the crafting table";
+        }
+        if (step.item().endsWith("_planks")) {
+            String log = step.item().replace("_planks", "_log").replace("minecraft:", "").replace('_', ' ');
+            return craftingMissing ? "Building: needs " + describe(step) + " in the stockpile (settlers craft them from logs with H.O.W.L. 0.0.47 or newer)"
+                    : "Building: needs " + describe(step) + " in the stockpile, or " + log + "s to make them";
+        }
+        return "Building: needs " + describe(step) + " in the stockpile";
     }
 
     private int foundationSteps() {
@@ -684,7 +801,8 @@ final class FrontierBuilder {
             if (!s.activity.isEmpty()) s.activity = "Mining rock for " + what + ": " + s.activity.toLowerCase(Locale.ROOT);
             return;
         }
-        if (!FrontierJobs.isLog(step.item())) return;
+        // Logs for a log frame, or for the planks a plank house is crafted from.
+        if (!FrontierJobs.isLog(step.item()) && !(step.item().endsWith("_planks") && Palette.woodOf(step.item()) != null)) return;
         // equip() succeeds when an axe is already in hand, or in reach at the stockpile.
         if (!hasInStockpile(view, c, FrontierJobs.AXES) && !world.equip(s.id, c.stockpile, FrontierJobs.AXES)) return;
         jobs.lumberjackFor(world, c, s, actor);

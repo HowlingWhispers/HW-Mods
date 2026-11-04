@@ -22,7 +22,86 @@ public final class BuilderTest {
         dipsUnderTheFoundationAreFilled();
         oldRaisedHutIsTakenDownAndRebuilt();
         builderMinesRockForTheFoundation();
+        doorIsCraftedAtATableByTheStockpile();
+        noTableMeansTheDoorIsAskedFor();
+        savedLogCabinIsFinishedInLogs();
+        olderLoaderAsksForPlanks();
         finish("builder checks");
+    }
+
+    /** 0.4.4: with a crafting table next to the stockpile, a builder with no door makes one from planks. */
+    static void doorIsCraftedAtATableByTheStockpile() throws Exception {
+        var t = meadow(16);
+        t.world.stock(STOCK, "minecraft:stone_axe", 1);
+        t.world.stock(STOCK, "minecraft:oak_sapling", 16);
+        t.world.stock(STOCK, "minecraft:red_bed", 1);
+        t.world.stock(STOCK, "minecraft:cobblestone", 25);
+        var table = new CodaBlockPos(STOCK.x() + 2, STOCK.y(), STOCK.z());
+        t.world.blocks.put(table, block("minecraft:crafting_table", Map.of(), true));
+        until(t, 5000, () -> t.c().homesBuilt == 1);
+        check(t.c().homesBuilt == 1, "The plank house is finished without a door from you: " + (pioneer(t) == null ? "" : pioneer(t).activity));
+        check(t.world.crafted.contains("minecraft:oak_door"), "A door was crafted with the game's recipe at the table");
+        var door = t.world.blocks.values().stream().filter(b -> b.id().equals("minecraft:oak_door") && "lower".equals(b.properties().get("half"))).count();
+        check(door == 1, "The crafted oak door was hung in the house");
+        check(t.world.stocked(STOCK, "minecraft:oak_door") == 2, "The two other doors from the recipe wait in the stockpile (" + t.world.stocked(STOCK, "minecraft:oak_door") + ")");
+        check(t.world.block(table).orElseThrow().id().equals("minecraft:crafting_table"), "Your crafting table stays where you put it");
+    }
+
+    /** Without a table the builder cannot make a door: it says what would help, and does not gather forever. */
+    static void noTableMeansTheDoorIsAskedFor() throws Exception {
+        var t = meadow(16);
+        t.world.stock(STOCK, "minecraft:stone_axe", 1);
+        t.world.stock(STOCK, "minecraft:oak_sapling", 16);
+        t.world.stock(STOCK, "minecraft:red_bed", 1);
+        t.world.stock(STOCK, "minecraft:cobblestone", 25);
+        until(t, 4000, () -> pioneer(t) != null && pioneer(t).activity.contains("needs a door"));
+        check(pioneer(t) != null && pioneer(t).activity.contains("needs a door") && pioneer(t).activity.contains("crafting table"),
+                "With no door and no table, the builder asks for either: " + (pioneer(t) == null ? "" : pioneer(t).activity));
+        check(t.world.crafted.stream().noneMatch(r -> r.endsWith("_door")), "No door is made without a real table");
+        t.world.blocks.put(new CodaBlockPos(STOCK.x(), STOCK.y(), STOCK.z() + 2), block("minecraft:crafting_table", Map.of(), true));
+        until(t, 600, () -> t.c().homesBuilt == 1);
+        check(t.c().homesBuilt == 1, "Once a table stands by the stockpile, the door is made and the house finished: " + (pioneer(t) == null ? "" : pioneer(t).activity));
+    }
+
+    /** A log cabin started by 0.4.3 keeps its saved palette: it is finished in logs, nothing is crafted. */
+    static void savedLogCabinIsFinishedInLogs() throws Exception {
+        var t = meadow(0);
+        t.world.stock(STOCK, "minecraft:cobblestone", 25);
+        t.world.stock(STOCK, "minecraft:oak_log", 53);
+        t.world.stock(STOCK, "minecraft:oak_door", 1);
+        t.world.stock(STOCK, "minecraft:red_bed", 1);
+        t.sim.builder.autoStart = false;
+        until(t, 400, () -> t.sim.planner.surveyed(t.c()) >= FrontierPlanner.cells(t.c().territory()).size() && pioneer(t) != null && pioneer(t).state == RESIDENT);
+        t.sim.builder.autoStart = true;
+        t.sim.builder.maybeStart(t.world, t.c());
+        var planned = t.c().project;
+        String log = "minecraft:oak_log";
+        t.c().project = new Settlement.Project(planned.blueprint, planned.cell, planned.facing, planned.level,
+                new Palette("oak log cabin", log, log, log, log, "minecraft:oak_door", "16 trees in your land"), planned.road);
+        t.c().project.phase = planned.phase;
+        t.sim.save();
+        t.reopen();
+        check(t.c().project != null && t.c().project.palette.wall().equals(log), "The saved log cabin comes back as a log cabin");
+        until(t, 2500, () -> t.c().project == null);
+        check(t.c().homesBuilt == 1 && t.world.crafted.isEmpty(), "It is finished in logs, with nothing crafted");
+        check(t.world.stocked(STOCK, "minecraft:oak_log") == 0, "All 53 logs went into it");
+    }
+
+    /** A loader without the crafting hook: the builder asks for planks instead of gathering logs forever. */
+    static void olderLoaderAsksForPlanks() throws Exception {
+        var t = meadow(16);
+        t.world.crafting = false;
+        t.world.stock(STOCK, "minecraft:stone_axe", 1);
+        t.world.stock(STOCK, "minecraft:oak_sapling", 16);
+        t.world.stock(STOCK, "minecraft:oak_door", 1);
+        t.world.stock(STOCK, "minecraft:red_bed", 1);
+        t.world.stock(STOCK, "minecraft:cobblestone", 25);
+        until(t, 4000, () -> pioneer(t) != null && pioneer(t).activity.contains("0.0.47"));
+        check(pioneer(t) != null && pioneer(t).activity.contains("needs oak planks") && pioneer(t).activity.contains("0.0.47"),
+                "Without the hook the builder asks for planks and names the loader it needs: " + (pioneer(t) == null ? "" : pioneer(t).activity));
+        t.world.stock(STOCK, "minecraft:oak_planks", 45);
+        until(t, 1500, () -> t.c().homesBuilt == 1);
+        check(t.c().homesBuilt == 1, "With planks from you, the house is finished");
     }
 
     static void geometry() {
@@ -65,18 +144,23 @@ public final class BuilderTest {
         var p = pioneer(t);
         check(p != null && p.state == RESIDENT, "The pioneer arrives and settles");
         until(t, 120, () -> t.c().project != null);
-        check(t.c().project != null && t.c().project.palette.name().equals("oak log cabin"), "With no free bed, a home is planned in the land's wood");
+        check(t.c().project != null && t.c().project.palette.name().equals("oak plank house"), "With no free bed, a plank house is planned in the land's wood");
         until(t, 5, () -> p.profession == Settler.Profession.BUILDER);
         check(p.profession == Settler.Profession.BUILDER, "The pioneer becomes the builder");
         check(t.world.announcements.stream().anyMatch(a -> a.contains("will build the new home")), "Players are told who builds");
         var project = t.c().project;
         until(t, 4000, () -> t.c().project == null);
-        check(t.c().project == null && t.c().homesBuilt == 1, "The cabin is finished (" + p.activity + ")");
+        check(t.c().project == null && t.c().homesBuilt == 1, "The house is finished (" + p.activity + ")");
         check(t.world.announcements.stream().anyMatch(a -> a.contains("A new home is finished")), "Players are told the home is finished");
-        long logs = t.world.blocks.values().stream().filter(b -> b.id().equals("minecraft:oak_log")).count();
-        check(t.world.placedBlocks.size() == 80, "25 cobblestone, 53 logs, a door and a bed were placed (" + t.world.placedBlocks.size() + ")");
+        long placedLogs = t.world.placedBlocks.stream().filter(b -> t.world.block(b).orElseThrow().id().equals("minecraft:oak_log")).count();
+        long placedPlanks = t.world.placedBlocks.stream().filter(b -> t.world.block(b).orElseThrow().id().equals("minecraft:oak_planks")).count();
+        check(t.world.placedBlocks.size() == 80 && placedLogs == 8 && placedPlanks == 45,
+                "25 cobblestone, an 8-log frame, 45 planks, a door and a bed were placed (" + t.world.placedBlocks.size() + ", " + placedLogs + " logs, " + placedPlanks + " planks)");
         check(t.world.stocked(STOCK, "minecraft:cobblestone") == 0, "The 25 cobblestone went into the foundation");
-        check(t.world.harvested.stream().filter(h -> h.equals("minecraft:oak_log")).count() >= 53, "Every log came from felling real trees");
+        long planksCrafted = t.world.crafted.stream().filter(r -> r.equals("minecraft:oak_planks")).count();
+        check(planksCrafted == 12, "45 planks were crafted from 12 real logs, in the 2x2 grid (" + planksCrafted + " crafts)");
+        check(t.world.stocked(STOCK, "minecraft:oak_planks") == 3, "The 3 spare planks are left in the stockpile (" + t.world.stocked(STOCK, "minecraft:oak_planks") + ")");
+        check(t.world.harvested.stream().filter(h -> h.equals("minecraft:oak_log")).count() >= 20, "Every log came from felling real trees");
         check(t.world.stocked(STOCK, "minecraft:spruce_door") == 0 && t.world.stocked(STOCK, "minecraft:blue_bed") == 0, "The door and bed from the stockpile were used");
         // The cabin's door faces the square side, and its bed counts as a sheltered home.
         var door = t.world.blocks.entrySet().stream().filter(e -> e.getKey().y() > 63 && e.getValue().id().equals("minecraft:spruce_door")
@@ -369,7 +453,7 @@ public final class BuilderTest {
         t.c().mineEntrance = entrance;
         t.c().mineDirection = "east";
         until(t, 400, () -> t.c().project != null);
-        check(t.c().project != null && t.c().project.palette.name().equals("oak log cabin"), "A log cabin is planned");
+        check(t.c().project != null && t.c().project.palette.name().equals("oak plank house"), "A plank house is planned");
         until(t, 3000, () -> pioneer(t) != null && pioneer(t).activity.startsWith("Mining rock for the foundation"));
         check(pioneer(t) != null && pioneer(t).activity.startsWith("Mining rock for the foundation"), "With no cobblestone, the builder goes mining: " + (pioneer(t) == null ? "" : pioneer(t).activity));
         until(t, 5000, () -> t.c().project == null);

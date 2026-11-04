@@ -142,7 +142,7 @@ Each settlement builds in a material palette chosen from what its land offers:
 
 | Land | Palette |
 | --- | --- |
-| 4 or more natural trees | Wood of the most common local tree: logs for the frame, planks for walls and roof once settlers can craft (L8); logs everywhere until then. Cobblestone foundation |
+| 4 or more natural trees | Wood of the most common local tree: logs for the frame, planks for walls and roof, crafted by the builder (L8, 0.4.4). Cobblestone foundation. Projects saved as log cabins are finished in logs |
 | Mostly sand or sandstone | Sandstone |
 | Mostly terracotta or red sand | Terracotta, using the most common local colour for walls |
 | Anything else | Cobblestone |
@@ -210,7 +210,7 @@ shell. Steep cells that are solid rock become candidates for mountain homes.
 
 Each is a separate CodaLoader change with its own version bump, proposed before that
 repository is touched. L6 shipped in H.O.W.L. 0.0.46 (`CodaLivingWorld.place` and
-`shapePath`); the others do not exist yet.
+`shapePath`) and L8 in 0.0.47 (`CodaLivingWorld.craft`); the others do not exist yet.
 
 | # | Hook | Frontier uses it for |
 | --- | --- | --- |
@@ -221,9 +221,9 @@ repository is touched. L6 shipped in H.O.W.L. 0.0.46 (`CodaLivingWorld.place` an
 | L5 | Cancellable break, place and use events | Soft-claim enforcement, campfire screen, giving tools to settlers |
 | L6 | Settler places a block or bed from a real carried item (0.0.46) | Builders and cabins |
 | L7 | Server particles or a client overlay | Visible border |
-| L8 | Settler crafts at a crafting table (proposed for 0.0.47, below) | Planks, then plank houses; later doors, beds and tools |
+| L8 | Settler crafts at a crafting table (0.0.47, below) | Planks, then plank houses; later doors, beds and tools |
 
-### L8: crafting at a workbench (proposal for H.O.W.L. 0.0.47)
+### L8: crafting at a workbench (H.O.W.L. 0.0.47)
 
 ```java
 /**
@@ -263,6 +263,7 @@ decision on whether players may use it too.
 | 0.3.x | Death events, owner from placement, soft-claim enforcement, campfire screen | L1, L2, L5 |
 | 0.4.0 | Houses dug into the ground on a foundation, dips filled, builders mine rock for it; 0.3.x huts taken down and rebuilt | Nothing new |
 | 0.4.1 | One shared mine the miners choose and dig as a walkable stairway; walking in and out through its mouth | Nothing new |
-| 0.4.x | Crafting at a workbench next to the stockpile: planks, sticks, ladders; plank houses | L8 (0.0.47) |
+| 0.4.4 | Plank houses: the builder crafts planks from logs at the stockpile, and a door at a crafting table within 3 blocks of it | L8 (0.0.47) |
+| 0.4.x | Sticks, ladders and tools at the workbench | L8 (0.0.47) |
 | 0.5.0 | Mountain homes and underground villages; expeditions | L6, plus an entity storage hook for expeditions |
 | 0.6.0 | Starting locations, visible border | L3, L4, L7 |
