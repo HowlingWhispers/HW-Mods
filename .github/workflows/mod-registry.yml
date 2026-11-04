@@ -1,0 +1,24 @@
+name: Test H.O.W.L. Mod Registry
+on:
+  push:
+    branches: [main]
+    paths: ['registry/**', '.github/workflows/mod-registry.yml']
+  pull_request:
+    paths: ['registry/**', '.github/workflows/mod-registry.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - run: npm install --no-audit --no-fund
+        working-directory: registry
+      - run: npm test
+        working-directory: registry
+      - run: node --check server.mjs && node --check validation.mjs
+        working-directory: registry
