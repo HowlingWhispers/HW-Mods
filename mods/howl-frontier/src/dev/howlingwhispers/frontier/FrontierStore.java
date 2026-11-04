@@ -116,6 +116,7 @@ final class FrontierStore {
                 p.setProperty(sk + "hunger", "" + s.hunger);
                 p.setProperty(sk + "loyalty", "" + s.loyalty);
                 p.setProperty(sk + "hungerTicks", "" + s.hungerTicks);
+                if (!s.requests.isEmpty()) p.setProperty(sk + "requests", String.join(";", s.requests.stream().map(FrontierRequests.Request::save).toList()));
             }
         }
         return p;
@@ -198,6 +199,12 @@ final class FrontierStore {
                 s.hunger = percent(p, sk + "hunger");
                 s.loyalty = percent(p, sk + "loyalty");
                 s.hungerTicks = integer(p, sk + "hungerTicks", 0, Settler.HUNGER_STEP_TICKS - 1);
+                String requests = p.getProperty(sk + "requests", "");
+                if (!requests.isEmpty()) {
+                    // Absent in saves before 0.4.5: no requests.
+                    for (String line : requests.split(";", -1)) s.requests.add(FrontierRequests.Request.parse(line));
+                    if (s.requests.size() > FrontierRequests.MAX_QUEUE) throw new IllegalArgumentException("too many requests for " + name);
+                }
                 c.settlers.put(id, s);
             }
             if (c.population() > Settlement.MAX_POPULATION) throw new IllegalArgumentException("population above limit");

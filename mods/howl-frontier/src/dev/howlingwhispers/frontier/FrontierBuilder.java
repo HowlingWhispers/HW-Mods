@@ -613,7 +613,7 @@ final class FrontierBuilder {
     }
 
     /** A place to stand within reach of both the stockpile and the table, nearest the settler. */
-    private static CodaBlockPos craftingSpot(CodaLivingWorld world, Settlement c, CodaBlockPos table, CodaLivingWorld.Actor actor) throws Exception {
+    static CodaBlockPos craftingSpot(CodaLivingWorld world, Settlement c, CodaBlockPos table, CodaLivingWorld.Actor actor) throws Exception {
         double limit = (TABLE_REACH - .3) * (TABLE_REACH - .3);
         CodaBlockPos best = null;
         double bestDistance = Double.MAX_VALUE;
@@ -631,7 +631,7 @@ final class FrontierBuilder {
     }
 
     /** Put everything in the bag into the stockpile (one stack per call, as hauling does). True when the bag is empty. */
-    private boolean emptyBag(CodaLivingWorld world, Settlement c, Settler s) throws Exception {
+    boolean emptyBag(CodaLivingWorld world, Settlement c, Settler s) throws Exception {
         for (int i = 0; i < 16 && world.carried(s.id) > 0; i++) if (world.deliver(s.id, c.stockpile) == 0) break;
         ledger.remove(s.id);
         return world.carried(s.id) == 0;

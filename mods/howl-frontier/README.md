@@ -96,6 +96,23 @@ foundation. A bed that was already placed is yours to pick up first. Builders ne
 what is in the way. `/frontier status` shows the Building line. Progress is saved after
 every block.
 
+## Requests
+
+Ask one settler to do something for you with `/frontier ask <name>`. Requests come before the
+settler's own job, one at a time and in the order you gave them, during the day (at night they
+wait). Up to 5 per settler; they are saved with the world.
+
+- `/frontier ask Asta craft oak_door 3` crafts with the game's own recipe, one craft per second,
+  until at least that many are made. Ingredients come from the stockpile and everything made
+  goes into it. Recipes bigger than 2x2 need a **crafting table within 3 blocks of the stockpile**.
+  Missing ingredients, an unknown recipe or a missing table end the request, and chat says why.
+  Smelting and special recipes are not crafted.
+- `/frontier ask Asta come` brings the settler to where you stand. They wait a minute, then go
+  back to work; with no way to you they give up after 30 seconds and say so.
+- `/frontier ask Asta` lists their requests; `/frontier ask Asta cancel` drops them all.
+
+Settlers can be named by name or by the short ID from `/frontier settlers`.
+
 ## Settings
 
 `config/howl_frontier/howl-frontier.properties` in the Frontier profile (created on first start, never
@@ -118,6 +135,8 @@ at most one second's worth of actions is saved.
 | `/frontier stockpile` | Set the chest or barrel you are looking at |
 | `/frontier keepbed` | Keep the bed you are looking at for yourself (again to share it) |
 | `/frontier job <id> <lumberjack\|farmer\|miner\|labourer>` | Choose a settler's job; `labourer` lets them pick |
+| `/frontier ask <name> craft <item> [count]` | Have a settler craft something from the stockpile (see Requests) |
+| `/frontier ask <name> come`, `cancel`, or no request | Call a settler over, drop their requests, or list them |
 | `/frontier mine` | Optional: set the mine yourself at the block you look at, tunnelling the way you face |
 | `/frontier mine auto` | Let the miners choose the settlement's mine (the default) |
 | `/frontier plan [here]` | Show the settlement plan, or explain the spot you look at |
